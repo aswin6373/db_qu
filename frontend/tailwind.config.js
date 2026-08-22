@@ -6,9 +6,13 @@ export default {
       colors: {
         ink: "#172026",
         forest: "#17645a",
-        coral: "#db6b4d",
+        coral: "#d96545",
         steel: "#557086",
-        mist: "#eef3f4"
+        mist: "#eef3f4",
+        paper: "#fbfcfc",
+        line: "#d9e2e4",
+        navy: "#22313d",
+        amber: "#c48a2c"
       }
     }
   },

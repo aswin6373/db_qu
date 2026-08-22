@@ -1,4 +1,5 @@
 import { Activity, Database, MessageSquare, PlugZap, Table2 } from "lucide-react";
+import { PageHeader } from "../components/PageHeader";
 import { SchemaGraph } from "../components/SchemaGraph";
 import { Connection, Dashboard as DashboardType, DatabaseSchema } from "../types/api";
 
@@ -16,18 +17,20 @@ export function Dashboard({ connections, dashboard, schemas, onOpenConnections }
 
   return (
     <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Workspace Dashboard</h1>
-        <p className="text-sm text-slate-600">{dashboard?.organization.name ?? "Loading workspace"} activity and connection status.</p>
-      </div>
+      <PageHeader
+        eyebrow={dashboard?.organization.name ?? "Workspace"}
+        title="Operational Dashboard"
+        description="Monitor connected databases, discovered schema, and recent AI-generated SQL activity from one production console."
+        action={connections.length > 0 ? <button className="btn-secondary" onClick={onOpenConnections} type="button"><PlugZap size={16} /> Manage Connections</button> : null}
+      />
       {connections.length === 0 && (
-        <section className="rounded border border-coral/30 bg-white p-5">
+        <section className="panel border-coral/30 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold">Connect your first database</h2>
-              <p className="text-sm text-slate-600">QueryMind needs a live MySQL connection before chat, schema graphs, and production activity can work.</p>
+              <p className="text-sm text-steel">QueryMind needs a live MySQL connection before chat, schema graphs, and production activity can work.</p>
             </div>
-            <button className="flex items-center justify-center gap-2 rounded bg-coral px-4 py-2 font-semibold text-white" onClick={onOpenConnections} type="button">
+            <button className="btn-accent" onClick={onOpenConnections} type="button">
               <PlugZap size={18} /> Connect Database
             </button>
           </div>
@@ -41,19 +44,22 @@ export function Dashboard({ connections, dashboard, schemas, onOpenConnections }
       {primaryConnection && (
         <SchemaGraph schema={primarySchema} title={`${primaryConnection.name} Structure`} />
       )}
-      <section className="rounded border border-slate-200 bg-white p-4">
+      <section className="panel p-5">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="text-forest" size={18} />
-          <h2 className="text-lg font-semibold">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-ink">Recent Activity</h2>
         </div>
         <div className="space-y-3">
           {(dashboard?.recent_activity ?? []).map((item) => (
             <div className="border-b border-slate-100 pb-3 last:border-0" key={item.id}>
-              <p className="font-medium">{item.question}</p>
-              <code className="mt-1 block overflow-x-auto rounded bg-slate-950 px-3 py-2 text-sm text-slate-100">{item.sql}</code>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-medium">{item.question}</p>
+                <span className="status-pill w-fit">{item.status}</span>
+              </div>
+              <code className="code-block mt-2">{item.sql}</code>
             </div>
           ))}
-          {dashboard?.recent_activity.length === 0 && <p className="text-sm text-slate-600">No query activity yet.</p>}
+          {dashboard?.recent_activity.length === 0 && <p className="rounded-md border border-dashed border-line bg-paper px-4 py-8 text-center text-sm text-steel">No query activity yet.</p>}
         </div>
       </section>
     </section>
@@ -62,10 +68,10 @@ export function Dashboard({ connections, dashboard, schemas, onOpenConnections }
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="rounded border border-slate-200 bg-white p-4">
-      <div className="mb-3 text-forest">{icon}</div>
-      <p className="text-sm text-slate-600">{label}</p>
-      <strong className="text-3xl">{value}</strong>
+    <div className="panel p-5">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-mist text-forest">{icon}</div>
+      <p className="text-sm font-medium text-steel">{label}</p>
+      <strong className="mt-1 block text-3xl font-semibold text-ink">{value}</strong>
     </div>
   );
 }

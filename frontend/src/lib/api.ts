@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export async function apiRequest<T>(
   path: string,
@@ -16,7 +16,7 @@ export async function apiRequest<T>(
       }
     });
   } catch {
-    throw new Error(`Cannot reach QueryMind API at ${API_URL}. Please make sure the backend server is running.`);
+    throw new Error("Cannot reach QueryMind API. Please make sure the backend server is running.");
   }
 
   if (!response.ok) {

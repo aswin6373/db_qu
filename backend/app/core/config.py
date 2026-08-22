@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     fernet_key: str = ""
-    llm_provider: str = "local"
+    llm_provider: str = "ollama"
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3:8b"
     openai_api_key: str = ""
     gemini_api_key: str = ""
     mysql_connect_timeout: int = 5

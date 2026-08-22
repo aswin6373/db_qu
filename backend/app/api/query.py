@@ -29,11 +29,11 @@ DEMO_SCHEMA = {
 
 @router.post("/generate", response_model=QueryGenerateResponse)
 def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    connection = None
-    schema = DEMO_SCHEMA
-    if payload.connection_id:
-        connection = _get_org_connection(payload.connection_id, user, db)
-        schema = json.loads(connection.schema_cache or "{}")
+    if payload.connection_id is None:
+        raise HTTPException(status_code=400, detail="Connect a database before asking AI questions.")
+
+    connection = _get_org_connection(payload.connection_id, user, db)
+    schema = json.loads(connection.schema_cache or "{}")
 
     sql = generate_sql(payload.question, schema)
     validation = validate_sql(sql, schema)
@@ -44,14 +44,14 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     rows: list[dict] = []
     status = "pending_confirmation" if validation.requires_confirmation else "executed"
 
-    if connection and not validation.requires_confirmation:
+    if not validation.requires_confirmation:
         columns, rows = build_connector(connection).execute(sql)
 
     summary = summarize_result(payload.question, columns, rows, validation.requires_confirmation)
     log = QueryLog(
         organization_id=user.organization_id,
         user_id=user.id,
-        connection_id=connection.id if connection else None,
+        connection_id=connection.id,
         natural_language=payload.question,
         generated_sql=sql,
         query_type=validation.query_type,

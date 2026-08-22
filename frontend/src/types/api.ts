@@ -7,6 +7,16 @@ export type Connection = {
   database_name: string;
 };
 
+export type DatabaseColumn = {
+  name: string;
+  type: string;
+  key: string;
+};
+
+export type DatabaseSchema = {
+  tables: Record<string, { columns: DatabaseColumn[] }>;
+};
+
 export type QueryResponse = {
   query_id: number;
   sql: string;

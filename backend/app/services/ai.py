@@ -85,9 +85,13 @@ def _ollama_generate(prompt: str) -> str:
 
 
 def _extract_sql(text: str) -> str:
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
     fenced = re.search(r"```(?:sql)?\s*(.*?)```", text, flags=re.IGNORECASE | re.DOTALL)
     sql = fenced.group(1) if fenced else text
     sql = sql.strip().strip("`").strip()
+    match = re.search(r"\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]*", sql, flags=re.IGNORECASE)
+    if match:
+        sql = match.group(0).strip()
     if ";" in sql:
         sql = sql.split(";", 1)[0]
     return sql

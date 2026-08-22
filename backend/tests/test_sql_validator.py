@@ -7,6 +7,7 @@ SCHEMA = {
                 {"name": "id", "type": "int", "key": "PRI"},
                 {"name": "name", "type": "varchar", "key": ""},
                 {"name": "email", "type": "varchar", "key": ""},
+                {"name": "city", "type": "varchar", "key": ""},
             ]
         }
     }
@@ -40,4 +41,14 @@ def test_valid_update_requires_confirmation():
     result = validate_sql("UPDATE customers SET name = 'Aswin' WHERE id = 1", SCHEMA)
     assert result.ok is True
     assert result.query_type == "update"
+    assert result.requires_confirmation is True
+
+
+def test_valid_insert_with_column_list_requires_confirmation():
+    result = validate_sql(
+        "INSERT INTO customers (name, email, city) VALUES ('QueryMind Test', 'qm@example.com', 'Testville')",
+        SCHEMA,
+    )
+    assert result.ok is True
+    assert result.query_type == "insert"
     assert result.requires_confirmation is True

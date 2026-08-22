@@ -66,10 +66,14 @@ def _extract_table_names(statement, dml: str) -> set[str]:
 
 def _identifier_names(token) -> set[str]:
     if isinstance(token, IdentifierList):
-        return {identifier.get_real_name() or "" for identifier in token.get_identifiers()}
+        return {_clean_identifier_name(identifier.get_real_name() or identifier.value) for identifier in token.get_identifiers()}
     if isinstance(token, Identifier):
-        return {token.get_real_name() or ""}
-    return {token.value.strip("` ")}
+        return {_clean_identifier_name(token.get_real_name() or token.value)}
+    return {_clean_identifier_name(token.value)}
+
+
+def _clean_identifier_name(value: str) -> str:
+    return value.split("(", 1)[0].strip("` ")
 
 
 def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set[str]:

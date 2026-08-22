@@ -10,6 +10,7 @@ The first version includes:
 - SQL safety validation with confirmation required for write operations
 - Chat-style query endpoint with result formatting
 - React + TypeScript + Tailwind frontend
+- Supabase PostgreSQL support for QueryMind platform data
 
 ## Project Structure
 
@@ -30,6 +31,8 @@ uvicorn app.main:app --reload
 ```
 
 Open `http://localhost:8000/health`.
+
+For Supabase setup, see `SUPABASE_SETUP.md`.
 
 ## Frontend Quick Start
 

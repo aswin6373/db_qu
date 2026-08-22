@@ -39,10 +39,11 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
       setMessages((items) => [...items, { role: "assistant", content: result.summary, result }]);
       onActivity();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Query failed");
+      const message = err instanceof Error ? err.message : "Query failed";
+      setError(message);
       setMessages((items) => [
         ...items,
-        { role: "assistant", content: "I could not finish that request. Please check Ollama/backend status and try again." }
+        { role: "assistant", content: message }
       ]);
     } finally {
       setIsThinking(false);

@@ -21,6 +21,20 @@ export function App() {
     refreshAll();
   }, [token]);
 
+  useEffect(() => {
+    function handleAuthExpired() {
+      localStorage.removeItem("querymind_token");
+      setToken("");
+      setDashboard(null);
+      setConnections([]);
+      setSchemas({});
+      setActive("dashboard");
+    }
+
+    window.addEventListener("querymind:auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("querymind:auth-expired", handleAuthExpired);
+  }, []);
+
   async function refreshAll() {
     if (!token) return;
     const [connectionData, dashboardData] = await Promise.all([

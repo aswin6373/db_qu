@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user
 from app.db.session import get_db
 from app.models import QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
-from app.services.ai import generate_sql, summarize_result
+from app.services.ai import QueryUnderstandingError, generate_sql, summarize_result
 from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
@@ -35,7 +35,10 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     connection = _get_org_connection(payload.connection_id, user, db)
     schema = json.loads(connection.schema_cache or "{}")
 
-    sql = generate_sql(payload.question, schema)
+    try:
+        sql = generate_sql(payload.question, schema)
+    except QueryUnderstandingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     validation = validate_sql(sql, schema)
     if not validation.ok:
         raise HTTPException(status_code=400, detail=validation.error)

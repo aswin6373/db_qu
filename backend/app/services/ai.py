@@ -14,11 +14,13 @@ def generate_sql(question: str, schema: dict) -> str:
     settings = get_settings()
     table = _ensure_question_can_target_schema(question, schema)
     _ensure_insert_has_enough_details(question, schema, table)
-    if settings.llm_provider == "ollama":
+    if settings.llm_provider == "gemini":
         try:
-            return _generate_sql_with_ollama(question, schema)
-        except httpx.HTTPError:
-            return _generate_sql_fallback(question, schema)
+            return _generate_sql_with_gemini(question, schema)
+        except (RuntimeError, httpx.HTTPError):
+            return _generate_sql_with_ollama_or_fallback(question, schema)
+    if settings.llm_provider == "ollama":
+        return _generate_sql_with_ollama_or_fallback(question, schema)
     return _generate_sql_fallback(question, schema)
 
 
@@ -26,7 +28,12 @@ def summarize_result(question: str, columns: list[str], rows: list[dict], requir
     settings = get_settings()
     if requires_confirmation:
         return "This query can modify data, so it is waiting for your confirmation before execution."
-    if settings.llm_provider == "ollama":
+    if settings.llm_provider == "gemini":
+        try:
+            return _summarize_with_gemini(question, columns, rows)
+        except (RuntimeError, httpx.HTTPError):
+            pass
+    if settings.llm_provider in {"gemini", "ollama"}:
         try:
             return _summarize_with_ollama(question, columns, rows)
         except Exception:
@@ -34,6 +41,33 @@ def summarize_result(question: str, columns: list[str], rows: list[dict], requir
     if not rows:
         return "The query ran successfully, but it did not return any rows."
     return f"Found {len(rows)} row(s) for: {question}"
+
+
+def _generate_sql_with_gemini(question: str, schema: dict) -> str:
+    schema_text = json.dumps(schema, indent=2)
+    prompt = f"""
+You are QueryMind's SQL generator.
+
+Generate exactly one MySQL query for the user's request.
+Return only SQL. Do not use markdown. Do not explain.
+
+Rules:
+- Use only tables and columns from this schema.
+- If the request does not clearly name an existing table or existing table concept, do not guess.
+- Support SELECT, INSERT, UPDATE, and DELETE.
+- Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
+- Do not generate multiple statements.
+- For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
+- Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
+
+Schema:
+{schema_text}
+
+User request:
+{question}
+""".strip()
+    response = _gemini_generate(prompt)
+    return _extract_sql(response)
 
 
 def _generate_sql_with_ollama(question: str, schema: dict) -> str:
@@ -63,6 +97,24 @@ User request:
     return _extract_sql(response)
 
 
+def _generate_sql_with_ollama_or_fallback(question: str, schema: dict) -> str:
+    try:
+        return _generate_sql_with_ollama(question, schema)
+    except (RuntimeError, httpx.HTTPError):
+        return _generate_sql_fallback(question, schema)
+
+
+def _summarize_with_gemini(question: str, columns: list[str], rows: list[dict]) -> str:
+    preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
+    prompt = f"""
+Summarize this database query result in one short, plain-English sentence.
+
+Question: {question}
+Result preview: {preview}
+""".strip()
+    return _gemini_generate(prompt).strip()
+
+
 def _summarize_with_ollama(question: str, columns: list[str], rows: list[dict]) -> str:
     preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
     prompt = f"""
@@ -72,6 +124,39 @@ Question: {question}
 Result preview: {preview}
 """.strip()
     return _ollama_generate(prompt).strip()
+
+
+def _gemini_generate(prompt: str) -> str:
+    settings = get_settings()
+    if not settings.gemini_api_key:
+        raise RuntimeError("Gemini API key is not configured")
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.gemini_model}:generateContent"
+    )
+    response = httpx.post(
+        url,
+        params={"key": settings.gemini_api_key},
+        json={
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.1,
+                "candidateCount": 1,
+            },
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    data = response.json()
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise RuntimeError("Gemini returned no candidates")
+    parts = candidates[0].get("content", {}).get("parts") or []
+    text = "".join(str(part.get("text", "")) for part in parts).strip()
+    if not text:
+        raise RuntimeError("Gemini returned an empty response")
+    return text
 
 
 def _ollama_generate(prompt: str) -> str:
@@ -100,6 +185,8 @@ def _extract_sql(text: str) -> str:
     match = re.search(r"\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]*", sql, flags=re.IGNORECASE)
     if match:
         sql = match.group(0).strip()
+    else:
+        raise RuntimeError("Model did not return SQL")
     if ";" in sql:
         sql = sql.split(";", 1)[0]
     return sql

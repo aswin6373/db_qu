@@ -1,0 +1,30 @@
+from functools import lru_cache
+
+from cryptography.fernet import Fernet
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    app_name: str = "QueryMind"
+    database_url: str = "sqlite:///./querymind.db"
+    jwt_secret_key: str = "change-this-secret"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    fernet_key: str = ""
+    llm_provider: str = "local"
+    openai_api_key: str = ""
+    gemini_api_key: str = ""
+    mysql_connect_timeout: int = 5
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def encryption_key(self) -> bytes:
+        if self.fernet_key:
+            return self.fernet_key.encode()
+        return Fernet.generate_key()
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

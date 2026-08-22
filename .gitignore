@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+.pytest_cache/
+.env
+*.pyc
+venv/
+.venv/
+dist/
+build/
+*.tsbuildinfo
+.DS_Store
+*.db
+*.sqlite3

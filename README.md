@@ -11,7 +11,7 @@ The first version includes:
 - Chat-style query endpoint with result formatting
 - React + TypeScript + Tailwind frontend
 - Supabase PostgreSQL support for QueryMind platform data
-- Gemini Flash-Lite as the primary AI model, with Ollama fallback
+- Gemini 3.5 Flash-Lite as the primary AI model, with Ollama fallback
 
 ## Project Structure
 
@@ -47,4 +47,4 @@ Open the local URL shown by Vite.
 
 ## Notes
 
-The backend uses Gemini Flash-Lite when `GEMINI_API_KEY` is configured. If Gemini is unavailable, it falls back to local Ollama, then to a deterministic local fallback so the project can still be tested and demonstrated.
+The backend uses Gemini 3.5 Flash-Lite when `GEMINI_API_KEY` is configured. If Gemini is unavailable, it falls back to local Ollama, then to a deterministic local fallback so the project can still be tested and demonstrated.

@@ -1,18 +1,23 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers
-    }
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers
+      }
+    });
+  } catch {
+    throw new Error(`Cannot reach QueryMind API at ${API_URL}. Please make sure the backend server is running.`);
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

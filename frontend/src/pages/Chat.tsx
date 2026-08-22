@@ -107,8 +107,8 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
           <div className="panel-soft flex max-w-4xl items-center gap-3 p-4 text-ink">
             <Loader2 className="animate-spin text-forest" size={18} />
             <div>
-              <p className="font-medium">Qwen is thinking...</p>
-              <p className="text-sm text-steel">Generating SQL with your local Ollama model.</p>
+              <p className="font-medium">AI is thinking...</p>
+              <p className="text-sm text-steel">Generating and validating SQL with the configured model.</p>
             </div>
           </div>
         )}

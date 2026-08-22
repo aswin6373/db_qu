@@ -12,7 +12,8 @@ class QueryUnderstandingError(ValueError):
 
 def generate_sql(question: str, schema: dict) -> str:
     settings = get_settings()
-    _ensure_question_can_target_schema(question, schema)
+    table = _ensure_question_can_target_schema(question, schema)
+    _ensure_insert_has_enough_details(question, schema, table)
     if settings.llm_provider == "ollama":
         try:
             return _generate_sql_with_ollama(question, schema)
@@ -113,16 +114,79 @@ def _generate_sql_fallback(question: str, schema: dict) -> str:
     if any(word in lowered for word in ["update", "change", "set"]):
         return f"UPDATE {table} SET name = 'Updated' WHERE id = 1"
     if any(word in lowered for word in ["insert", "add", "create"]):
-        return f"INSERT INTO {table} (name) VALUES ('New item')"
+        values = _insert_values_from_question(question, schema, table)
+        columns = ", ".join(values.keys())
+        escaped_values = ", ".join(f"'{value.replace("'", "''")}'" for value in values.values())
+        return f"INSERT INTO {table} ({columns}) VALUES ({escaped_values})"
     return f"SELECT * FROM {table} LIMIT 50"
 
 
-def _ensure_question_can_target_schema(question: str, schema: dict) -> None:
+def _ensure_question_can_target_schema(question: str, schema: dict) -> str:
     if not (schema.get("tables") or {}):
         raise QueryUnderstandingError(
             "I could not find any discovered tables for this connection. Re-test the database connection so QueryMind can read the schema."
         )
-    _target_table_from_question(question, schema)
+    return _target_table_from_question(question, schema)
+
+
+def _ensure_insert_has_enough_details(question: str, schema: dict, table: str) -> None:
+    lowered = question.lower()
+    if not any(word in lowered for word in ["insert", "add", "create"]):
+        return
+
+    insert_columns = _insertable_columns(schema, table)
+    if not insert_columns:
+        raise QueryUnderstandingError(
+            f"I can see the {table} table, but I could not find any columns that should be filled for a new record."
+        )
+
+    values = _insert_values_from_question(question, schema, table)
+    missing = [column for column in insert_columns if column not in values]
+    if missing:
+        provided = ", ".join(f"{column}={value}" for column, value in values.items()) or "no field values"
+        needed = ", ".join(missing)
+        raise QueryUnderstandingError(
+            f"I need more details before creating a new row in {table}. I understood {provided}. "
+            f"Please provide: {needed}."
+        )
+
+
+def _insertable_columns(schema: dict, table: str) -> list[str]:
+    columns = schema.get("tables", {}).get(table, {}).get("columns", [])
+    insertable = []
+    for column in columns:
+        name = str(column.get("name", ""))
+        if not name:
+            continue
+        key = str(column.get("key", "")).upper()
+        extra = str(column.get("extra", "")).lower()
+        has_default = "default" in column and column.get("default") is not None
+        nullable = bool(column.get("nullable", False))
+        if key == "PRI" or "auto_increment" in extra or name.lower() in {"id", "created_at", "updated_at"}:
+            continue
+        if nullable or has_default:
+            continue
+        insertable.append(name)
+    if not insertable:
+        for column in columns:
+            name = str(column.get("name", ""))
+            key = str(column.get("key", "")).upper()
+            if name and key != "PRI" and name.lower() not in {"id", "created_at", "updated_at"}:
+                insertable.append(name)
+    return insertable
+
+
+def _insert_values_from_question(question: str, schema: dict, table: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    insertable_columns = _insertable_columns(schema, table)
+    column_terms = "|".join(re.escape(column.replace("_", " ")) for column in insertable_columns)
+    for column in insertable_columns:
+        column_text = re.escape(column.replace("_", " "))
+        pattern = rf"\b{column_text}\b\s*(?:is|=|:)\s*['\"]?(.+?)(?=(?:['\"]?\s*(?:,|;)\s*)|\s+\b(?:{column_terms})\b\s*(?:is|=|:)|$)"
+        match = re.search(pattern, question, flags=re.IGNORECASE)
+        if match:
+            values[column] = match.group(1).strip().strip("'\"")
+    return values
 
 
 def _target_table_from_question(question: str, schema: dict) -> str:

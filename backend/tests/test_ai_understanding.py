@@ -27,3 +27,18 @@ def test_singular_table_name_matches_plural_table():
     sql = generate_sql("show the customer list", SCHEMA)
 
     assert sql == "SELECT * FROM customers LIMIT 50"
+
+
+def test_insert_asks_for_missing_customer_details():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("insert another customer name is arun", SCHEMA)
+
+    assert "I need more details" in str(exc.value)
+    assert "email" in str(exc.value)
+    assert "city" in str(exc.value)
+
+
+def test_complete_insert_uses_real_values():
+    sql = generate_sql("insert customer name is arun email is arun@example.com city is kochi", SCHEMA)
+
+    assert sql == "INSERT INTO customers (name, email, city) VALUES ('arun', 'arun@example.com', 'kochi')"

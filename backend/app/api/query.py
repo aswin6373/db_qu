@@ -83,7 +83,13 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     if log is None:
         raise HTTPException(status_code=404, detail="Query not found")
     if log.status != "pending_confirmation":
-        raise HTTPException(status_code=400, detail="Query is not waiting for confirmation")
+        return QueryGenerateResponse(
+            query_id=log.id,
+            sql=log.generated_sql,
+            query_type=log.query_type,
+            requires_confirmation=False,
+            summary="This write query was already confirmed.",
+        )
     if log.connection_id is None:
         log.status = "executed"
         db.commit()

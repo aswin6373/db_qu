@@ -34,7 +34,7 @@ class MySQLConnector(DBConnector):
         cursor = connection.cursor(dictionary=True)
         cursor.execute(
             """
-            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_KEY
+            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_KEY, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = %s
             ORDER BY TABLE_NAME, ORDINAL_POSITION
@@ -50,6 +50,9 @@ class MySQLConnector(DBConnector):
                     "name": row["COLUMN_NAME"],
                     "type": row["DATA_TYPE"],
                     "key": row["COLUMN_KEY"] or "",
+                    "nullable": row["IS_NULLABLE"] == "YES",
+                    "default": row["COLUMN_DEFAULT"],
+                    "extra": row["EXTRA"] or "",
                 }
             )
         cursor.close()

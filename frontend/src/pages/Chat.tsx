@@ -18,6 +18,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const [error, setError] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
+  const [confirmedQueryIds, setConfirmedQueryIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!connectionId && connections.length > 0) {
@@ -52,10 +53,16 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }
 
   async function confirm(queryId: number) {
+    if (confirmedQueryIds.has(queryId) || confirmingQueryId === queryId) return;
     setError("");
     setConfirmingQueryId(queryId);
     try {
       const result = await apiRequest<QueryResponse>(`/query/${queryId}/confirm`, { method: "POST" }, token);
+      setConfirmedQueryIds((items) => new Set(items).add(queryId));
+      setMessages((items) => items.map((item) => {
+        if (item.result?.query_id !== queryId) return item;
+        return { ...item, result: { ...item.result, requires_confirmation: false } };
+      }));
       setMessages((items) => [...items, { role: "assistant", content: result.summary, result }]);
       onActivity();
     } catch (err) {
@@ -93,7 +100,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               {message.role === "user" ? "You" : "QueryMind"}
             </div>
             <p className="leading-6">{message.content}</p>
-            {message.result && <ResultBlock confirmingQueryId={confirmingQueryId} result={message.result} onConfirm={confirm} />}
+            {message.result && <ResultBlock confirmedQueryIds={confirmedQueryIds} confirmingQueryId={confirmingQueryId} result={message.result} onConfirm={confirm} />}
           </div>
         ))}
         {isThinking && (
@@ -131,12 +138,13 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   );
 }
 
-function ResultBlock({ confirmingQueryId, result, onConfirm }: { confirmingQueryId: number | null; result: QueryResponse; onConfirm: (id: number) => void }) {
+function ResultBlock({ confirmedQueryIds, confirmingQueryId, result, onConfirm }: { confirmedQueryIds: Set<number>; confirmingQueryId: number | null; result: QueryResponse; onConfirm: (id: number) => void }) {
   const isConfirming = confirmingQueryId === result.query_id;
+  const isConfirmed = confirmedQueryIds.has(result.query_id) || !result.requires_confirmation;
   return (
     <div className="mt-3 space-y-3">
       <code className="code-block">{result.sql}</code>
-      {result.requires_confirmation && (
+      {result.requires_confirmation && !isConfirmed && (
         <div className="flex gap-2">
           <button className="btn-primary min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
             {isConfirming ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
@@ -146,6 +154,11 @@ function ResultBlock({ confirmingQueryId, result, onConfirm }: { confirmingQuery
             <X size={16} /> Cancel
           </button>
         </div>
+      )}
+      {isConfirmed && result.query_type !== "SELECT" && (
+        <span className="status-pill inline-flex w-fit items-center gap-2">
+          <Check size={14} /> Confirmed
+        </span>
       )}
       {result.rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-line bg-white text-ink">

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -36,6 +38,7 @@ class ConnectionCreate(BaseModel):
     username: str
     password: str
     database_name: str
+    ssl_mode: Literal["PREFERRED", "REQUIRED", "DISABLED"] = "PREFERRED"
     test_live: bool = True
 
 
@@ -46,6 +49,7 @@ class ConnectionResponse(BaseModel):
     port: int
     username: str
     database_name: str
+    ssl_mode: str = "PREFERRED"
 
 
 class QueryGenerateRequest(BaseModel):

@@ -5,7 +5,10 @@ export type Connection = {
   port: number;
   username: string;
   database_name: string;
+  ssl_mode?: string;
 };
+
+export type SslMode = "PREFERRED" | "REQUIRED" | "DISABLED";
 
 export type DatabaseColumn = {
   name: string;

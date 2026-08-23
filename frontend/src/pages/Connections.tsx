@@ -3,7 +3,7 @@ import { CheckCircle2, Database, Loader2, PlugZap, RefreshCw, ShieldCheck, Trash
 import { PageHeader } from "../components/PageHeader";
 import { SchemaGraph } from "../components/SchemaGraph";
 import { apiRequest } from "../lib/api";
-import { Connection, DatabaseSchema, SchemaInsights } from "../types/api";
+import { Connection, DatabaseSchema, SchemaInsights, SslMode } from "../types/api";
 
 type Props = {
   token: string;
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function Connections({ token, connections, insights, schemas, onRefresh }: Props) {
-  const [form, setForm] = useState({ name: "Local MySQL", host: "localhost", port: 3306, username: "root", password: "", database_name: "querymind_demo", test_live: true });
+  const [form, setForm] = useState({ name: "Local MySQL", host: "localhost", port: 3306, username: "root", password: "", database_name: "querymind_demo", ssl_mode: "PREFERRED" as SslMode, test_live: true });
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [workingConnectionId, setWorkingConnectionId] = useState<number | null>(null);
@@ -100,6 +100,20 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
                 <span className="mt-1 block text-steel">Recommended. This confirms credentials and loads schema metadata immediately.</span>
               </span>
             </label>
+          ) : key === "ssl_mode" ? (
+            <label className="label" key={key}>
+              encryption (ssl)
+              <select
+                className="field mt-1.5 normal-case"
+                value={String(value)}
+                onChange={(event) => setForm({ ...form, ssl_mode: event.target.value as SslMode })}
+              >
+                <option value="PREFERRED">Auto (use SSL if available)</option>
+                <option value="REQUIRED">Required (cloud providers)</option>
+                <option value="DISABLED">Disabled (local only)</option>
+              </select>
+              <span className="mt-1 block text-xs text-steel">Cloud MySQL providers like Aiven, PlanetScale, and RDS usually require SSL.</span>
+            </label>
           ) : (
             <label className="label" key={key}>
               {key.replace("_", " ")}
@@ -136,7 +150,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
                 <strong className="text-ink">{connection.name}</strong>
                 <span className="status-pill text-forest">connected</span>
               </div>
-              <p className="mt-2 break-all text-sm text-steel">{connection.username}@{connection.host}:{connection.port}/{connection.database_name}</p>
+              <p className="mt-2 break-all text-sm text-steel">{connection.username}@{connection.host}:{connection.port}/{connection.database_name}{connection.ssl_mode && connection.ssl_mode !== "PREFERRED" ? ` · SSL ${connection.ssl_mode.toLowerCase()}` : ""}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button className="btn-secondary h-9" disabled={workingConnectionId === connection.id} onClick={() => refreshConnection(connection.id)} type="button">
                   {workingConnectionId === connection.id ? <Loader2 className="animate-spin" size={15} /> : <RefreshCw size={15} />}

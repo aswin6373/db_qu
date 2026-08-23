@@ -7,6 +7,8 @@ from app.core.config import get_settings
 
 
 class MySQLConnector(DBConnector):
+    VALID_SSL_MODES = {"PREFERRED", "REQUIRED", "DISABLED"}
+
     def __init__(
         self,
         host: str,
@@ -14,7 +16,10 @@ class MySQLConnector(DBConnector):
         username: str,
         password: str,
         database_name: str,
+        ssl_mode: str = "PREFERRED",
     ) -> None:
+        if ssl_mode not in self.VALID_SSL_MODES:
+            raise ValueError(f"Unsupported SSL mode: {ssl_mode}")
         self.config = {
             "host": host,
             "port": port,
@@ -23,6 +28,10 @@ class MySQLConnector(DBConnector):
             "database": database_name,
             "connection_timeout": get_settings().mysql_connect_timeout,
         }
+        if ssl_mode == "DISABLED":
+            self.config["ssl_disabled"] = True
+        elif ssl_mode == "REQUIRED":
+            self.config["ssl_mode"] = "REQUIRED"
         self.database_name = database_name
 
     def connect(self) -> None:

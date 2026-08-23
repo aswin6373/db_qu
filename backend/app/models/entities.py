@@ -40,6 +40,9 @@ class DBConnection(Base):
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_password: Mapped[str] = mapped_column(Text, nullable=False)
     database_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ssl_mode: Mapped[str] = mapped_column(
+        String(20), default="PREFERRED", server_default="PREFERRED", nullable=False
+    )
     schema_cache: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

@@ -18,7 +18,14 @@ router = APIRouter(prefix="/connections", tags=["connections"])
 
 @router.post("", response_model=ConnectionResponse)
 def create_connection(payload: ConnectionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    connector = MySQLConnector(payload.host, payload.port, payload.username, payload.password, payload.database_name)
+    connector = MySQLConnector(
+        payload.host,
+        payload.port,
+        payload.username,
+        payload.password,
+        payload.database_name,
+        ssl_mode=payload.ssl_mode,
+    )
     schema = {"tables": {}}
     if payload.test_live:
         try:
@@ -34,6 +41,7 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(get_curren
         username=payload.username,
         encrypted_password=encrypt_secret(payload.password),
         database_name=payload.database_name,
+        ssl_mode=payload.ssl_mode,
         schema_cache=json.dumps(schema),
     )
     db.add(connection)
@@ -105,6 +113,7 @@ def build_connector(connection: DBConnection) -> MySQLConnector:
         connection.username,
         password,
         connection.database_name,
+        ssl_mode=connection.ssl_mode or "PREFERRED",
     )
 
 

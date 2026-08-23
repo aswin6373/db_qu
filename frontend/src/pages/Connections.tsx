@@ -49,6 +49,11 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
   }
 
   async function deleteConnection(connectionId: number) {
+    const target = connections.find((connection) => connection.id === connectionId);
+    const label = target ? `"${target.name}"` : "this connection";
+    if (!window.confirm(`Delete connection ${label}? Saved queries will be kept, but the database credentials will be removed.`)) {
+      return;
+    }
     setMessage("");
     setWorkingConnectionId(connectionId);
     try {

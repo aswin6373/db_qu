@@ -19,6 +19,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const [isThinking, setIsThinking] = useState(false);
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
   const [confirmedQueryIds, setConfirmedQueryIds] = useState<Set<number>>(new Set());
+  const [dismissedQueryIds, setDismissedQueryIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!connectionId && connections.length > 0) {
@@ -72,6 +73,10 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     }
   }
 
+  function cancel(queryId: number) {
+    setDismissedQueryIds((items) => new Set(items).add(queryId));
+  }
+
   return (
     <section className="flex min-h-[calc(100vh-4rem)] flex-col gap-5">
       <PageHeader
@@ -100,7 +105,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               {message.role === "user" ? "You" : "QueryMind"}
             </div>
             <p className="leading-6">{message.content}</p>
-            {message.result && <ResultBlock confirmedQueryIds={confirmedQueryIds} confirmingQueryId={confirmingQueryId} result={message.result} onConfirm={confirm} />}
+            {message.result && <ResultBlock confirmedQueryIds={confirmedQueryIds} confirmingQueryId={confirmingQueryId} dismissedQueryIds={dismissedQueryIds} result={message.result} onCancel={cancel} onConfirm={confirm} />}
           </div>
         ))}
         {isThinking && (
@@ -138,22 +143,28 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   );
 }
 
-function ResultBlock({ confirmedQueryIds, confirmingQueryId, result, onConfirm }: { confirmedQueryIds: Set<number>; confirmingQueryId: number | null; result: QueryResponse; onConfirm: (id: number) => void }) {
+function ResultBlock({ confirmedQueryIds, confirmingQueryId, dismissedQueryIds, result, onCancel, onConfirm }: { confirmedQueryIds: Set<number>; confirmingQueryId: number | null; dismissedQueryIds: Set<number>; result: QueryResponse; onCancel: (id: number) => void; onConfirm: (id: number) => void }) {
   const isConfirming = confirmingQueryId === result.query_id;
   const isConfirmed = confirmedQueryIds.has(result.query_id) || !result.requires_confirmation;
+  const isCancelled = dismissedQueryIds.has(result.query_id);
   return (
     <div className="mt-3 space-y-3">
       <code className="code-block">{result.sql}</code>
-      {result.requires_confirmation && !isConfirmed && (
+      {result.requires_confirmation && !isConfirmed && !isCancelled && (
         <div className="flex gap-2">
           <button className="btn-primary min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
             {isConfirming ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
             {isConfirming ? "Running" : "Confirm"}
           </button>
-          <button className="btn-secondary" disabled={isConfirming} type="button">
+          <button className="btn-secondary" disabled={isConfirming} onClick={() => onCancel(result.query_id)} type="button">
             <X size={16} /> Cancel
           </button>
         </div>
+      )}
+      {isCancelled && (
+        <span className="status-pill inline-flex w-fit items-center gap-2 text-coral">
+          <X size={14} /> Cancelled — nothing was executed
+        </span>
       )}
       {isConfirmed && result.query_type !== "SELECT" && (
         <span className="status-pill inline-flex w-fit items-center gap-2">

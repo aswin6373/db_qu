@@ -14,6 +14,11 @@ from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
 
+
+def serialize_result_preview(columns: list[str], rows: list[dict]) -> str:
+    return json.dumps({"columns": columns, "rows": rows[:5]}, default=str)
+
+
 DEMO_SCHEMA = {
     "tables": {
         "customers": {
@@ -64,7 +69,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         generated_sql=sql,
         query_type=validation.query_type,
         status=status,
-        result_preview=json.dumps({"columns": columns, "rows": rows[:5]}),
+        result_preview=serialize_result_preview(columns, rows),
     )
     db.add(log)
     db.commit()
@@ -114,7 +119,7 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
     log.status = "executed"
-    log.result_preview = json.dumps({"columns": columns, "rows": rows[:5]})
+    log.result_preview = serialize_result_preview(columns, rows)
     db.commit()
     return QueryGenerateResponse(
         query_id=log.id,

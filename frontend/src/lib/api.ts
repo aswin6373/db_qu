@@ -21,7 +21,13 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    const message = body.detail ?? "Request failed";
+    const detail = body?.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail) && detail.length > 0 && detail[0]?.msg
+          ? detail[0].msg
+          : "Request failed";
     if (response.status === 401 && token) {
       localStorage.removeItem("querymind_token");
       window.dispatchEvent(new CustomEvent("querymind:auth-expired", { detail: message }));

@@ -1,5 +1,6 @@
 import json
 
+from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,11 +55,21 @@ def get_schema(connection_id: int, user: User = Depends(get_current_user), db: S
 
 
 def build_connector(connection: DBConnection) -> MySQLConnector:
+    try:
+        password = decrypt_secret(connection.encrypted_password)
+    except InvalidToken as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "This database connection was saved with an old temporary encryption key. "
+                "Please re-save the connection credentials once so QueryMind can use the new permanent key."
+            ),
+        ) from exc
     return MySQLConnector(
         connection.host,
         connection.port,
         connection.username,
-        decrypt_secret(connection.encrypted_password),
+        password,
         connection.database_name,
     )
 

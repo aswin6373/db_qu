@@ -23,14 +23,6 @@ logger = logging.getLogger("querymind")
 app = FastAPI(title="QueryMind API")
 settings = get_settings()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     MAX_TRACKED_IPS = 10_000
@@ -46,6 +38,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             hits.popleft()
 
     async def dispatch(self, request: Request, call_next):
+        try:
+            return await self._handle(request, call_next)
+        except Exception:
+            logger.exception("unhandled_error path=%s", request.url.path)
+            return JSONResponse({"detail": "Internal server error"}, status_code=500)
+
+    async def _handle(self, request: Request, call_next):
         if (
             self.limit_per_minute <= 0
             or request.url.path in self.HEALTH_PATHS
@@ -68,6 +67,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RateLimitMiddleware, limit_per_minute=settings.rate_limit_per_minute)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 logger.info(
     "starting service=%s environment=%s ai_provider=%s",

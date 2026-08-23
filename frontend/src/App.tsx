@@ -6,7 +6,7 @@ import { Chat } from "./pages/Chat";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
 import { History } from "./pages/History";
-import { Connection, Dashboard as DashboardType, DatabaseSchema } from "./types/api";
+import { Connection, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "./types/api";
 
 export function App() {
   const [token, setToken] = useState(() => localStorage.getItem("querymind_token") ?? "");
@@ -14,6 +14,7 @@ export function App() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [dashboard, setDashboard] = useState<DashboardType | null>(null);
   const [schemas, setSchemas] = useState<Record<number, DatabaseSchema>>({});
+  const [insights, setInsights] = useState<Record<number, SchemaInsights>>({});
 
   useEffect(() => {
     if (!token) return;
@@ -28,6 +29,7 @@ export function App() {
       setDashboard(null);
       setConnections([]);
       setSchemas({});
+      setInsights({});
       setActive("dashboard");
     }
 
@@ -46,6 +48,7 @@ export function App() {
     if (connectionData.length === 0) {
       setActive("connections");
       setSchemas({});
+      setInsights({});
       return;
     }
     const schemaEntries = await Promise.all(
@@ -54,7 +57,14 @@ export function App() {
         return [connection.id, schema] as const;
       })
     );
+    const insightEntries = await Promise.all(
+      connectionData.map(async (connection) => {
+        const insight = await apiRequest<SchemaInsights>(`/connections/${connection.id}/insights`, {}, token).catch(() => null);
+        return [connection.id, insight] as const;
+      })
+    );
     setSchemas(Object.fromEntries(schemaEntries.filter(([, schema]) => schema !== null)) as Record<number, DatabaseSchema>);
+    setInsights(Object.fromEntries(insightEntries.filter(([, insight]) => insight !== null)) as Record<number, SchemaInsights>);
   }
 
   function logout() {
@@ -68,8 +78,8 @@ export function App() {
 
   return (
     <Shell active={active} onActive={setActive} onLogout={logout}>
-      {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
-      {active === "connections" && <Connections token={token} connections={connections} schemas={schemas} onRefresh={refreshAll} />}
+      {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
+      {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
       {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
       {active === "history" && <History dashboard={dashboard} />}
     </Shell>

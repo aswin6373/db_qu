@@ -48,18 +48,31 @@ MYSQL_CONNECT_TIMEOUT=5
 ```
 
 Replace `<password>` and `<project-ref>` with your Supabase values.
+Set `FERNET_KEY` to a permanent Fernet key before saving real database credentials:
 
-## 3. Create Tables
-
-Option A: let the backend create tables when it starts.
-
-Option B: open Supabase SQL Editor and run:
-
-```text
-supabase/schema.sql
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Option B is clearer for review because you can see exactly which platform tables exist.
+## 3. Create Or Update Tables
+
+Preferred production path:
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic upgrade head
+```
+
+If you already created tables manually, run this once after adding Alembic:
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic stamp 0001_initial
+```
+
+The old `supabase/schema.sql` file remains as a readable reference, but Alembic is now the source of truth for production schema changes.
 
 ## 4. Run Backend
 
@@ -68,6 +81,13 @@ cd backend
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000/health
+http://127.0.0.1:8000/health/readiness
 ```
 
 ## 5. Run Frontend

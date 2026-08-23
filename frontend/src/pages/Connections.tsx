@@ -1,21 +1,23 @@
 import { FormEvent, useState } from "react";
-import { CheckCircle2, Database, Loader2, PlugZap, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Database, Loader2, PlugZap, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { SchemaGraph } from "../components/SchemaGraph";
 import { apiRequest } from "../lib/api";
-import { Connection, DatabaseSchema } from "../types/api";
+import { Connection, DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
   token: string;
   connections: Connection[];
+  insights: Record<number, SchemaInsights>;
   schemas: Record<number, DatabaseSchema>;
   onRefresh: () => void;
 };
 
-export function Connections({ token, connections, schemas, onRefresh }: Props) {
+export function Connections({ token, connections, insights, schemas, onRefresh }: Props) {
   const [form, setForm] = useState({ name: "Local MySQL", host: "localhost", port: 3306, username: "root", password: "", database_name: "querymind_demo", test_live: true });
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [workingConnectionId, setWorkingConnectionId] = useState<number | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -29,6 +31,34 @@ export function Connections({ token, connections, schemas, onRefresh }: Props) {
       setMessage(err instanceof Error ? err.message : "Connection failed");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function refreshConnection(connectionId: number) {
+    setMessage("");
+    setWorkingConnectionId(connectionId);
+    try {
+      await apiRequest(`/connections/${connectionId}/refresh`, { method: "POST" }, token);
+      setMessage("Schema refreshed from the live database.");
+      onRefresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Refresh failed");
+    } finally {
+      setWorkingConnectionId(null);
+    }
+  }
+
+  async function deleteConnection(connectionId: number) {
+    setMessage("");
+    setWorkingConnectionId(connectionId);
+    try {
+      await apiRequest(`/connections/${connectionId}`, { method: "DELETE" }, token);
+      setMessage("Connection removed. Query history was kept.");
+      onRefresh();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setWorkingConnectionId(null);
     }
   }
 
@@ -107,13 +137,23 @@ export function Connections({ token, connections, schemas, onRefresh }: Props) {
                 <span className="status-pill text-forest">connected</span>
               </div>
               <p className="mt-2 break-all text-sm text-steel">{connection.username}@{connection.host}:{connection.port}/{connection.database_name}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button className="btn-secondary h-9" disabled={workingConnectionId === connection.id} onClick={() => refreshConnection(connection.id)} type="button">
+                  {workingConnectionId === connection.id ? <Loader2 className="animate-spin" size={15} /> : <RefreshCw size={15} />}
+                  Refresh Schema
+                </button>
+                <button className="btn-secondary h-9 text-coral hover:border-coral/40 hover:text-coral" disabled={workingConnectionId === connection.id} onClick={() => deleteConnection(connection.id)} type="button">
+                  <Trash2 size={15} />
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
           {connections.length === 0 && <p className="rounded-md border border-dashed border-line bg-paper px-4 py-8 text-center text-sm text-steel md:col-span-2">No connections saved yet.</p>}
         </div>
       </section>
       {connections.map((connection) => (
-        <SchemaGraph key={connection.id} schema={schemas[connection.id]} title={`${connection.name} Structure`} />
+        <SchemaGraph insights={insights[connection.id]} key={connection.id} schema={schemas[connection.id]} title={`${connection.name} Structure`} />
       ))}
     </section>
   );

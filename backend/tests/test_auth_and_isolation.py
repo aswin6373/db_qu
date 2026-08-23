@@ -78,3 +78,38 @@ def test_organization_a_cannot_retrieve_organization_b_connection(client):
         headers={"Authorization": f"Bearer {token_b}"},
     )
     assert blocked.status_code == 404
+
+
+def test_connection_insights_and_delete_preserves_org_boundary(client):
+    token = register(client, "insights@example.com", "Insights Org")
+    created = client.post(
+        "/connections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "name": "Insights database",
+            "host": "localhost",
+            "port": 3306,
+            "username": "root",
+            "password": "secret",
+            "database_name": "insights",
+            "test_live": False,
+        },
+    )
+    assert created.status_code == 200
+    connection_id = created.json()["id"]
+
+    insights = client.get(
+        f"/connections/{connection_id}/insights",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert insights.status_code == 200
+    assert insights.json()["score"] == 0
+
+    deleted = client.delete(
+        f"/connections/{connection_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert deleted.status_code == 204
+
+    remaining = client.get("/connections", headers={"Authorization": f"Bearer {token}"})
+    assert remaining.json() == []

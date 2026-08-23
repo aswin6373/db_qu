@@ -48,7 +48,12 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     status = "pending_confirmation" if validation.requires_confirmation else "executed"
 
     if not validation.requires_confirmation:
-        columns, rows = build_connector(connection).execute(sql)
+        try:
+            columns, rows = build_connector(connection).execute(sql)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
 
     summary = summarize_result(payload.question, columns, rows, validation.requires_confirmation)
     log = QueryLog(
@@ -102,7 +107,12 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
         )
 
     connection = _get_org_connection(log.connection_id, user, db)
-    columns, rows = build_connector(connection).execute(log.generated_sql)
+    try:
+        columns, rows = build_connector(connection).execute(log.generated_sql)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
     log.status = "executed"
     log.result_preview = json.dumps({"columns": columns, "rows": rows[:5]})
     db.commit()

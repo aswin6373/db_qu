@@ -63,6 +63,31 @@ class QueryGenerateResponse(BaseModel):
     rows: list[dict] = []
 
 
+class SchemaEdge(BaseModel):
+    from_: str = Field(alias="from")
+    to: str
+    column: str
+
+    model_config = {"populate_by_name": True}
+
+
+class SchemaSuggestion(BaseModel):
+    severity: str
+    title: str
+    detail: str
+
+
+class SchemaInsightsResponse(BaseModel):
+    score: int
+    summary: str
+    table_count: int
+    column_count: int
+    key_count: int
+    relationship_count: int
+    edges: list[SchemaEdge]
+    suggestions: list[SchemaSuggestion]
+
+
 class DashboardResponse(BaseModel):
     organization: OrganizationResponse
     connection_count: int

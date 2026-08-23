@@ -1,16 +1,17 @@
 import json
 
 from cryptography.fernet import InvalidToken
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.connectors.mysql import MySQLConnector
 from app.db.session import get_db
-from app.models import DBConnection, User
-from app.schemas.dto import ConnectionCreate, ConnectionResponse
+from app.models import DBConnection, QueryLog, User
+from app.schemas.dto import ConnectionCreate, ConnectionResponse, SchemaInsightsResponse
 from app.services.crypto import decrypt_secret, encrypt_secret
+from app.services.schema_insights import build_schema_insights
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -52,6 +53,39 @@ def list_connections(user: User = Depends(get_current_user), db: Session = Depen
 def get_schema(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
     return json.loads(connection.schema_cache or "{}")
+
+
+@router.get("/{connection_id}/insights", response_model=SchemaInsightsResponse)
+def get_insights(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    connection = _get_org_connection(connection_id, user, db)
+    return build_schema_insights(json.loads(connection.schema_cache or "{}"))
+
+
+@router.post("/{connection_id}/refresh", response_model=ConnectionResponse)
+def refresh_connection(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    connection = _get_org_connection(connection_id, user, db)
+    connector = build_connector(connection)
+    connector.connect()
+    connection.schema_cache = json.dumps(connector.get_schema())
+    db.commit()
+    db.refresh(connection)
+    return connection
+
+
+@router.delete("/{connection_id}", status_code=204)
+def delete_connection(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    connection = _get_org_connection(connection_id, user, db)
+    logs = db.scalars(
+        select(QueryLog).where(
+            QueryLog.organization_id == user.organization_id,
+            QueryLog.connection_id == connection.id,
+        )
+    ).all()
+    for log in logs:
+        log.connection_id = None
+    db.delete(connection)
+    db.commit()
+    return Response(status_code=204)
 
 
 def build_connector(connection: DBConnection) -> MySQLConnector:

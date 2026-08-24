@@ -45,6 +45,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   const [hovered, setHovered] = useState<string | null>(null);
   const [pinned, setPinned] = useState<string | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const [zoom, setZoom] = useState(1);
 
 
   useEffect(() => {
@@ -59,10 +60,25 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   }, []);
 
 
+  /* Wheel zoom: scrolling over the scene zooms in/out. Perspective tightens
+     as you zoom in (and the tilt eases slightly) so the floor's depth feels
+     genuinely 3D instead of a flat scale-up. */
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setZoom((current) => Math.max(0.6, Math.min(1.6, current - event.deltaY * 0.0012)));
+    };
+    frame.addEventListener("wheel", onWheel, { passive: false });
+    return () => frame.removeEventListener("wheel", onWheel);
+  }, []);
+
+
   /* Shrink the whole scene uniformly so every node stays inside the frame
      on narrow viewports (billboards inherit the parent scale). */
   const fitScale = frameSize.width
-    ? Math.max(0.55, Math.min(1, Math.min(frameSize.width / 660, frameSize.height / 470)))
+    ? Math.max(0.55, Math.min(1, Math.min(frameSize.width / 700, frameSize.height / 500)))
     : 1;
 
 
@@ -85,8 +101,8 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     if (count <= 8) return ring(count, 33, 34, -90);
     const innerCount = Math.min(6, Math.ceil(count / 2));
     return [
-      ...ring(innerCount, 26, 27, -90),
-      ...ring(count - innerCount, 40.5, 41.5, -90 - 180 / (count - innerCount))
+      ...ring(innerCount, 25, 26, -90),
+      ...ring(count - innerCount, 41.5, 42.5, -90 - 180 / (count - innerCount))
     ];
   }, [tables]);
 
@@ -161,6 +177,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
         ref={frameRef}
         className="relative min-h-[420px] flex-1 sm:min-h-[500px]"
         onClick={() => setPinned(null)}
+        onDoubleClick={() => setZoom(1)}
         onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(null); }}
         onMouseMove={handleMove}
       >
@@ -186,12 +203,15 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {/* 3D stage: perspective -> world(preserve-3d, rotated) -> children.
                   The world is viewport-sized; only the floor texture is oversized
                   so rotated corners stay covered. */}
-              <div className="absolute inset-0" style={{ perspective: "2200px" }}>
+              <div
+                className="absolute inset-0"
+                style={{ perspective: `${Math.round(2200 / zoom)}px`, transition: "perspective 200ms ease" }}
+              >
                 <div
                   className="absolute inset-0 transition-transform duration-150 ease-out will-change-transform"
                   style={{
                     transformStyle: "preserve-3d",
-                    transform: `scale(${fitScale}) rotateX(${rotX}deg) rotateZ(${rotZ}deg)`
+                    transform: `scale(${fitScale * zoom}) rotateX(${rotX - (zoom - 1) * 6}deg) rotateZ(${rotZ}deg)`
                   }}
                 >
                   {/* floor */}
@@ -215,20 +235,22 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     </defs>
                     {tables.map(([name], index) => {
                       const [x, y] = layout[index];
-                      const isActive = active === name;
                       const dim = activeSet !== null && !activeSet.has(name);
                       return (
                         <g
                           key={`spoke-${name}`}
-                          opacity={dim ? 0.12 : 1}
+                          opacity={dim ? 0.15 : 1}
                           style={{ transition: "opacity 200ms ease" }}
                         >
-                          <line stroke="#46c8b8" strokeWidth={isActive ? 3.2 : 2.4} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 0.3 : 0.12} strokeLinecap="round" />
-                          <line stroke="#6fd8ca" strokeWidth={isActive ? 1.8 : 1.2} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 0.95 : 0.55} strokeLinecap="round" />
+                          {/* every spoke uses the exact same thin three-layer
+                              style — highlighting only fades opacity, it never
+                              changes the line itself */}
+                          <line stroke="#46c8b8" strokeWidth={1.8} x1={50} x2={x} y1={50} y2={y} opacity={0.14} strokeLinecap="round" />
+                          <line stroke="#6fd8ca" strokeWidth={0.9} x1={50} x2={x} y1={50} y2={y} opacity={0.6} strokeLinecap="round" />
                           <line
                             className="edge-line"
                             stroke="url(#tube-core)"
-                            strokeWidth={0.8}
+                            strokeWidth={0.55}
                             x1={50} x2={x} y1={50} y2={y}
                             strokeDasharray="4 6"
                             strokeLinecap="round"
@@ -416,7 +438,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {hiddenCount > 0 ? ` · +${hiddenCount} table${hiddenCount === 1 ? "" : "s"} hidden` : ""}
             </span>
             <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
-              <MousePointer2 size={11} /> Hover or tap a table to see its links
+              <MousePointer2 size={11} /> Hover a table · scroll to zoom · double-click to reset
             </span>
           </>
         )}

@@ -8,7 +8,6 @@ import {
   GitBranch,
   Info,
   Loader2,
-  Lock,
   PlugZap,
   RefreshCw,
   ShieldCheck,
@@ -176,8 +175,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
           />
         )
       )}
-
-      <SecurityPipeline />
 
       {connection && (
         <SchemaGraph
@@ -495,34 +492,6 @@ function ConnectionForm({
   );
 }
 
-function SecurityPipeline() {
-  const rows = [
-    { detail: "Credentials are Fernet-encrypted before storage", icon: <Lock size={15} />, label: "Encrypted credentials" },
-    { detail: "Tables, columns, and keys cached on save", icon: <RefreshCw size={15} />, label: "Schema auto-discovery" },
-    { detail: "Every AI statement is parsed & schema-checked", icon: <ShieldCheck size={15} />, label: "SQL validation" },
-    { detail: "INSERT / UPDATE / DELETE wait for your approval", icon: <CheckCircle2 size={15} />, label: "Write confirmation" }
-  ];
-
-  return (
-    <section className="card h-fit p-5 sm:p-6">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
-          <ShieldCheck size={15} />
-        </span>
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">Security pipeline</h2>
-          <p className="text-[13px] leading-5 text-slate-500">Active on every connection in this workspace.</p>
-        </div>
-      </div>
-      <div className="mt-4 grid gap-2">
-        {rows.map((row) => (
-          <PipelineRow detail={row.detail} icon={row.icon} key={row.label} label={row.label} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function StatTile({ caption, icon, label, tone, value }: { caption: string; icon: ReactNode; label: string; tone?: string; value: number | string }) {
   return (
     <div className="card card-hover animate-fade-up p-5">
@@ -541,19 +510,6 @@ function DetailField({ label, value }: { label: string; value: string }) {
     <div className="inset-tile px-3.5 py-2.5">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
       <p className="mt-0.5 truncate font-mono text-[13px] text-slate-800">{value}</p>
-    </div>
-  );
-}
-
-function PipelineRow({ icon, label, detail }: { icon: ReactNode; label: string; detail: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 transition hover:border-brand-200 hover:bg-brand-50/40">
-      <span className="shrink-0 text-brand-600">{icon}</span>
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold text-slate-800">{label}</p>
-        <p className="truncate text-[11px] text-slate-500">{detail}</p>
-      </div>
-      <span className="ml-auto shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600">on</span>
     </div>
   );
 }

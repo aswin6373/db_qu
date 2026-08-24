@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { CheckCircle2, Database, Info, Loader2, PlugZap, RefreshCw, ShieldCheck, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Database, Info, Loader2, PlugZap, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { EmptyState } from "./Dashboard";
 import { SchemaGraph } from "../components/SchemaGraph";
@@ -30,18 +30,33 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [workingConnectionId, setWorkingConnectionId] = useState<number | null>(null);
+  const [replacing, setReplacing] = useState(false);
+
+  const hasConnection = connections.length > 0;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setFeedback(null);
     setIsSaving(true);
     try {
+      if (replacing && hasConnection) {
+        const oldId = connections[0].id;
+        const deleteResponse = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/connections/${oldId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!deleteResponse.ok && deleteResponse.status !== 404) {
+          throw new Error("Could not remove the current database. Please try again.");
+        }
+      }
       await apiRequest("/connections", { method: "POST", body: JSON.stringify(form) }, token);
-      setFeedback({ kind: "success", text: "Connection saved and schema discovery completed." });
+      setFeedback({ kind: "success", text: replacing ? "Database replaced and schema discovered." : "Connection saved and schema discovery completed." });
       setForm({ ...form, name: "", host: "", username: "", password: "", database_name: "" });
+      setReplacing(false);
       onRefresh();
     } catch (err) {
       setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Connection failed" });
+      if (replacing) onRefresh();
     } finally {
       setIsSaving(false);
     }
@@ -61,25 +76,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
     }
   }
 
-  async function deleteConnection(connectionId: number) {
-    const target = connections.find((connection) => connection.id === connectionId);
-    const label = target ? `"${target.name}"` : "this connection";
-    if (!window.confirm(`Delete connection ${label}? Saved queries will be kept, but the database credentials will be removed.`)) {
-      return;
-    }
-    setFeedback(null);
-    setWorkingConnectionId(connectionId);
-    try {
-      await apiRequest(`/connections/${connectionId}`, { method: "DELETE" }, token);
-      setFeedback({ kind: "info", text: "Connection removed. Query history was kept." });
-      onRefresh();
-    } catch (err) {
-      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Delete failed" });
-    } finally {
-      setWorkingConnectionId(null);
-    }
-  }
-
   return (
     <section className="space-y-7">
       <PageHeader
@@ -93,14 +89,14 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         }
       />
 
-      {connections.length === 0 && (
+      {connections.length === 0 && !replacing && (
         <div className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6">
           <div className="flex items-start gap-4">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
               <PlugZap size={19} />
             </span>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">First step for production use</h2>
+              <h2 className="text-lg font-bold text-slate-900">Connect your database</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
                 Add your MySQL host, username, password, and database name. QueryMind tests the connection and discovers
                 tables, columns, and keys before AI chat unlocks.
@@ -110,17 +106,82 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         </div>
       )}
 
-      {/* Add connection */}
+      {/* Your single database */}
+      {!replacing && hasConnection && (
+        <section>
+          <h2 className="mb-4 text-base font-bold tracking-tight text-slate-900">Your database</h2>
+          {connections.map((connection) => (
+            <article className="card animate-fade-up overflow-hidden" key={connection.id}>
+              <div className="flex flex-col gap-4 bg-gradient-to-r from-brand-50 via-white to-cream p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+                    <Database size={20} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <strong className="text-lg font-bold text-slate-900">{connection.name}</strong>
+                      <span className="status-pill pill-success"><CheckCircle2 size={13} /> connected</span>
+                    </div>
+                    <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
+                      {connection.username}@{connection.host}:{connection.port}/{connection.database_name}
+                      {connection.ssl_mode && connection.ssl_mode !== "PREFERRED" && (
+                        <span className="ml-2 rounded bg-brand-50 px-1.5 py-0.5 font-sans font-medium text-brand-700">
+                          SSL {connection.ssl_mode.toLowerCase()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    className="btn-secondary"
+                    disabled={workingConnectionId === connection.id}
+                    onClick={() => refreshConnection(connection.id)}
+                    type="button"
+                  >
+                    {workingConnectionId === connection.id ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} />}
+                    Refresh schema
+                  </button>
+                  <button className="btn-secondary" onClick={() => { setReplacing(true); setFeedback(null); }} type="button">
+                    <PlugZap size={14} /> Replace database
+                  </button>
+                </div>
+              </div>
+              <p className="border-t border-slate-100 px-6 py-3 text-xs text-slate-400">
+                Your workspace supports one database connection at a time. Replacing keeps your query history.
+              </p>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {/* Add / replace form */}
+      {(connections.length === 0 || replacing) && (
       <form className="card p-6 sm:p-7" onSubmit={submit}>
         <div className="mb-6 flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-600">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700">
             <Database size={17} />
           </span>
           <div>
-            <h2 className="text-base font-bold tracking-tight text-slate-900">New connection</h2>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">
+              {replacing ? "Connect a new database" : "New connection"}
+            </h2>
             <p className="text-xs text-slate-500">Credentials are encrypted before they touch the platform database.</p>
           </div>
         </div>
+
+        {replacing && hasConnection && (
+          <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <ShieldCheck size={16} />
+            <p className="leading-6">
+              Saving will permanently replace <strong>{connections[0].name}</strong> as your workspace database. Your
+              query history is kept.{" "}
+              <button className="font-semibold text-amber-900 underline" onClick={() => { setReplacing(false); setFeedback(null); }} type="button">
+                Cancel
+              </button>
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
           <label className="block">
@@ -223,62 +284,10 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
 
         <button className="btn-accent mt-5 w-full sm:w-auto" disabled={isSaving} type="submit">
           {isSaving ? <Loader2 className="animate-spin" size={17} /> : <PlugZap size={16} />}
-          {isSaving ? "Testing & discovering…" : "Save connection"}
+          {isSaving ? "Testing & discovering…" : replacing ? "Replace database" : "Save connection"}
         </button>
       </form>
-
-      {/* Saved connections */}
-      <section>
-        <h2 className="mb-4 text-base font-bold tracking-tight text-slate-900">
-          Saved connections{" "}
-          <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
-            {connections.length}
-          </span>
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {connections.map((connection) => (
-            <article className="card card-hover p-5" key={connection.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-white">
-                    <Database size={17} />
-                  </span>
-                  <strong className="text-[15px] font-semibold text-slate-900">{connection.name}</strong>
-                </div>
-                <span className="status-pill pill-success"><CheckCircle2 size={13} /> connected</span>
-              </div>
-              <p className="mt-3 break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs leading-5 text-slate-500">
-                {connection.username}@{connection.host}:{connection.port}/{connection.database_name}
-                {connection.ssl_mode && connection.ssl_mode !== "PREFERRED" && (
-                  <span className="ml-2 rounded bg-brand-50 px-1.5 py-0.5 font-sans font-medium text-brand-700">
-                    SSL {connection.ssl_mode.toLowerCase()}
-                  </span>
-                )}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  className="btn-secondary h-9"
-                  disabled={workingConnectionId === connection.id}
-                  onClick={() => refreshConnection(connection.id)}
-                  type="button"
-                >
-                  {workingConnectionId === connection.id ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} />}
-                  Refresh schema
-                </button>
-                <button
-                  className="btn-secondary h-9 border-transparent text-rose-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                  disabled={workingConnectionId === connection.id}
-                  onClick={() => deleteConnection(connection.id)}
-                  type="button"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-        {connections.length === 0 && <EmptyState icon={<Database size={22} />} text="No connections saved yet." />}
-      </section>
+      )}
 
       {connections.map((connection) => (
         <SchemaGraph

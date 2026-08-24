@@ -128,7 +128,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                     ? "border-slate-200 bg-white text-slate-700"
                     : "border-rose-200 bg-rose-50 text-rose-700"
                 }`}>
-                  <p>{message.content}</p>
+                  <p className="whitespace-pre-line">{message.content}</p>
                   {message.result && (
                     <ResultBlock
                       confirmedQueryIds={confirmedQueryIds}

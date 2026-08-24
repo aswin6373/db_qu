@@ -2,7 +2,7 @@ import json
 
 from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -18,6 +18,14 @@ router = APIRouter(prefix="/connections", tags=["connections"])
 
 @router.post("", response_model=ConnectionResponse)
 def create_connection(payload: ConnectionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    existing_count = db.scalar(
+        select(func.count()).select_from(DBConnection).where(DBConnection.organization_id == user.organization_id)
+    )
+    if existing_count and existing_count >= 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Your workspace already has a database connection. Delete it first to connect a different database.",
+        )
     connector = MySQLConnector(
         payload.host,
         payload.port,

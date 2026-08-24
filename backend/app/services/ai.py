@@ -12,6 +12,9 @@ class QueryUnderstandingError(ValueError):
 
 def generate_sql(question: str, schema: dict) -> str:
     settings = get_settings()
+    schema_change = _detect_schema_change_request(question, schema)
+    if schema_change:
+        raise QueryUnderstandingError(schema_change)
     table = _ensure_question_can_target_schema(question, schema)
     _ensure_insert_has_enough_details(question, schema, table)
     if settings.llm_provider == "gemini":
@@ -41,6 +44,86 @@ def summarize_result(question: str, columns: list[str], rows: list[dict], requir
     if not rows:
         return "The query ran successfully, but it did not return any rows."
     return f"Found {len(rows)} row(s) for: {question}"
+
+
+def _detect_schema_change_request(question: str, schema: dict) -> str | None:
+    lowered = question.lower()
+    if not re.search(r"\b(column|table|index|schema)\b", lowered):
+        return None
+    if not re.search(r"\b(add|create|new|drop|remove|delete|rename|modify|alter|change|truncate)\b", lowered):
+        return None
+
+    table: str | None
+    try:
+        table = _target_table_from_question(question, schema)
+    except QueryUnderstandingError:
+        table = None
+
+    add_column = re.search(
+        r"\b(?:add|create|new)\b[^.?!]*?\bcolumn\b\s+(?:called\s+|named\s+)?[`'\"]?([a-zA-Z_]\w*)[`'\"]?"
+        r"(?:\s+(?:with\s+)?(?:type\s+)?([a-zA-Z]+(?:\(\s*\d+(?:\s*,\s*\d+)?\s*\))?))?",
+        lowered,
+    )
+    drop_column = re.search(
+        r"\b(?:drop|remove|delete)\b[^.?!]*?\bcolumn\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
+        lowered,
+    )
+
+    filler_words = {"in", "to", "from", "into", "on", "with", "that", "which", "of", "and", "the"}
+
+    if add_column:
+        column_name = add_column.group(1)
+        raw_type = add_column.group(2)
+        if column_name in filler_words:
+            if table:
+                return (
+                    "I couldn't tell which column to add. For example: \"add column phone in customers\". "
+                    f"To add it yourself, run: ALTER TABLE `{table}` ADD COLUMN `column_name` VARCHAR(255) NULL;"
+                )
+            return _schema_change_needs_table(schema, "add a column")
+        column_type = _normalize_column_type(None if raw_type in filler_words else raw_type)
+        if table:
+            return (
+                f"Schema changes like adding columns are blocked in QueryMind for safety. "
+                f"To add `{column_name}` yourself, run this in your MySQL client:\n"
+                f"ALTER TABLE `{table}` ADD COLUMN `{column_name}` {column_type} NULL;"
+            )
+        return _schema_change_needs_table(schema, "add a column")
+    if drop_column:
+        column_name = drop_column.group(1)
+        if table:
+            return (
+                f"Schema changes like dropping columns are blocked in QueryMind for safety. "
+                f"To remove `{column_name}` yourself, run this in your MySQL client:\n"
+                f"ALTER TABLE `{table}` DROP COLUMN `{column_name}`;"
+            )
+        return _schema_change_needs_table(schema, "drop a column")
+
+    return (
+        "Schema changes (creating, altering, or dropping tables and columns) are blocked in QueryMind "
+        "for safety. I can only read data or run confirmed INSERT, UPDATE, and DELETE statements. "
+        "Run schema changes directly in your database client."
+    )
+
+
+def _normalize_column_type(raw: str | None) -> str:
+    if not raw:
+        return "VARCHAR(255)"
+    known = {
+        "int", "integer", "bigint", "smallint", "text", "date", "datetime",
+        "timestamp", "float", "double", "boolean", "bool", "json"
+    }
+    if "(" in raw or raw in known:
+        return raw.upper()
+    return f"VARCHAR(255) -- '{raw}' is not a known type; adjust if needed"
+
+
+def _schema_change_needs_table(schema: dict, action: str) -> str:
+    tables = ", ".join((schema.get("tables") or {}).keys()) or "none discovered"
+    return (
+        f"I can help draft that schema change, but I need to know which table. "
+        f"Available tables: {tables}. Mention the table name to {action}."
+    )
 
 
 def _generate_sql_with_gemini(question: str, schema: dict) -> str:

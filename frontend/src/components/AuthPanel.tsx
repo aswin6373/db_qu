@@ -3,7 +3,7 @@ import { ArrowRight, Database, Github, Loader2, LogIn, ShieldCheck, Sparkles, Us
 import { apiRequest } from "../lib/api";
 
 type Props = {
-  onToken: (token: string) => void;
+  onToken: (token: string, options?: { onboard?: boolean; organizationName?: string }) => void;
 };
 
 export function AuthPanel({ onToken }: Props) {
@@ -30,7 +30,7 @@ export function AuthPanel({ onToken }: Props) {
         method: "POST",
         body: JSON.stringify(payload)
       });
-      onToken(data.access_token);
+      onToken(data.access_token, mode === "register" ? { onboard: true, organizationName } : undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

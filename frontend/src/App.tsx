@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AuthPanel } from "./components/AuthPanel";
+import { Onboarding } from "./components/Onboarding";
 import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
 import { Chat } from "./pages/Chat";
@@ -12,6 +13,8 @@ export function App() {
   const [token, setToken] = useState(() => localStorage.getItem("querymind_token") ?? "");
   const [active, setActive] = useState("dashboard");
   const [booted, setBooted] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
+  const [onboardingOrg, setOnboardingOrg] = useState<string | undefined>(undefined);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [dashboard, setDashboard] = useState<DashboardType | null>(null);
   const [schemas, setSchemas] = useState<Record<number, DatabaseSchema>>({});
@@ -23,8 +26,12 @@ export function App() {
       return;
     }
     localStorage.setItem("querymind_token", token);
-    refreshAll();
-  }, [token]);
+    if (!onboarding) {
+      refreshAll();
+    } else {
+      setBooted(true);
+    }
+  }, [token, onboarding]);
 
   useEffect(() => {
     function handleAuthExpired() {
@@ -80,8 +87,30 @@ export function App() {
     setToken("");
   }
 
+  function handleAuth(newToken: string, options?: { onboard?: boolean; organizationName?: string }) {
+    setBooted(false);
+    setOnboarding(Boolean(options?.onboard));
+    setOnboardingOrg(options?.organizationName);
+    setToken(newToken);
+  }
+
+  function finishOnboarding() {
+    setOnboarding(false);
+    setActive("dashboard");
+  }
+
   if (!token) {
-    return <AuthPanel onToken={setToken} />;
+    return <AuthPanel onToken={handleAuth} />;
+  }
+
+  if (onboarding) {
+    return (
+      <Onboarding
+        onComplete={finishOnboarding}
+        organizationName={onboardingOrg}
+        token={token}
+      />
+    );
   }
 
   if (!booted) {

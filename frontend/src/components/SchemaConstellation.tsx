@@ -371,8 +371,8 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                               style={{ transform: "translate(-3px, 3.5px)", background: "linear-gradient(150deg, #e6edf2 0%, #b9c8d0 100%)" }}
                             />
                             <div
-                              className={`relative h-full w-full overflow-hidden rounded-xl border bg-white px-2.5 pb-1 pt-1.5 transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:shadow-[0_14px_30px_rgba(23,93,85,0.18),0_0_24px_rgba(47,158,151,0.25)] ${
-                                focused ? "border-brand-300 shadow-[0_0_24px_rgba(47,158,151,0.25)]" : "border-slate-200/90 shadow-[0_10px_22px_rgba(23,93,85,0.10)]"
+                              className={`relative h-full w-full overflow-hidden rounded-xl border bg-white px-2.5 pb-1 pt-1.5 transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:scale-[1.08] group-hover/node:shadow-[0_14px_30px_rgba(23,93,85,0.18),0_0_24px_rgba(47,158,151,0.25)] ${
+                                focused ? "-translate-y-1.5 scale-[1.08] border-brand-300 shadow-[0_16px_34px_rgba(23,93,85,0.20),0_0_26px_rgba(47,158,151,0.28)]" : "border-slate-200/90 shadow-[0_10px_22px_rgba(23,93,85,0.10)]"
                               }`}
                             >
                               <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">

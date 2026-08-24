@@ -60,13 +60,14 @@ class QueryGenerateRequest(BaseModel):
 
 
 class QueryGenerateResponse(BaseModel):
-    query_id: int
-    sql: str
-    query_type: str
-    requires_confirmation: bool
+    query_id: int = 0
+    sql: str = ""
+    query_type: str = "unknown"
+    requires_confirmation: bool = False
     summary: str
     columns: list[str] = []
     rows: list[dict] = []
+    needs_clarification: bool = False
 
 
 class SchemaEdge(BaseModel):

@@ -11,7 +11,7 @@ class QueryUnderstandingError(ValueError):
     pass
 
 
-def generate_sql(question: str, schema: dict) -> str:
+def generate_sql(question: str, schema: dict, history: list[dict] | None = None) -> str:
     settings = get_settings()
     schema_change = _detect_schema_change_request(question, schema)
     if schema_change:
@@ -23,11 +23,11 @@ def generate_sql(question: str, schema: dict) -> str:
     if settings.llm_provider == "gemini":
         try:
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
-            sql = _generate_sql_with_gemini(question, schema)
+            sql = _generate_sql_with_gemini(question, schema, history)
         except (RuntimeError, httpx.HTTPError):
             sql = _generate_sql_with_ollama_or_fallback(question, schema)
     elif settings.llm_provider == "ollama":
-        sql = _generate_sql_with_ollama_or_fallback(question, schema)
+        sql = _generate_sql_with_ollama_or_fallback(question, schema, history)
     else:
         # Deterministic fallback can only target one table.
         table = _ensure_question_can_target_schema(question, schema)
@@ -35,6 +35,75 @@ def generate_sql(question: str, schema: dict) -> str:
         sql = _generate_sql_fallback(question, schema)
     # Hallucinated tables/columns from an LLM must never leave this layer.
     return _validated_sql(sql, schema)
+
+
+def evaluate_clarity(question: str, schema: dict, history: list[dict] | None = None) -> str | None:
+    """Return a short clarifying question when the request cannot be confidently
+    mapped to the schema; return None when QueryMind should go ahead and run."""
+    settings = get_settings()
+    if settings.llm_provider not in {"gemini", "ollama"} or not (schema.get("tables") or {}):
+        return None
+    prompt = f"""
+You are QueryMind's intent checker for a MySQL assistant.
+
+Decide whether you could write ONE correct MySQL query that fully satisfies the
+user's latest message using ONLY the schema below and the conversation context.
+
+Respond with exactly one JSON object and nothing else:
+{{"can_execute": true}}
+or
+{{"can_execute": false, "question": "<one short friendly clarifying question>"}}
+
+Ask a clarifying question ONLY when the latest message is genuinely unclear:
+- it does not clearly reference any existing table or column from the schema,
+- it is ambiguous between several tables or columns (offer the options in your question,
+  e.g. "Do you mean the customers table or the orders table?"),
+- or a write action (INSERT/UPDATE/DELETE) is missing required values.
+
+If the request is clear enough to attempt, always answer {{"can_execute": true}}.
+Never refuse clear requests. Never ask about SQL syntax or about anything already
+visible in the schema. Ask at most one question.
+
+{_history_block(history)}
+
+Schema:
+{json.dumps(schema, indent=2)}
+
+Latest user message:
+{question}
+""".strip()
+    try:
+        if settings.llm_provider == "gemini":
+            raw = _gemini_generate(prompt)
+        else:
+            raw = _ollama_generate(prompt)
+    except (RuntimeError, httpx.HTTPError):
+        return None
+    return _parse_clarity_response(raw)
+
+
+def _parse_clarity_response(raw: str) -> str | None:
+    raw = re.sub(r"```(?:json)?", "", raw, flags=re.IGNORECASE).strip("` \n")
+    match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict) or data.get("can_execute") is not False:
+        return None
+    question = str(data.get("question", "")).strip()
+    if not question or len(question) > 400:
+        return None
+    return question
+
+
+def _history_block(history: list[dict] | None) -> str:
+    if not history:
+        return ""
+    turns = "\n".join(f"{turn['role']}: {turn['content']}" for turn in history[-6:])
+    return f"Recent conversation:\n{turns}\n"
 
 
 def _validated_sql(sql: str, schema: dict) -> str:
@@ -212,63 +281,46 @@ def _schema_change_needs_table(schema: dict, action: str) -> str:
     )
 
 
-def _generate_sql_with_gemini(question: str, schema: dict) -> str:
-    schema_text = json.dumps(schema, indent=2)
-    prompt = f"""
-You are QueryMind's SQL generator.
-
-Generate exactly one MySQL query for the user's request.
-Return only SQL. Do not use markdown. Do not explain.
-
-Rules:
+SQL_RULES = """
 - Use only tables and columns from this schema.
-- If the request does not clearly name an existing table or existing table concept, do not guess.
 - Support SELECT, INSERT, UPDATE, and DELETE.
 - Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
 - Do not generate multiple statements.
 - For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
 - Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
-
-Schema:
-{schema_text}
-
-User request:
-{question}
-""".strip()
-    response = _gemini_generate(prompt)
-    return _extract_sql(response)
+- Use the recent conversation to resolve short follow-up answers like "yes" or "the customers one".
+"""
 
 
-def _generate_sql_with_ollama(question: str, schema: dict) -> str:
-    schema_text = json.dumps(schema, indent=2)
-    prompt = f"""
+def _sql_prompt(question: str, schema: dict, history: list[dict] | None) -> str:
+    return f"""
 You are QueryMind's SQL generator.
 
-Generate exactly one MySQL query for the user's request.
+Generate exactly one MySQL query for the user's latest request.
 Return only SQL. Do not use markdown. Do not explain.
 
 Rules:
-- Use only tables and columns from this schema.
-- If the request does not clearly name an existing table or existing table concept, do not guess.
-- Support SELECT, INSERT, UPDATE, and DELETE.
-- Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
-- Do not generate multiple statements.
-- For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
-- Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
-
+{SQL_RULES}
+{_history_block(history)}
 Schema:
-{schema_text}
+{json.dumps(schema, indent=2)}
 
-User request:
+Latest user request:
 {question}
 """.strip()
-    response = _ollama_generate(prompt)
-    return _extract_sql(response)
 
 
-def _generate_sql_with_ollama_or_fallback(question: str, schema: dict) -> str:
+def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None) -> str:
+    return _extract_sql(_gemini_generate(_sql_prompt(question, schema, history)))
+
+
+def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None) -> str:
+    return _extract_sql(_ollama_generate(_sql_prompt(question, schema, history)))
+
+
+def _generate_sql_with_ollama_or_fallback(question: str, schema: dict, history: list[dict] | None = None) -> str:
     try:
-        return _generate_sql_with_ollama(question, schema)
+        return _generate_sql_with_ollama(question, schema, history)
     except (RuntimeError, httpx.HTTPError):
         return _generate_sql_fallback(question, schema)
 

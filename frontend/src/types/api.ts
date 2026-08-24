@@ -42,6 +42,7 @@ export type QueryResponse = {
   summary: string;
   columns: string[];
   rows: Record<string, unknown>[];
+  needs_clarification?: boolean;
 };
 
 export type Dashboard = {

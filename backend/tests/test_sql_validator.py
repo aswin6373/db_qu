@@ -21,6 +21,21 @@ def test_valid_select_passes():
     assert result.requires_confirmation is False
 
 
+def test_count_aggregate_passes():
+    result = validate_sql("SELECT COUNT(*) FROM customers", SCHEMA)
+    assert result.ok is True
+
+
+def test_aggregate_functions_with_alias_pass():
+    for sql in (
+        "SELECT SUM(id) FROM customers",
+        "SELECT AVG(id) AS avg_id FROM customers",
+        "select count(*) as total from customers where city = 'Berlin'",
+    ):
+        result = validate_sql(sql, SCHEMA)
+        assert result.ok is True, sql
+
+
 def test_drop_table_is_rejected():
     result = validate_sql("DROP TABLE customers", SCHEMA)
     assert result.ok is False

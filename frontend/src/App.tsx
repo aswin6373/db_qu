@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { AuthPanel } from "./components/AuthPanel";
+import { ChatSessionsProvider } from "./components/ChatSessionsContext";
 import { Onboarding } from "./components/Onboarding";
 import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
 import { Chat } from "./pages/Chat";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
-import { History } from "./pages/History";
 import { Connection, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "./types/api";
 
 export function App() {
@@ -58,7 +58,6 @@ export function App() {
       setConnections(connectionData);
       setDashboard(dashboardData);
       if (connectionData.length === 0) {
-        setActive("connections");
         setSchemas({});
         setInsights({});
         return;
@@ -91,6 +90,7 @@ export function App() {
     setBooted(false);
     setOnboarding(Boolean(options?.onboard));
     setOnboardingOrg(options?.organizationName);
+    setActive("dashboard");
     setToken(newToken);
   }
 
@@ -119,12 +119,13 @@ export function App() {
   }
 
   return (
-    <Shell active={active} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
-      {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
-      {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
-      {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
-      {active === "history" && <History dashboard={dashboard} />}
-    </Shell>
+    <ChatSessionsProvider token={token}>
+      <Shell active={active} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
+        {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
+        {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
+        {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
+      </Shell>
+    </ChatSessionsProvider>
   );
 }
 

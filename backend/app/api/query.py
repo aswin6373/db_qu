@@ -10,7 +10,7 @@ from app.api.dependencies import get_current_user
 from app.db.session import get_db
 from app.models import ChatSession, Message, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
-from app.services.ai import QueryUnderstandingError, generate_sql, summarize_result
+from app.services.ai import QueryUnderstandingError, evaluate_clarity, generate_sql, summarize_result
 from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
@@ -54,27 +54,30 @@ def _org_chat_session(session_id: int, user: User, db: Session) -> ChatSession:
 
 def _record_exchange(db: Session, session: ChatSession, question: str, response: QueryGenerateResponse) -> None:
     db.add(Message(session_id=session.id, role="user", content=question))
-    db.add(
-        Message(
-            session_id=session.id,
-            role="assistant",
-            content=response.summary,
-            sql=response.sql,
-            query_id=response.query_id,
-            result_json=json.dumps(
-                _result_payload(
-                    response.query_id,
-                    response.sql,
-                    response.query_type,
-                    response.requires_confirmation,
-                    response.summary,
-                    response.columns,
-                    response.rows,
+    if response.needs_clarification:
+        db.add(Message(session_id=session.id, role="assistant", content=response.summary))
+    else:
+        db.add(
+            Message(
+                session_id=session.id,
+                role="assistant",
+                content=response.summary,
+                sql=response.sql,
+                query_id=response.query_id,
+                result_json=json.dumps(
+                    _result_payload(
+                        response.query_id,
+                        response.sql,
+                        response.query_type,
+                        response.requires_confirmation,
+                        response.summary,
+                        response.columns,
+                        response.rows,
+                    ),
+                    default=str,
                 ),
-                default=str,
-            ),
+            )
         )
-    )
     if session.title == "New chat":
         session.title = question.strip()[:80] or "New chat"
     session.updated_at = datetime.utcnow()
@@ -115,6 +118,19 @@ def _finalize_confirmed_message(db: Session, user: User, query_id: int, response
     db.commit()
 
 
+def _recent_history(db: Session, user: User, session_id: int | None, limit: int = 8) -> list[dict]:
+    if session_id is None:
+        return []
+    chat_session = _org_chat_session(session_id, user, db)
+    rows = db.scalars(
+        select(Message)
+        .where(Message.session_id == chat_session.id)
+        .order_by(Message.id.desc())
+        .limit(limit)
+    ).all()
+    return [{"role": message.role, "content": message.content} for message in reversed(rows)]
+
+
 DEMO_SCHEMA = {
     "tables": {
         "customers": {
@@ -135,14 +151,29 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
 
     connection = _get_org_connection(payload.connection_id, user, db)
     schema = json.loads(connection.schema_cache or "{}")
+    history = _recent_history(db, user, payload.session_id)
+
+    def clarification_response(text: str) -> QueryGenerateResponse:
+        response = QueryGenerateResponse(summary=text, needs_clarification=True)
+        if payload.session_id is not None:
+            chat_session = _org_chat_session(payload.session_id, user, db)
+            _record_exchange(db, chat_session, payload.question, response)
+        return response
 
     try:
-        sql = generate_sql(payload.question, schema)
+        clarifying_question = evaluate_clarity(payload.question, schema, history)
+    except Exception:
+        clarifying_question = None
+    if clarifying_question:
+        return clarification_response(clarifying_question)
+
+    try:
+        sql = generate_sql(payload.question, schema, history)
     except QueryUnderstandingError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return clarification_response(str(exc))
     validation = validate_sql(sql, schema)
     if not validation.ok:
-        raise HTTPException(status_code=400, detail=validation.error)
+        return clarification_response(validation.error)
 
     columns: list[str] = []
     rows: list[dict] = []

@@ -1,22 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  Bot,
-  Check,
-  Database,
-  Loader2,
-  MessageSquarePlus,
-  PanelLeft,
-  Pencil,
-  PlugZap,
-  Send,
-  Sparkles,
-  Trash2,
-  User,
-  X
-} from "lucide-react";
+import { Bot, Check, CircleHelp, Loader2, PlugZap, Send, Sparkles, User, X } from "lucide-react";
+import { useChatSessions } from "../components/ChatSessionsContext";
 import { apiRequest } from "../lib/api";
-import { ChatMessage, ChatSession, Connection, QueryResponse } from "../types/api";
+import { ChatMessage, Connection, QueryResponse } from "../types/api";
 
 type Props = {
   token: string;
@@ -35,9 +22,7 @@ const SUGGESTIONS = [
 ];
 
 export function Chat({ token, connections, onActivity, onOpenConnections }: Props) {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
-  const [activeId, setActiveId] = useState<number | null>(null);
+  const { sessions, activeId, ensureSession, refresh } = useChatSessions();
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [question, setQuestion] = useState("");
@@ -46,15 +31,11 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
   const [confirmedQueryIds, setConfirmedQueryIds] = useState<Set<number>>(new Set());
   const [dismissedQueryIds, setDismissedQueryIds] = useState<Set<number>>(new Set());
-  const [renamingId, setRenamingId] = useState<number | null>(null);
-  const [renameDraft, setRenameDraft] = useState("");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const tempIdRef = useRef(-1);
+  const loadedSessionRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const activeSession = sessions.find((session) => session.id === activeId) ?? null;
   const hasConnection = connections.length > 0;
@@ -66,71 +47,39 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }, [connectionId, connections]);
 
   useEffect(() => {
-    let cancelled = false;
-    setSessionsLoading(true);
-    apiRequest<ChatSession[]>("/chat/sessions", {}, token)
-      .then((items) => {
-        if (!cancelled) setSessions(items);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSessionsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length, isSending]);
-
-  useEffect(() => {
-    if (renamingId !== null) renameInputRef.current?.select();
-  }, [renamingId]);
-
-  function loadSessions() {
-    apiRequest<ChatSession[]>("/chat/sessions", {}, token)
-      .then((items) => setSessions(items))
-      .catch(() => undefined);
-  }
-
-  function newChat() {
-    setActiveId(null);
-    setMessages([]);
-    setConfirmedQueryIds(new Set());
-    setDismissedQueryIds(new Set());
-    setDrawerOpen(false);
-  }
-
-  async function openSession(id: number) {
-    if (isSending || id === activeId) {
-      setDrawerOpen(false);
+    if (isSending) return;
+    if (activeId === null) {
+      loadedSessionRef.current = null;
+      setMessages([]);
+      setConfirmedQueryIds(new Set());
+      setDismissedQueryIds(new Set());
       return;
     }
-    setActiveId(id);
+    if (loadedSessionRef.current === activeId) return;
+    let cancelled = false;
+    loadedSessionRef.current = activeId;
     setMessages([]);
     setConfirmedQueryIds(new Set());
     setDismissedQueryIds(new Set());
     setMessagesLoading(true);
-    setDrawerOpen(false);
-    try {
-      const history = await apiRequest<ChatMessage[]>(`/chat/sessions/${id}`, {}, token);
-      setMessages(history);
-    } catch {
-      setMessages([{ id: -1, role: "assistant", content: "Could not load this conversation.", isError: true }]);
-    } finally {
-      setMessagesLoading(false);
-    }
-  }
+    apiRequest<ChatMessage[]>(`/chat/sessions/${activeId}`, {}, token)
+      .then((history) => {
+        if (!cancelled) setMessages(history);
+      })
+      .catch(() => {
+        if (!cancelled) setMessages([{ id: -1, role: "assistant", content: "Could not load this conversation.", isError: true }]);
+      })
+      .finally(() => {
+        if (!cancelled) setMessagesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, isSending, token]);
 
-  async function ensureSession(): Promise<number> {
-    if (activeId !== null) return activeId;
-    const created = await apiRequest<ChatSession>("/chat/sessions", { method: "POST", body: JSON.stringify({}) }, token);
-    setSessions((items) => [created, ...items]);
-    setActiveId(created.id);
-    return created.id;
-  }
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, isSending]);
 
   function autoResize(element: HTMLTextAreaElement) {
     element.style.height = "auto";
@@ -146,12 +95,13 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     setIsSending(true);
     try {
       const sessionId = await ensureSession();
+      loadedSessionRef.current = sessionId;
       const result = await apiRequest<QueryResponse>("/query/generate", {
         method: "POST",
         body: JSON.stringify({ question: nextQuestion, connection_id: connectionId, session_id: sessionId })
       }, token);
       setMessages((items) => [...items, { id: tempIdRef.current--, role: "assistant", content: result.summary, result }]);
-      loadSessions();
+      refresh();
       onActivity();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Query failed";
@@ -183,6 +133,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
         item.result?.query_id === queryId ? { ...item, result: { ...item.result!, requires_confirmation: false } } : item
       )));
       setMessages((items) => [...items, { id: tempIdRef.current--, role: "assistant", content: result.summary, result }]);
+      refresh();
       onActivity();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Confirmation failed";
@@ -196,354 +147,133 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     setDismissedQueryIds((items) => new Set(items).add(queryId));
   }
 
-  async function saveRename(session: ChatSession) {
-    const title = renameDraft.trim();
-    setRenamingId(null);
-    if (!title || title === session.title) return;
-    try {
-      const updated = await apiRequest<ChatSession>(`/chat/sessions/${session.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ title })
-      }, token);
-      setSessions((items) => items.map((item) => (item.id === session.id ? { ...item, title: updated.title } : item)));
-    } catch {
-      loadSessions();
-    }
-  }
-
-  async function removeSession(session: ChatSession) {
-    setDeletingId(null);
-    try {
-      await apiRequest(`/chat/sessions/${session.id}`, { method: "DELETE" }, token);
-      setSessions((items) => items.filter((item) => item.id !== session.id));
-      if (session.id === activeId) newChat();
-    } catch {
-      loadSessions();
-    }
-  }
-
-  const sessionsPanel = (
-    <SessionsPanel
-      activeId={activeId}
-      deletingId={deletingId}
-      isLoading={sessionsLoading}
-      renamingId={renamingId}
-      renameDraft={renameDraft}
-      renameInputRef={renameInputRef}
-      sessions={sessions}
-      onCancelDelete={() => setDeletingId(null)}
-      onCancelRename={() => setRenamingId(null)}
-      onChangeRenameDraft={setRenameDraft}
-      onDelete={(session) => setDeletingId(session.id)}
-      onNewChat={newChat}
-      onRename={(session) => {
-        setRenamingId(session.id);
-        setRenameDraft(session.title);
-      }}
-      onSaveRename={saveRename}
-      onSelect={openSession}
-      onConfirmDelete={removeSession}
-    />
-  );
-
   return (
-    <section className="relative flex h-full overflow-hidden bg-white">
-      {/* Sessions sidebar — static on desktop */}
-      <aside className="hidden w-72 shrink-0 border-r border-slate-200/80 bg-slate-50/70 lg:flex lg:flex-col">
-        {sessionsPanel}
-      </aside>
-
-      {/* Sessions sidebar — drawer on mobile */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-navy/50 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col border-r border-slate-200 bg-white shadow-lift">
-            {sessionsPanel}
-          </aside>
-        </div>
-      )}
-
-      {/* Conversation column */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4 sm:px-6">
-          <button
-            aria-label="Open chats"
-            className="btn-ghost -ml-2 lg:hidden"
-            onClick={() => setDrawerOpen(true)}
-            type="button"
-          >
-            <PanelLeft size={18} />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {activeSession?.title ?? "New chat"}
+    <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4 sm:px-6">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">{activeSession?.title ?? "New chat"}</p>
+          {activeSession && (
+            <p className="text-[11px] text-slate-400">
+              {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}
             </p>
-            {activeSession && (
-              <p className="text-[11px] text-slate-400">
-                {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}
-              </p>
-            )}
-          </div>
-          <select
-            aria-label="Database connection"
-            className="field h-9 hidden max-w-52 text-xs sm:block"
-            disabled={isSending}
-            value={connectionId}
-            onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
-          >
-            {connections.length === 0 && <option value="">No database connected</option>}
-            {connections.map((connection) => (
-              <option key={connection.id} value={connection.id}>{connection.name}</option>
-            ))}
-          </select>
-        </header>
-
-        {/* Messages */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
-            {messagesLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-400">
-                <Loader2 className="animate-spin" size={22} />
-              </div>
-            ) : (
-              <>
-                {messages.map((message) => (
-                  <MessageRow key={message.id} message={message}>
-                    {message.result && (
-                      <ResultBlock
-                        confirmingQueryId={confirmingQueryId}
-                        dismissedQueryIds={dismissedQueryIds}
-                        isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
-                        onCancel={cancelWrite}
-                        onConfirm={confirmWrite}
-                        result={message.result}
-                      />
-                    )}
-                  </MessageRow>
-                ))}
-
-                {isSending && (
-                  <MessageRow message={{ id: -2, role: "assistant", content: "" }}>
-                    <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                      Generating &amp; validating SQL
-                      <span className="flex gap-1">
-                        <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
-                      </span>
-                    </p>
-                  </MessageRow>
-                )}
-
-                {messages.length === 0 && !isSending && (
-                  <EmptyConversation
-                    hasConnection={hasConnection}
-                    onOpenConnections={onOpenConnections}
-                    onPick={(suggestion) => {
-                      setQuestion(suggestion);
-                      textareaRef.current?.focus();
-                    }}
-                  />
-                )}
-              </>
-            )}
-            <div ref={bottomRef} />
-          </div>
+          )}
         </div>
+        <select
+          aria-label="Database connection"
+          className="field h-9 hidden max-w-52 text-xs sm:block"
+          disabled={isSending}
+          value={connectionId}
+          onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
+        >
+          {connections.length === 0 && <option value="">No database connected</option>}
+          {connections.map((connection) => (
+            <option key={connection.id} value={connection.id}>{connection.name}</option>
+          ))}
+        </select>
+      </header>
 
-        {/* Composer */}
-        <form className="shrink-0 px-4 pb-4 sm:px-6" onSubmit={submit}>
-          <div className="mx-auto w-full max-w-3xl">
-            {!hasConnection && (
-              <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100" onClick={onOpenConnections} type="button">
-                <PlugZap size={15} /> Connect a database to start asking questions
+      {/* Messages */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
+          {messagesLoading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <Loader2 className="animate-spin" size={22} />
+            </div>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <MessageRow key={message.id} message={message}>
+                  {message.result && !message.result.needs_clarification && (
+                    <ResultBlock
+                      confirmingQueryId={confirmingQueryId}
+                      dismissedQueryIds={dismissedQueryIds}
+                      isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
+                      onCancel={cancelWrite}
+                      onConfirm={confirmWrite}
+                      result={message.result}
+                    />
+                  )}
+                </MessageRow>
+              ))}
+
+              {isSending && (
+                <MessageRow message={{ id: -2, role: "assistant", content: "" }}>
+                  <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                    Generating &amp; validating SQL
+                    <span className="flex gap-1">
+                      <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
+                    </span>
+                  </p>
+                </MessageRow>
+              )}
+
+              {messages.length === 0 && !isSending && (
+                <EmptyConversation
+                  hasConnection={hasConnection}
+                  onOpenConnections={onOpenConnections}
+                  onPick={(suggestion) => {
+                    setQuestion(suggestion);
+                    textareaRef.current?.focus();
+                  }}
+                />
+              )}
+            </>
+          )}
+          <div ref={bottomRef} />
+        </div>
+      </div>
+
+      {/* Composer */}
+      <form className="shrink-0 px-4 pb-4 sm:px-6" onSubmit={submit}>
+        <div className="mx-auto w-full max-w-3xl">
+          {!hasConnection && (
+            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100" onClick={onOpenConnections} type="button">
+              <PlugZap size={15} /> Connect a database to start asking questions
+            </button>
+          )}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-lift focus-within:border-brand-300">
+            <textarea
+              className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
+              disabled={isSending || !hasConnection}
+              onChange={(event) => {
+                setQuestion(event.target.value);
+                autoResize(event.target);
+              }}
+              onKeyDown={onKeyDown}
+              placeholder={hasConnection ? "Ask your database anything…" : "Connect a database first"}
+              ref={textareaRef}
+              rows={1}
+              value={question}
+            />
+            <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2">
+              <select
+                aria-label="Database connection"
+                className="field h-8 max-w-44 text-xs sm:hidden"
+                disabled={isSending}
+                value={connectionId}
+                onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
+              >
+                {connections.length === 0 && <option value="">No database</option>}
+                {connections.map((connection) => (
+                  <option key={connection.id} value={connection.id}>{connection.name}</option>
+                ))}
+              </select>
+              <span className="ml-1 hidden text-[11px] text-slate-400 sm:block">
+                Enter to send · Shift+Enter for a new line
+              </span>
+              <button
+                className="btn-accent ml-auto h-9 w-9 !px-0"
+                disabled={isSending || !question.trim() || !connectionId}
+                title="Send"
+                type="submit"
+              >
+                {isSending ? <Loader2 className="animate-spin" size={16} /> : <Send size={15} />}
               </button>
-            )}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-lift focus-within:border-brand-300">
-              <textarea
-                className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
-                disabled={isSending || !hasConnection}
-                onChange={(event) => {
-                  setQuestion(event.target.value);
-                  autoResize(event.target);
-                }}
-                onKeyDown={onKeyDown}
-                placeholder={hasConnection ? "Ask your database anything…" : "Connect a database first"}
-                ref={textareaRef}
-                rows={1}
-                value={question}
-              />
-              <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2">
-                <select
-                  aria-label="Database connection"
-                  className="field h-8 max-w-44 text-xs sm:hidden"
-                  disabled={isSending}
-                  value={connectionId}
-                  onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
-                >
-                  {connections.length === 0 && <option value="">No database</option>}
-                  {connections.map((connection) => (
-                    <option key={connection.id} value={connection.id}>{connection.name}</option>
-                  ))}
-                </select>
-                <span className="ml-1 hidden text-[11px] text-slate-400 sm:block">
-                  Enter to send · Shift+Enter for a new line
-                </span>
-                <button
-                  className="btn-accent ml-auto h-9 w-9 !px-0"
-                  disabled={isSending || !question.trim() || !connectionId}
-                  title="Send"
-                  type="submit"
-                >
-                  {isSending ? <Loader2 className="animate-spin" size={16} /> : <Send size={15} />}
-                </button>
-              </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </section>
-  );
-}
-
-function SessionsPanel({
-  activeId,
-  deletingId,
-  isLoading,
-  renameDraft,
-  renamingId,
-  renameInputRef,
-  sessions,
-  onCancelDelete,
-  onCancelRename,
-  onChangeRenameDraft,
-  onConfirmDelete,
-  onDelete,
-  onNewChat,
-  onRename,
-  onSaveRename,
-  onSelect
-}: {
-  activeId: number | null;
-  deletingId: number | null;
-  isLoading: boolean;
-  renameDraft: string;
-  renamingId: number | null;
-  renameInputRef: React.RefObject<HTMLInputElement | null>;
-  sessions: ChatSession[];
-  onCancelDelete: () => void;
-  onCancelRename: () => void;
-  onChangeRenameDraft: (value: string) => void;
-  onConfirmDelete: (session: ChatSession) => void;
-  onDelete: (session: ChatSession) => void;
-  onNewChat: () => void;
-  onRename: (session: ChatSession) => void;
-  onSaveRename: (session: ChatSession) => void;
-  onSelect: (id: number) => void;
-}) {
-  return (
-    <>
-      <div className="space-y-3 p-3">
-        <button className="btn-accent w-full" onClick={onNewChat} type="button">
-          <MessageSquarePlus size={16} /> New chat
-        </button>
-      </div>
-      <p className="eyebrow px-4 pb-1.5 pt-1 text-slate-400">Chats</p>
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
-        {isLoading ? (
-          <div className="flex justify-center py-8 text-slate-300">
-            <Loader2 className="animate-spin" size={18} />
-          </div>
-        ) : sessions.length === 0 ? (
-          <p className="px-3 py-6 text-center text-xs leading-5 text-slate-400">
-            No chats yet. Start a conversation and it will appear here.
-          </p>
-        ) : (
-          sessions.map((session) => {
-            const isActive = session.id === activeId;
-            const isRenaming = renamingId === session.id;
-            const isDeleting = deletingId === session.id;
-
-            if (isRenaming) {
-              return (
-                <div className="px-1 py-0.5" key={session.id}>
-                  <input
-                    autoFocus
-                    className="field h-9 text-sm"
-                    onBlur={() => onSaveRename(session)}
-                    onChange={(event) => onChangeRenameDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") onSaveRename(session);
-                      if (event.key === "Escape") onCancelRename();
-                    }}
-                    ref={renameInputRef}
-                    value={renameDraft}
-                  />
-                </div>
-              );
-            }
-
-            return (
-              <div
-                className={`group relative flex items-center rounded-lg transition ${
-                  isActive ? "bg-brand-100/70 text-brand-900" : "text-slate-600 hover:bg-slate-200/50"
-                } ${isDeleting ? "bg-rose-50 text-rose-700" : ""}`}
-                key={session.id}
-              >
-                <button
-                  className="min-w-0 flex-1 truncate px-3 py-2.5 text-left text-sm"
-                  onClick={() => onSelect(session.id)}
-                  title={session.title}
-                  type="button"
-                >
-                  {session.title}
-                </button>
-                {isDeleting ? (
-                  <span className="flex items-center gap-1 pr-2">
-                    <button
-                      aria-label="Confirm delete"
-                      className="grid h-7 w-7 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
-                      onClick={() => onConfirmDelete(session)}
-                      type="button"
-                    >
-                      <Check size={13} />
-                    </button>
-                    <button
-                      aria-label="Keep chat"
-                      className="grid h-7 w-7 place-items-center rounded-md text-slate-500 transition hover:bg-slate-200"
-                      onClick={onCancelDelete}
-                      type="button"
-                    >
-                      <X size={13} />
-                    </button>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-0.5 pr-1.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                    <button
-                      aria-label={`Rename ${session.title}`}
-                      className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white hover:text-slate-700"
-                      onClick={() => onRename(session)}
-                      type="button"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      aria-label={`Delete ${session.title}`}
-                      className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white hover:text-rose-600"
-                      onClick={() => onDelete(session)}
-                      type="button"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </span>
-                )}
-              </div>
-            );
-          })
-        )}
-      </nav>
-      <p className="border-t border-slate-200/80 px-4 py-3 text-[11px] leading-4 text-slate-400">
-        Chats are saved per workspace. Rename or delete them anytime.
-      </p>
-    </>
   );
 }
 
@@ -562,6 +292,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   }
 
   const isError = message.isError;
+  const isClarifying = Boolean(message.result?.needs_clarification);
 
   return (
     <div className="flex gap-3">
@@ -570,9 +301,18 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
       </span>
       <div
         className={`min-w-0 flex-1 rounded-2xl rounded-tl-md border px-4 py-3 text-sm leading-6 ${
-          isError ? "border-rose-200 bg-rose-50 text-rose-700" : "border-slate-200 bg-white text-slate-700"
+          isError
+            ? "border-rose-200 bg-rose-50 text-rose-700"
+            : isClarifying
+              ? "border-sky-200 bg-sky-50 text-sky-900"
+              : "border-slate-200 bg-white text-slate-700"
         } ${message.content || children ? "" : "hidden"}`}
       >
+        {isClarifying && (
+          <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-sky-600">
+            <CircleHelp size={13} /> Quick question
+          </p>
+        )}
         {message.content && <p className="whitespace-pre-line">{message.content}</p>}
         {children}
       </div>

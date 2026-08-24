@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import sqlparse
-from sqlparse.sql import Identifier, IdentifierList
+from sqlparse.sql import Function, Identifier, IdentifierList
 from sqlparse.tokens import DML, Keyword
 
 BLOCKED_KEYWORDS = {"DROP", "ALTER", "TRUNCATE", "GRANT", "REVOKE", "CREATE"}
@@ -76,6 +76,21 @@ def _clean_identifier_name(value: str) -> str:
     return value.split("(", 1)[0].strip("` ")
 
 
+def _collect_function_names(statement) -> set[str]:
+    names: set[str] = set()
+
+    def walk(node):
+        for child in getattr(node, "tokens", []):
+            if isinstance(child, Function):
+                name = child.get_real_name()
+                if name:
+                    names.add(name.lower())
+            walk(child)
+
+    walk(statement)
+    return names
+
+
 def _collect_aliases(statement) -> set[str]:
     aliases: set[str] = set()
 
@@ -100,6 +115,7 @@ def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set
             known_columns.add(column["name"])
 
     aliases = _collect_aliases(statement)
+    functions = _collect_function_names(statement)
 
     missing: set[str] = set()
     for token in statement.flatten():
@@ -109,6 +125,7 @@ def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set
         if (
             value in table_names
             or value.lower() in aliases
+            or value.lower() in functions
             or value.upper() in {"ON", "SELECT", "FROM", "WHERE", "AND", "OR", "SET", "VALUES"}
         ):
             continue

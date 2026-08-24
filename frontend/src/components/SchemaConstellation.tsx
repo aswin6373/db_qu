@@ -22,10 +22,18 @@ const SLOTS: Array<[number, number]> = [
   [33, 47]
 ];
 
-const NODE_W = 112;
-const NODE_H = 96;
+const NODE_W = 150;
+const MAX_VISIBLE_COLUMNS = 5;
 const DB_W = 86;
 const DB_H = 104;
+
+/* Exact card height for its content: 6px top pad + ~22px header + 8px list
+   padding + 4px bottom pad + 16px per visible row (columns + optional
+   "+n more" line), with a pixel of slack so nothing clips. */
+function nodeHeight(columnCount: number): number {
+  const rows = Math.min(columnCount, MAX_VISIBLE_COLUMNS) + (columnCount > MAX_VISIBLE_COLUMNS ? 1 : 0);
+  return 40 + rows * 16;
+}
 
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -243,6 +251,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                       counter-rotated to stand upright facing the viewer */}
                   {tables.map(([tableName, table]) => {
                     const [x, y] = slotByName.get(tableName)!;
+                    const nodeH = nodeHeight(table.columns.length);
                     const pkCount = table.columns.filter((column) => column.key === "PRI").length;
                     const dim = activeSet !== null && !activeSet.has(tableName);
                     const focused = hovered === tableName;
@@ -257,9 +266,9 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                           onMouseLeave={() => setHovered(null)}
                           style={{
                             width: NODE_W,
-                            height: NODE_H,
+                            height: nodeH,
                             marginLeft: -NODE_W / 2,
-                            marginTop: -NODE_H / 2,
+                            marginTop: -nodeH / 2,
                             transform: billboard,
                             opacity: dim ? 0.3 : 1,
                             transition: "opacity 200ms ease"
@@ -280,15 +289,29 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                               </span>
                               {pkCount > 0 && <KeyRound className="shrink-0 text-amber-300" size={10} />}
                             </div>
-                            <ul className="space-y-0.5 py-1">
-                              {table.columns.slice(0, 4).map((column) => (
-                                <li className="truncate font-mono text-[9px] leading-4 text-slate-400 sm:text-[10px]" key={column.name}>
-                                  {column.name}
+                            <ul className="py-1">
+                              {table.columns.slice(0, MAX_VISIBLE_COLUMNS).map((column) => (
+                                <li className="flex items-center justify-between gap-1.5 leading-4" key={column.name}>
+                                  <span
+                                    className={`min-w-0 truncate font-mono text-[9px] sm:text-[10px] ${
+                                      column.key === "PRI" ? "font-semibold text-amber-300" : "text-slate-300"
+                                    }`}
+                                  >
+                                    {column.name}
+                                  </span>
+                                  <span className="flex shrink-0 items-center gap-1">
+                                    {column.key === "PRI" && (
+                                      <span className="rounded-sm bg-amber-300/15 px-1 font-mono text-[7px] font-bold uppercase text-amber-300">
+                                        pk
+                                      </span>
+                                    )}
+                                    <span className="max-w-[56px] truncate font-mono text-[8px] uppercase text-slate-500">{column.type}</span>
+                                  </span>
                                 </li>
                               ))}
-                              {table.columns.length > 4 && (
-                                <li className="text-[9px] font-medium text-teal-soft/70 sm:text-[10px]">
-                                  +{table.columns.length - 4} more
+                              {table.columns.length > MAX_VISIBLE_COLUMNS && (
+                                <li className="text-[9px] font-medium leading-4 text-teal-soft/70 sm:text-[10px]">
+                                  +{table.columns.length - MAX_VISIBLE_COLUMNS} more columns
                                 </li>
                               )}
                             </ul>

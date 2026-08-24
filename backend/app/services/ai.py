@@ -113,7 +113,9 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
         lowered,
     )
     drop_column = re.search(
-        r"\b(?:drop|remove|delete)\b[^.?!]*?\b(?:colou?mn|coll?umn|feild|field)\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
+        r"\b(?:drop|remove|delete)\b[^.?!]*?"
+        r"(?:[`'\"]?([a-zA-Z_]\w*)[`'\"]?\s+)?\b(?:colou?mn|coll?umn|feild|field)\b"
+        r"(?:\s+(?:called\s+|named\s+)?[`'\"]?([a-zA-Z_]\w*)[`'\"]?)?",
         lowered,
     )
 
@@ -146,7 +148,18 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
             )
         return _schema_change_needs_table(schema, "add a column")
     if drop_column:
-        column_name = drop_column.group(1)
+        drop_pre, drop_post = drop_column.group(1), drop_column.group(2)
+        column_name = next(
+            (candidate for candidate in (drop_post, drop_pre) if candidate and candidate.lower() not in filler_words),
+            None,
+        )
+        if not column_name:
+            if table:
+                return (
+                    "I couldn't tell which column to drop. For example: \"drop the column phone from customers\". "
+                    f"To drop it yourself, run: ALTER TABLE `{table}` DROP COLUMN `column_name`;"
+                )
+            return _schema_change_needs_table(schema, "drop a column")
         if table:
             return (
                 f"Schema changes like dropping columns are blocked in QueryMind for safety. "

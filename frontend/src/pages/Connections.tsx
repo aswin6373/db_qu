@@ -1,17 +1,14 @@
 import { FormEvent, useState } from "react";
-import type { ReactNode } from "react";
 import {
   CheckCircle2,
   Database,
   Eye,
   EyeOff,
-  GitBranch,
   Info,
   Loader2,
   PlugZap,
   RefreshCw,
   ShieldCheck,
-  Table2,
   XCircle
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
@@ -153,8 +150,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         />
       )}
 
-      <StatRow connection={connection} insights={insights} schemas={schemas} />
-
       {isEditing ? (
         <ConnectionForm
           form={form}
@@ -185,61 +180,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         />
       )}
     </section>
-  );
-}
-
-function StatRow({
-  connection,
-  insights,
-  schemas
-}: {
-  connection?: Connection;
-  insights: Record<number, SchemaInsights>;
-  schemas: Record<number, DatabaseSchema>;
-}) {
-  const schema = connection ? schemas[connection.id] : null;
-  const insight = connection ? insights[connection.id] : null;
-  const tableCount = Object.keys(schema?.tables ?? {}).length;
-  const columnCount = Object.values(schema?.tables ?? {}).reduce((total, table) => total + table.columns.length, 0);
-  const relationshipCount = insight?.relationship_count ?? 0;
-
-  const stats = [
-    {
-      caption: connection ? connection.name : "Add a MySQL database to begin",
-      icon: <PlugZap size={17} />,
-      label: "Status",
-      tone: connection ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400",
-      value: connection ? "Connected" : "Not connected"
-    },
-    {
-      caption: "Discovered from the live database",
-      icon: <Table2 size={17} />,
-      label: "Tables",
-      tone: undefined,
-      value: tableCount
-    },
-    {
-      caption: "Columns indexed for AI grounding",
-      icon: <Database size={17} />,
-      label: "Columns",
-      tone: undefined,
-      value: columnCount
-    },
-    {
-      caption: "Foreign-key links inferred",
-      icon: <GitBranch size={17} />,
-      label: "Relationships",
-      tone: undefined,
-      value: relationshipCount
-    }
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {stats.map((stat) => (
-        <StatTile key={stat.label} {...stat} />
-      ))}
-    </div>
   );
 }
 
@@ -489,19 +429,6 @@ function ConnectionForm({
         </button>
       </div>
     </form>
-  );
-}
-
-function StatTile({ caption, icon, label, tone, value }: { caption: string; icon: ReactNode; label: string; tone?: string; value: number | string }) {
-  return (
-    <div className="card card-hover animate-fade-up p-5">
-      <div className="flex items-start justify-between gap-2">
-        <span className={`grid h-9 w-9 place-items-center rounded-lg ${tone ?? "bg-brand-50 text-brand-600"}`}>{icon}</span>
-        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
-      </div>
-      <strong className="mt-3 block truncate text-[22px] font-bold leading-none tracking-tight text-slate-900">{value}</strong>
-      <p className="mt-1.5 truncate text-[11px] font-medium text-slate-500">{caption}</p>
-    </div>
   );
 }
 

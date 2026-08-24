@@ -4,6 +4,7 @@ import re
 import httpx
 
 from app.core.config import get_settings
+from app.services.sql_validator import validate_sql
 
 
 class QueryUnderstandingError(ValueError):
@@ -22,15 +23,25 @@ def generate_sql(question: str, schema: dict) -> str:
     if settings.llm_provider == "gemini":
         try:
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
-            return _generate_sql_with_gemini(question, schema)
+            sql = _generate_sql_with_gemini(question, schema)
         except (RuntimeError, httpx.HTTPError):
-            return _generate_sql_with_ollama_or_fallback(question, schema)
-    if settings.llm_provider == "ollama":
-        return _generate_sql_with_ollama_or_fallback(question, schema)
-    # Deterministic fallback can only target one table.
-    table = _ensure_question_can_target_schema(question, schema)
-    _ensure_insert_has_enough_details(question, schema, table)
-    return _generate_sql_fallback(question, schema)
+            sql = _generate_sql_with_ollama_or_fallback(question, schema)
+    elif settings.llm_provider == "ollama":
+        sql = _generate_sql_with_ollama_or_fallback(question, schema)
+    else:
+        # Deterministic fallback can only target one table.
+        table = _ensure_question_can_target_schema(question, schema)
+        _ensure_insert_has_enough_details(question, schema, table)
+        sql = _generate_sql_fallback(question, schema)
+    # Hallucinated tables/columns from an LLM must never leave this layer.
+    return _validated_sql(sql, schema)
+
+
+def _validated_sql(sql: str, schema: dict) -> str:
+    validation = validate_sql(sql, schema)
+    if not validation.ok:
+        raise QueryUnderstandingError(validation.error)
+    return sql
 
 
 MUTATION_CLAIM_RE = re.compile(

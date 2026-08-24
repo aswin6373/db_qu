@@ -76,6 +76,21 @@ def _clean_identifier_name(value: str) -> str:
     return value.split("(", 1)[0].strip("` ")
 
 
+def _collect_aliases(statement) -> set[str]:
+    aliases: set[str] = set()
+
+    def walk(node):
+        for child in getattr(node, "tokens", []):
+            if isinstance(child, Identifier):
+                alias = child.get_alias()
+                if alias:
+                    aliases.add(alias.lower())
+            walk(child)
+
+    walk(statement)
+    return aliases
+
+
 def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set[str]:
     if not table_names:
         return set()
@@ -84,12 +99,18 @@ def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set
         for column in schema["tables"].get(table, {}).get("columns", []):
             known_columns.add(column["name"])
 
+    aliases = _collect_aliases(statement)
+
     missing: set[str] = set()
     for token in statement.flatten():
         value = token.value.strip("`")
         if token.ttype in Keyword or not value.isidentifier():
             continue
-        if value in table_names or value.upper() in {"SELECT", "FROM", "WHERE", "AND", "OR", "SET", "VALUES"}:
+        if (
+            value in table_names
+            or value.lower() in aliases
+            or value.upper() in {"ON", "SELECT", "FROM", "WHERE", "AND", "OR", "SET", "VALUES"}
+        ):
             continue
         if value not in known_columns and not value.isnumeric():
             # Function names and aliases are hard to detect perfectly with sqlparse,

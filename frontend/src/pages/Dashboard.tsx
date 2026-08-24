@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, ArrowUpRight, Check, Copy, Database, MessageSquare, ShieldCheck, Sparkles, Table2 } from "lucide-react";
+import { Activity, ArrowUpRight, Check, Copy, Database, MessageSquare, Sparkles, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { SchemaConstellation } from "../components/SchemaConstellation";
@@ -20,13 +20,11 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
   const primaryInsights = primaryConnection ? insights[primaryConnection.id] : null;
   const tableCount = Object.keys(primarySchema?.tables ?? {}).length;
   const columnCount = Object.values(primarySchema?.tables ?? {}).reduce((total, table) => total + table.columns.length, 0);
-  const relationshipCount = primaryInsights?.relationship_count ?? 0;
   const score = primaryInsights?.score ?? 0;
 
   const activity = dashboard?.recent_activity ?? [];
   const rowsSeries = [...activity].reverse().map((item) => item.rows_returned ?? 0);
   const totalRows = rowsSeries.reduce((total, value) => total + value, 0);
-  const avgRows = activity.length > 0 ? Math.round(totalRows / activity.length) : 0;
 
   // keep relative timestamps fresh
   const [, setTick] = useState(0);
@@ -116,39 +114,8 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
         />
       </div>
 
-      {/* Constellation + pulse */}
-      <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        <SchemaConstellation insights={primaryInsights} schema={primarySchema} title={`${primaryConnection?.name ?? "Workspace"} · schema relationships`} />
-
-        <div className="flex flex-col gap-4">
-          <section className="card flex-1 p-5 sm:p-6">
-            <SectionTitle icon={<Activity size={15} />} subtitle="Rows returned by your most recent AI queries." title="Query result volume" />
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-              <Sparkline height={90} values={rowsSeries.length ? rowsSeries : [0, 0, 0]} />
-              <div className="mt-2 flex justify-between text-[10px] font-medium uppercase tracking-wider text-slate-500">
-                <span>oldest</span>
-                <span>{totalRows.toLocaleString()} rows total</span>
-                <span>latest</span>
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <MiniStat label="Tables" value={tableCount} />
-              <MiniStat label="Columns" value={columnCount} />
-              <MiniStat label="Relationships" value={relationshipCount} />
-              <MiniStat label="Avg rows / query" value={avgRows} />
-            </div>
-          </section>
-
-          <section className="card p-5 sm:p-6">
-            <SectionTitle icon={<ShieldCheck size={15} />} subtitle="Active on every query in this workspace." title="Production guardrails" />
-            <div className="mt-4 grid gap-2">
-              <Guardrail detail="Every statement parsed & schema-checked" label="SQL validation" />
-              <Guardrail detail="INSERT / UPDATE / DELETE wait for you" label="Write confirmation" />
-              <Guardrail detail="Fernet encryption at rest" label="Encrypted credentials" />
-            </div>
-          </section>
-        </div>
-      </div>
+      {/* Schema relationships */}
+      <SchemaConstellation insights={primaryInsights} schema={primarySchema} title={`${primaryConnection?.name ?? "Workspace"} · schema relationships`} />
 
       {/* Activity logs */}
       <section className="card p-5 sm:p-6">
@@ -316,15 +283,6 @@ function ReadinessRing({ score }: { score: number }) {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center">
-      <strong className="block font-mono text-lg font-bold tabular-nums text-slate-900">{value.toLocaleString()}</strong>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
-    </div>
-  );
-}
-
 function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle?: string }) {
   return (
     <div>
@@ -333,19 +291,6 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
       </div>
       {subtitle && <p className="mt-1.5 pl-[42px] text-[13px] leading-5 text-slate-500">{subtitle}</p>}
-    </div>
-  );
-}
-
-function Guardrail({ label, detail }: { label: string; detail: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 transition hover:border-brand-200 hover:bg-brand-50/40">
-      <ShieldCheck className="shrink-0 text-brand-600" size={15} />
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold text-slate-800">{label}</p>
-        <p className="truncate text-[11px] text-slate-500">{detail}</p>
-      </div>
-      <span className="ml-auto shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600">on</span>
     </div>
   );
 }

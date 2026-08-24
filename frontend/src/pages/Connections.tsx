@@ -176,7 +176,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
           insights={insights[connection.id]}
           key={connection.id}
           schema={schemas[connection.id]}
-          title={`${connection.name} structure`}
         />
       )}
     </section>

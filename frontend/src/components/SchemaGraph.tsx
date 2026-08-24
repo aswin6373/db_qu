@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { ArrowRight, DatabaseZap, KeyRound, Link2, Table2 } from "lucide-react";
+import { ArrowRight, KeyRound, Link2, Table2 } from "lucide-react";
 import { DatabaseColumn, DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
   schema?: DatabaseSchema | null;
   insights?: SchemaInsights | null;
-  title?: string;
 };
 
 type Rect = { x: number; y: number; w: number; h: number };
@@ -16,14 +15,10 @@ const CELL_W = 284;
 const HEADER_H = 38;
 const ROW_H = 26;
 
-export function SchemaGraph({ schema, insights, title = "Database structure" }: Props) {
+export function SchemaGraph({ schema, insights }: Props) {
   const [hoveredTable, setHoveredTable] = useState<string | null>(null);
   const [pinnedTable, setPinnedTable] = useState<string | null>(null);
   const tables = Object.entries(schema?.tables ?? {});
-  const tableCount = tables.length;
-  const columnCount = tables.reduce((total, [, table]) => total + table.columns.length, 0);
-  const keyCount = tables.reduce((total, [, table]) => total + table.columns.filter((column) => column.key).length, 0);
-  const score = insights?.score ?? (tableCount > 0 ? 70 : 0);
   const edges = insights?.edges ?? [];
 
   const layout = buildLayout(tables, edges);
@@ -46,24 +41,15 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
   return (
     <section className="card p-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
-              <DatabaseZap size={16} />
-            </span>
-            <h2 className="text-base font-bold tracking-tight text-slate-900">{title}</h2>
-          </div>
-          <p className="mt-1 pl-[42px] text-sm text-slate-500">
-            {insights?.summary ?? `${tableCount} tables · ${columnCount} columns · ${keyCount} key columns`}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className={`status-pill ${score >= 70 ? "pill-success" : score >= 40 ? "pill-warn" : ""}`}>
-            {score}/100 readiness
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+            <Link2 size={16} />
           </span>
-          <span className="status-pill">PK primary</span>
-          <span className="status-pill">FK linked</span>
+          <h2 className="text-base font-bold tracking-tight text-slate-900">Entity relationships</h2>
         </div>
+        <span className="text-[11px] font-medium text-slate-400">
+          {edges.length} link{edges.length === 1 ? "" : "s"} · hover or click a table to trace its relationships
+        </span>
       </div>
 
       {tables.length === 0 ? (
@@ -72,13 +58,6 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
         </div>
       ) : (
         <div className="panel-soft overflow-x-auto p-4">
-          <div className="mb-3 flex items-center gap-2">
-            <Link2 className="text-brand-600" size={16} />
-            <h3 className="text-sm font-bold text-slate-900">Entity relationships</h3>
-            <span className="ml-auto text-[11px] font-medium text-slate-400">
-              {edges.length} link{edges.length === 1 ? "" : "s"} · hover or click a table to trace its relationships
-            </span>
-          </div>
           <div
             className="relative mx-auto"
             onClick={() => setPinnedTable(null)}

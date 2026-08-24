@@ -92,7 +92,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
       />
 
       {connections.length === 0 && (
-        <section className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-violet-50 p-6">
+        <section className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Connect a database first</h2>
@@ -111,7 +111,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
           {messages.map((message, index) =>
             message.role === "user" ? (
               <div className="flex justify-end gap-3" key={index}>
-                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-brand-600 to-violet-600 px-4 py-3 text-sm font-medium leading-6 text-white shadow-sm">
+                <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-brand-600 to-brand-800 px-4 py-3 text-sm font-medium leading-6 text-white shadow-sm">
                   {message.content}
                 </div>
                 <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-800 text-white">
@@ -120,7 +120,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               </div>
             ) : (
               <div className="flex gap-3" key={index}>
-                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 text-white shadow-sm shadow-brand-600/25">
+                <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-sm shadow-brand-600/25">
                   <Bot size={15} />
                 </span>
                 <div className={`max-w-full min-w-0 flex-1 rounded-2xl rounded-tl-md border px-4 py-3 text-sm leading-6 ${
@@ -146,7 +146,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
           {isThinking && (
             <div className="flex gap-3">
-              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-violet-600 text-white">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white">
                 <Bot size={15} />
               </span>
               <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3">

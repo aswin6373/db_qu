@@ -34,7 +34,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       />
 
       {connections.length === 0 && (
-        <section className="card animate-fade-up overflow-hidden border-brand-200 bg-gradient-to-br from-brand-50 via-white to-violet-50 p-6">
+        <section className="card animate-fade-up overflow-hidden border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900">Connect your first database</h2>
@@ -52,7 +52,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Metric icon={<Database size={18} />} label="Connections" value={dashboard?.connection_count ?? 0} tone="brand" />
-        <Metric icon={<MessageSquare size={18} />} label="AI queries" value={dashboard?.query_count ?? 0} tone="violet" />
+        <Metric icon={<MessageSquare size={18} />} label="AI queries" value={dashboard?.query_count ?? 0} tone="navy" />
         <Metric icon={<Table2 size={18} />} label="Discovered tables" value={tableCount} tone="emerald" />
         <ScoreCard score={score} />
       </div>
@@ -63,7 +63,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             <SectionTitle icon={<Sparkles size={16} />} title="AI readiness" subtitle={primaryInsights?.summary ?? "Schema analysis is loading."} />
             <div className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-brand-500 to-violet-500 transition-all duration-700"
+                className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-800 transition-all duration-700"
                 style={{ width: `${Math.min(100, Math.max(4, score))}%` }}
               />
             </div>
@@ -106,10 +106,10 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
   );
 }
 
-function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "brand" | "violet" | "emerald" }) {
+function Metric({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number; tone: "brand" | "navy" | "emerald" }) {
   const tones = {
     brand: "bg-brand-50 text-brand-600",
-    violet: "bg-violet-50 text-violet-600",
+    navy: "bg-navy/5 text-navy",
     emerald: "bg-emerald-50 text-emerald-600"
   };
   return (

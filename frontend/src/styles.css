@@ -23,7 +23,7 @@ select {
 }
 
 ::selection {
-  background: rgba(79, 70, 229, 0.16);
+  background: rgba(47, 158, 151, 0.18);
 }
 
 /* Slim, unobtrusive scrollbars */
@@ -63,7 +63,7 @@ select {
     @apply focus-ring inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-white/90;
   }
   .btn-accent {
-    @apply btn-primary bg-gradient-to-r from-brand-600 to-violet-600 hover:from-brand-700 hover:to-violet-700;
+    @apply btn-primary bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-700 hover:to-brand-900;
   }
   .btn-secondary {
     @apply focus-ring inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50;
@@ -85,7 +85,7 @@ select {
 
   /* Code */
   .code-block {
-    @apply block overflow-x-auto rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 font-mono text-[13px] leading-6 text-emerald-300;
+    @apply block overflow-x-auto rounded-lg border border-navy/60 bg-navy px-4 py-3 font-mono text-[13px] leading-6 text-teal-soft;
   }
 
   /* Pills & badges */
@@ -111,7 +111,7 @@ select {
   }
   .nav-item-active::before {
     content: "";
-    @apply absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-400;
+    @apply absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-teal;
   }
 
   .eyebrow {
@@ -128,6 +128,12 @@ select {
   .card-landing {
     @apply rounded-2xl border border-navy/10 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
   }
+}
+
+/* Dot grid backdrop for the app canvas (Vanna-style) */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(22, 50, 79, 0.055) 1px, transparent 1px);
+  background-size: 26px 26px;
 }
 
 /* Skeleton shimmer */

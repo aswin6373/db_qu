@@ -94,9 +94,9 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
       />
 
       {connections.length === 0 && (
-        <div className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-violet-50 p-6">
+        <div className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6">
           <div className="flex items-start gap-4">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 text-white shadow-lg shadow-brand-600/25">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
               <PlugZap size={19} />
             </span>
             <div>

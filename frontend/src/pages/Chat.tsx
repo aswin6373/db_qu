@@ -392,17 +392,19 @@ function ResultBlock({
       <code className="code-block">{result.sql}</code>
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <p className="mr-auto text-xs font-medium leading-5 text-amber-800">
+        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-amber-800">
             This query modifies data. Run it only if the SQL above looks right.
           </p>
-          <button className="btn-primary h-9 min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
-            {isConfirming ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
-            {isConfirming ? "Running" : "Confirm & run"}
-          </button>
-          <button className="btn-secondary h-9" disabled={isConfirming} onClick={() => onCancel(result.query_id)} type="button">
-            <X size={15} /> Cancel
-          </button>
+          <span className="flex shrink-0 items-center gap-2">
+            <button className="btn-primary h-9 min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
+              {isConfirming ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
+              {isConfirming ? "Running" : "Confirm & run"}
+            </button>
+            <button className="btn-secondary h-9" disabled={isConfirming} onClick={() => onCancel(result.query_id)} type="button">
+              <X size={15} /> Cancel
+            </button>
+          </span>
         </div>
       )}
 

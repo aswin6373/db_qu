@@ -11,7 +11,7 @@ type Props = {
 
 const nav = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-  { id: "connections", label: "Connections", icon: Database },
+  { id: "connections", label: "Connection", icon: Database },
   { id: "chat", label: "AI Chat", icon: MessageSquare },
   { id: "history", label: "History", icon: History }
 ];

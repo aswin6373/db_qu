@@ -117,6 +117,17 @@ select {
   .eyebrow {
     @apply text-xs font-semibold uppercase tracking-[0.14em];
   }
+
+  /* Landing page (Vanna-style) */
+  .btn-landing-primary {
+    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal px-6 text-[15px] font-semibold text-white shadow-lg shadow-teal/25 transition hover:-translate-y-0.5 hover:bg-teal-dark active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-landing-outline {
+    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-navy/20 bg-white/60 px-6 text-[15px] font-semibold text-navy backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:translate-y-0;
+  }
+  .card-landing {
+    @apply rounded-2xl border border-navy/10 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+  }
 }
 
 /* Skeleton shimmer */

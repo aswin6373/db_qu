@@ -20,7 +20,17 @@ export default {
           800: "#3730a3",
           900: "#312e81"
         },
-        canvas: "#f4f6fa"
+        canvas: "#f4f6fa",
+        cream: "#f7f4ec",
+        navy: {
+          DEFAULT: "#16324f",
+          soft: "#41586e"
+        },
+        teal: {
+          DEFAULT: "#2f9e97",
+          dark: "#27877f",
+          soft: "#e3f2f0"
+        }
       },
       boxShadow: {
         card: "0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.08)",
@@ -38,12 +48,23 @@ export default {
         "pulse-soft": {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.45" }
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0) rotate(var(--tw-rotate))" },
+          "50%": { transform: "translateY(-14px) rotate(var(--tw-rotate))" }
+        },
+        caret: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" }
         }
       },
       animation: {
         "fade-up": "fade-up 0.35s ease-out both",
         shimmer: "shimmer 1.6s infinite",
-        "pulse-soft": "pulse-soft 1.8s ease-in-out infinite"
+        "pulse-soft": "pulse-soft 1.8s ease-in-out infinite",
+        float: "float 7s ease-in-out infinite",
+        "float-slow": "float 10s ease-in-out infinite",
+        caret: "caret 1.1s step-end infinite"
       }
     }
   },

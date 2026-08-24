@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowRight, Database, KeyRound, Loader2, LogIn, ShieldCheck, Sparkles, Table2, UserPlus } from "lucide-react";
+import { ArrowRight, Database, Github, Loader2, LogIn, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 
 type Props = {
@@ -39,157 +39,233 @@ export function AuthPanel({ onToken }: Props) {
   }
 
   return (
-    <main className="grid min-h-screen bg-slate-950 lg:grid-cols-[1.1fr_1fr]">
-      {/* Story panel */}
-      <section className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-14">
-        <div className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-brand-600/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-40 -right-24 h-96 w-96 rounded-full bg-violet-600/20 blur-3xl" />
-        <div className="relative">
-          <Logo mark="lg" />
-          <h1 className="mt-16 max-w-xl text-[2.6rem] font-bold leading-[1.15] tracking-tight text-white">
-            Operate your MySQL data through a guarded AI workflow.
-          </h1>
-          <p className="mt-5 max-w-lg text-[15px] leading-7 text-slate-400">
-            Connect a database, inspect its structure, ask in plain English, review the generated SQL — and confirm
-            every write before anything changes.
-          </p>
-          <div className="mt-10 grid max-w-lg gap-3 sm:grid-cols-3">
-            <Feature icon={<ShieldCheck size={17} />} label="Validated SQL" />
-            <Feature icon={<KeyRound size={17} />} label="Encrypted credentials" />
-            <Feature icon={<Table2 size={17} />} label="Schema-aware chat" />
-          </div>
+    <div className="min-h-screen bg-cream text-navy">
+      {/* Navbar */}
+      <header className="sticky top-0 z-30 border-b border-navy/5 bg-cream/85 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+          <a className="flex items-center gap-2.5" href="#top">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-navy text-teal-soft">
+              <Database size={18} />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight text-navy">QueryMind</span>
+          </a>
+          <nav className="hidden items-center gap-8 text-[15px] font-medium text-navy-soft md:flex">
+            <a className="transition hover:text-navy" href="#features">Why QueryMind</a>
+            <a className="transition hover:text-navy" href="#how">How it works</a>
+            <a className="transition hover:text-navy" href="#security">Security</a>
+          </nav>
+          <a
+            className="hidden items-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2 text-sm font-semibold text-navy shadow-sm transition hover:-translate-y-0.5 hover:shadow sm:inline-flex"
+            href="#get-started"
+          >
+            <Github size={16} /> Star us
+            <span className="rounded-md bg-teal-soft px-1.5 py-0.5 text-xs font-bold text-teal-dark">beta</span>
+          </a>
         </div>
-        <div className="relative flex items-center gap-8 text-slate-500">
-          <Stat value="100%" label="SQL validated before execution" />
-          <Divider />
-          <Stat value="0" label="Writes run without confirmation" />
-          <Divider />
-          <Stat value="AES" label="Credentials encrypted at rest" />
+      </header>
+
+      <main className="relative overflow-hidden" id="top">
+        {/* Dot grid + glows */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: "radial-gradient(circle, rgba(22,50,79,0.10) 1px, transparent 1px)",
+            backgroundSize: "26px 26px"
+          }}
+        />
+        <div className="pointer-events-none absolute -left-32 top-24 h-80 w-80 rounded-[3rem] border border-rose-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(12deg)" }} />
+        <div className="pointer-events-none absolute -right-24 top-40 h-72 w-72 animate-float-slow rounded-[3rem] border border-teal-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(-10deg)" }} />
+        <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 animate-float rounded-[2.5rem] border border-amber-200/70 bg-white/30 backdrop-blur-sm" style={{ transform: "rotate(8deg)" }} />
+
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-5 pb-20 pt-14 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8 lg:pt-20" id="get-started">
+          {/* Hero */}
+          <section className="animate-fade-up text-center lg:pt-8 lg:text-left">
+            <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-soft px-3.5 py-1.5 text-[13px] font-semibold text-teal-dark">
+              <Sparkles size={14} /> Now in public beta
+            </p>
+            <h1 className="mt-6 text-[2.7rem] font-extrabold leading-[1.08] tracking-tight text-navy sm:text-6xl xl:text-[4.4rem]">
+              The{" "}
+              <span className="relative inline-block text-teal">
+                smartest
+                <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
+              </span>{" "}
+              SQL Agent
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-navy-soft lg:mx-0">
+              Natural language <Dot /> Validated SQL <Dot /> Guarded writes <Dot /> Schema-aware
+            </p>
+            <p className="mx-auto mt-3 max-w-xl text-[15px] leading-7 text-navy-soft/80 lg:mx-0">
+              Let your team query the company database in plain English — every statement reviewed, every write
+              confirmed before it runs.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+              <a className="btn-landing-primary" href="#auth-card">
+                Create workspace <ArrowRight size={16} />
+              </a>
+              <a className="btn-landing-outline" href="#how">
+                See how it works
+              </a>
+            </div>
+
+            {/* Social proof */}
+            <div className="mt-12">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-navy-soft/50">
+                Works with the databases you already run
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 lg:justify-start">
+                {["MySQL", "MariaDB", "TiDB", "PlanetScale", "Aiven", "Amazon RDS"].map((name) => (
+                  <span className="text-[15px] font-bold tracking-tight text-navy/35 transition hover:text-navy/60" key={name}>
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Feature strip */}
+            <div className="mt-12 grid gap-3 sm:grid-cols-3" id="features">
+              <LandingFeature icon={<ShieldCheck size={17} />} title="Validated SQL" text="Every statement parsed and checked against your live schema." />
+              <LandingFeature icon={<Database size={17} />} title="Encrypted credentials" text="Passwords sealed with Fernet encryption before storage." />
+              <LandingFeature icon={<Sparkles size={17} />} title="Confirm-before-write" text="INSERT, UPDATE, DELETE wait for your explicit approval." />
+            </div>
+          </section>
+
+          {/* Auth card */}
+          <section id="auth-card" className="scroll-mt-24">
+            <div className="mx-auto w-full max-w-md animate-fade-up rounded-2xl border border-navy/10 bg-white p-7 shadow-[0_24px_60px_-20px_rgba(22,50,79,0.25)] sm:p-8">
+              <p className="eyebrow text-teal">{mode === "register" ? "Get started" : "Welcome back"}</p>
+              <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-navy">
+                {mode === "register" ? "Create your workspace" : "Sign in to QueryMind"}
+              </h2>
+              <p className="mt-1.5 text-sm leading-6 text-navy-soft/80">
+                {mode === "register"
+                  ? "One workspace per team. Credentials stay encrypted."
+                  : "Secure access to your QueryMind platform."}
+              </p>
+
+              <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-navy/10 bg-cream p-1">
+                <TabButton active={mode === "register"} icon={<UserPlus size={15} />} label="Register" onClick={() => setMode("register")} />
+                <TabButton active={mode === "login"} icon={<LogIn size={15} />} label="Login" onClick={() => setMode("login")} />
+              </div>
+
+              <form className="mt-6 space-y-4" onSubmit={submit}>
+                {mode === "register" && (
+                  <label className="block">
+                    <span className="label text-navy-soft">Organization</span>
+                    <input
+                      className="field border-navy/15 focus-visible:ring-teal/30"
+                      placeholder="Acme Analytics"
+                      minLength={2}
+                      required
+                      value={organizationName}
+                      onChange={(event) => setOrganizationName(event.target.value)}
+                    />
+                  </label>
+                )}
+                <label className="block">
+                  <span className="label text-navy-soft">Email</span>
+                  <input
+                    className="field border-navy/15 focus-visible:ring-teal/30"
+                    placeholder="you@company.com"
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label text-navy-soft">Password</span>
+                  <input
+                    className="field border-navy/15 focus-visible:ring-teal/30"
+                    minLength={8}
+                    placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </label>
+                {error && (
+                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{error}</p>
+                )}
+                <button className="btn-landing-primary w-full" disabled={busy} type="submit">
+                  {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}
+                  {mode === "register" ? "Create workspace" : "Enter workspace"}
+                </button>
+              </form>
+
+              <p className="mt-5 border-t border-navy/5 pt-4 text-center text-xs leading-5 text-navy-soft/60">
+                Free while in beta · No credit card required · Your data stays in your databases
+              </p>
+            </div>
+          </section>
         </div>
-      </section>
 
-      {/* Form card */}
-      <section className="flex items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-md animate-fade-up rounded-2xl border border-slate-200 bg-white p-7 shadow-lift sm:p-9">
-          <div className="mb-7 lg:hidden">
-            <Logo mark="sm" dark />
+        {/* How it works */}
+        <section className="relative border-t border-navy/5 bg-white/50 px-5 py-16 backdrop-blur-sm sm:px-8" id="how">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="text-center text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
+              From question to safe query in seconds
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-center text-[15px] text-navy-soft">
+              Three steps, zero risk. QueryMind never runs a write without your sign-off.
+            </p>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                { step: "01", title: "Connect", text: "Add your MySQL host and credentials. We test the connection and map your full schema." },
+                { step: "02", title: "Ask", text: "Type what you want to know. The AI writes one precise SQL statement for your schema." },
+                { step: "03", title: "Review & run", text: "Reads execute instantly. Writes pause for your confirmation — always." }
+              ].map((item) => (
+                <div className="card-landing p-6" key={item.step}>
+                  <span className="font-mono text-sm font-bold text-teal">{item.step}</span>
+                  <h3 className="mt-2 text-lg font-bold text-navy">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-navy-soft">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="eyebrow text-brand-600">{mode === "register" ? "Get started" : "Welcome back"}</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            {mode === "register" ? "Create your workspace" : "Sign in to QueryMind"}
-          </h2>
-          <p className="mt-1.5 text-sm text-slate-500">
-            {mode === "register"
-              ? "One workspace per team. Your credentials stay encrypted."
-              : "Secure access to your QueryMind platform."}
-          </p>
+        </section>
 
-          <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
-            <TabButton active={mode === "register"} icon={<UserPlus size={15} />} label="Register" onClick={() => setMode("register")} />
-            <TabButton active={mode === "login"} icon={<LogIn size={15} />} label="Login" onClick={() => setMode("login")} />
+        {/* Security */}
+        <section className="relative px-5 py-16 sm:px-8" id="security">
+          <div className="mx-auto max-w-6xl rounded-3xl border border-navy/10 bg-navy px-6 py-12 text-center sm:px-12">
+            <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Built for production databases
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-[15px] leading-7 text-slate-300">
+              Schema and admin operations like DROP, ALTER, and TRUNCATE are blocked at the engine level. Credentials
+              are encrypted at rest. Every query is logged for your audit trail.
+            </p>
+            <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-3">
+              {["SQL injection guarded", "Multi-statement blocked", "Org-level isolation", "Fernet encryption", "Full audit log"].map((chip) => (
+                <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200" key={chip}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+            <a className="btn-landing-primary mt-10 inline-flex" href="#get-started">
+              Start free <ArrowRight size={16} />
+            </a>
           </div>
+        </section>
 
-          <form className="mt-6 space-y-4" onSubmit={submit}>
-            {mode === "register" && (
-              <label className="block">
-                <span className="label">Organization</span>
-                <input
-                  className="field"
-                  placeholder="Acme Analytics"
-                  required
-                  minLength={2}
-                  value={organizationName}
-                  onChange={(event) => setOrganizationName(event.target.value)}
-                />
-              </label>
-            )}
-            <label className="block">
-              <span className="label">Email</span>
-              <input
-                className="field"
-                placeholder="you@company.com"
-                type="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="label">Password</span>
-              <input
-                className="field"
-                placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-            {error && <ErrorBanner message={error} />}
-            <button className="btn-accent w-full" disabled={busy} type="submit">
-              {busy ? <Loader2 className="animate-spin" size={18} /> : mode === "register" ? <UserPlus size={18} /> : <LogIn size={18} />}
-              {mode === "register" ? "Create workspace" : "Enter workspace"}
-              {!busy && <ArrowRight size={16} />}
-            </button>
-          </form>
-
-          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-slate-400">
-            <Sparkles size={13} /> Free while in beta · No credit card required
-          </p>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function Logo({ mark = "lg", dark = false }: { mark?: "lg" | "sm"; dark?: boolean }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span
-        className={`grid place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 text-white shadow-lg shadow-brand-600/30 ${
-          mark === "lg" ? "h-11 w-11" : "h-9 w-9"
-        }`}
-      >
-        <Database size={mark === "lg" ? 21 : 17} />
-      </span>
-      <div>
-        <strong className={`block font-bold tracking-tight ${dark ? "text-slate-900" : "text-white"} ${mark === "lg" ? "text-lg" : "text-base"}`}>
-          QueryMind
-        </strong>
-        <p className={`text-xs ${dark ? "text-slate-500" : "text-slate-400"}`}>AI database workspace</p>
-      </div>
+        <footer className="relative border-t border-navy/5 px-5 py-8 text-center text-sm text-navy-soft/60 sm:px-8">
+          © {new Date().getFullYear()} QueryMind — AI database operations workspace
+        </footer>
+      </main>
     </div>
   );
 }
 
-function Feature({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-3 backdrop-blur">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-500/20 text-brand-300">{icon}</span>
-      <span className="text-[13px] font-semibold leading-tight text-slate-200">{label}</span>
-    </div>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div>
-      <p className="text-xl font-bold text-white">{value}</p>
-      <p className="mt-0.5 max-w-[140px] text-xs leading-4">{label}</p>
-    </div>
-  );
-}
-
-function Divider() {
-  return <span className="h-9 w-px bg-white/10" />;
+function Dot() {
+  return <span className="mx-2 inline-block h-1.5 w-1.5 rounded-full bg-teal align-middle" />;
 }
 
 function TabButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
     <button
-      className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition ${
-        active ? "bg-white text-brand-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+      className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition ${
+        active ? "bg-navy text-white shadow-sm" : "text-navy-soft hover:text-navy"
       }`}
       onClick={onClick}
       type="button"
@@ -199,10 +275,12 @@ function TabButton({ active, icon, label, onClick }: { active: boolean; icon: Re
   );
 }
 
-export function ErrorBanner({ message }: { message: string }) {
+function LandingFeature({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return (
-    <p className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
-      {message}
-    </p>
+    <div className="card-landing text-left">
+      <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-soft text-teal-dark">{icon}</span>
+      <h3 className="mt-3 text-[15px] font-bold text-navy">{title}</h3>
+      <p className="mt-1 text-[13px] leading-5 text-navy-soft">{text}</p>
+    </div>
   );
 }

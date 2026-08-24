@@ -12,14 +12,14 @@ type Props = {
 /* Safe-zone ring around the scene centre (% of the viewport-sized world).
    The DB cylinder sits at (50,50), so no node goes there. */
 const SLOTS: Array<[number, number]> = [
-  [38, 18],
-  [62, 22],
-  [74, 42],
-  [66, 68],
-  [42, 76],
-  [26, 60],
-  [24, 34],
-  [33, 47]
+  [43.7, 20.7],
+  [71.3, 25.3],
+  [85.1, 48.3],
+  [75.9, 78.2],
+  [48.3, 87.4],
+  [29.9, 69.0],
+  [27.6, 39.1],
+  [38.0, 54.0]
 ];
 
 const NODE_W = 112;

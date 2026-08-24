@@ -70,3 +70,15 @@ def test_read_question_mentioning_column_stays_a_read():
     sql = generate_sql("show customers with the city column", SCHEMA)
     assert sql.upper().startswith("SELECT")
     assert "ALTER TABLE" not in sql.upper()
+
+
+def test_misspelled_column_word_still_detected_as_schema_change():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("drop the phone coloumn in customers", SCHEMA)
+    assert "ALTER TABLE `customers` DROP COLUMN `phone`" in str(exc.value)
+
+
+def test_misspelled_add_column_still_detected():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("add a new collumn phone in customers", SCHEMA)
+    assert "ADD COLUMN `phone`" in str(exc.value)

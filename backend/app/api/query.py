@@ -60,7 +60,9 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
 
-    summary = summarize_result(payload.question, columns, rows, validation.requires_confirmation)
+    summary = summarize_result(
+        payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type
+    )
     log = QueryLog(
         organization_id=user.organization_id,
         user_id=user.id,

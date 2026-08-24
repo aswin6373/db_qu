@@ -27,23 +27,49 @@ def generate_sql(question: str, schema: dict) -> str:
     return _generate_sql_fallback(question, schema)
 
 
-def summarize_result(question: str, columns: list[str], rows: list[dict], requires_confirmation: bool) -> str:
+MUTATION_CLAIM_RE = re.compile(
+    r"\b(dropped|deleted|removed|updated|added|created|inserted|modified|changed)\b",
+    re.IGNORECASE,
+)
+
+
+def summarize_result(
+    question: str,
+    columns: list[str],
+    rows: list[dict],
+    requires_confirmation: bool,
+    query_type: str = "unknown",
+) -> str:
     settings = get_settings()
     if requires_confirmation:
         return "This query can modify data, so it is waiting for your confirmation before execution."
+    summary = ""
     if settings.llm_provider == "gemini":
         try:
-            return _summarize_with_gemini(question, columns, rows)
+            summary = _summarize_with_gemini(question, columns, rows)
         except (RuntimeError, httpx.HTTPError):
             pass
-    if settings.llm_provider in {"gemini", "ollama"}:
+    if not summary and settings.llm_provider in {"gemini", "ollama"}:
         try:
-            return _summarize_with_ollama(question, columns, rows)
+            summary = _summarize_with_ollama(question, columns, rows)
         except Exception:
             pass
+    summary = _sanitize_summary(summary, query_type, len(rows))
+    if summary:
+        return summary
     if not rows:
         return "The query ran successfully, but it did not return any rows."
     return f"Found {len(rows)} row(s) for: {question}"
+
+
+def _sanitize_summary(summary: str, query_type: str, row_count: int) -> str:
+    # LLMs sometimes narrate a mutation that never happened (e.g. claiming a
+    # DROP succeeded when a SELECT ran). Never allow that on read queries.
+    if query_type in {"select", "unknown"} and summary and MUTATION_CLAIM_RE.search(summary):
+        if row_count:
+            return f"Found {row_count} row(s). The query only read data — nothing was changed."
+        return "The query only read data and returned no rows — nothing was changed."
+    return summary.strip()
 
 
 READ_STARTER_RE = re.compile(
@@ -56,7 +82,9 @@ DDL_VERB_RE = re.compile(
     r"make|put|insert|append|extend|include|introduce|give|want|need|needs|have|has|should)\b",
     re.IGNORECASE,
 )
-DDL_NOUN_RE = re.compile(r"\b(column|field|attribute|table|index|schema)\b", re.IGNORECASE)
+# Includes common misspellings: coloumn, colum, collumn, feild
+DDL_NOUN_RE = re.compile(r"\b(?:colou?mn|coll?umn|feild|field|attribute|table|index|schema)\b", re.IGNORECASE)
+COLUMN_NOUN_RE = r"\b(?:colou?mn|coll?umn|feild|field)\b"
 
 
 def _detect_schema_change_request(question: str, schema: dict) -> str | None:
@@ -79,13 +107,13 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
     add_column = re.search(
         r"\b(?:add|create|new|make|put|insert|append|extend|include|give|want|need|has|have|should)\b"
         r"[^.?!]*?"
-        r"(?:[`'\"]?([a-zA-Z_]\w*)[`'\"]?\s+)?\b(?:column|field)\b"
+        r"(?:[`'\"]?([a-zA-Z_]\w*)[`'\"]?\s+)?\b(?:colou?mn|coll?umn|feild|field)\b"
         r"(?:\s+(?:called\s+|named\s+)?[`'\"]?([a-zA-Z_]\w*)[`'\"]?)?"
         r"(?:\s+(?:with\s+)?(?:type\s+)?([a-zA-Z]+(?:\(\s*\d+(?:\s*,\s*\d+)?\s*\))?))?",
         lowered,
     )
     drop_column = re.search(
-        r"\b(?:drop|remove|delete)\b[^.?!]*?\b(?:column|field)\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
+        r"\b(?:drop|remove|delete)\b[^.?!]*?\b(?:colou?mn|coll?umn|feild|field)\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
         lowered,
     )
 

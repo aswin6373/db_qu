@@ -97,8 +97,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       )}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard caption={connections.length === 1 ? "MySQL workspace" : "MySQL workspaces"} icon={<Database size={17} />} label="Connections" value={dashboard?.connection_count ?? 0} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <KpiCard
           caption={activity.length > 0 ? `${totalRows.toLocaleString()} rows returned` : "No queries yet"}
           footer={rowsSeries.length > 1 ? <Sparkline height={30} values={rowsSeries} /> : undefined}

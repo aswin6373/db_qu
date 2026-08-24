@@ -239,67 +239,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   </svg>
 
 
-                  {/* relationship lines — only shown while a table is
-                      highlighted, and only between tables that are actually
-                      related; unrelated tables never get a line between them. */}
-                  {active && slotByName.has(active) && (
-                    <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      {edges.map((edge) => {
-                        if (edge.from !== active && edge.to !== active) return null;
-                        const other = edge.from === active ? edge.to : edge.from;
-                        const slot = slotByName.get(other);
-                        if (!slot) return null;
-                        const [ax, ay] = slotByName.get(active)!;
-                        return (
-                          <g key={`${edge.from}-${edge.column}-${edge.to}`}>
-                            <line stroke="#46c8b8" strokeWidth={2.6} x1={ax} x2={slot[0]} y1={ay} y2={slot[1]} opacity={0.22} strokeLinecap="round" />
-                            <line stroke="#6fd8ca" strokeWidth={1.3} x1={ax} x2={slot[0]} y1={ay} y2={slot[1]} opacity={0.9} strokeLinecap="round" />
-                            <line
-                              className="edge-line"
-                              stroke="url(#tube-core)"
-                              strokeWidth={0.8}
-                              x1={ax} x2={slot[0]} y1={ay} y2={slot[1]}
-                              strokeDasharray="4 6"
-                              strokeLinecap="round"
-                            />
-                          </g>
-                        );
-                      })}
-                    </svg>
-                  )}
-
-
-                  {/* central hub pedestal — glowing rounded slab the database sits on */}
-                  <div className="absolute" style={{ left: "50%", top: "50%", transformStyle: "preserve-3d" }}>
-                    <span className="absolute" style={{ width: 172, height: 124, transform: "translate(-50%, -50%)" }}>
-                      <span
-                        className="glow-pulse absolute rounded-[30%]"
-                        style={{
-                          inset: -14,
-                          background: "radial-gradient(closest-side, rgba(64,190,176,0.35), rgba(64,190,176,0.12) 62%, transparent)"
-                        }}
-                      />
-                      <span
-                        className="absolute inset-0 rounded-[30%]"
-                        style={{
-                          background: "linear-gradient(145deg, #ffffff 10%, #e3efef 55%, #cfe3e2 100%)",
-                          boxShadow:
-                            "0 0 0 1.5px rgba(94,200,188,0.6), 0 0 28px rgba(64,180,168,0.45), inset 0 0 26px rgba(94,200,188,0.30)"
-                        }}
-                      />
-                      <span
-                        className="absolute rounded-[30%]"
-                        style={{
-                          inset: 11,
-                          border: "1.5px solid rgba(74,196,182,0.7)",
-                          boxShadow: "inset 0 0 20px rgba(74,196,182,0.35), 0 0 16px rgba(74,196,182,0.35)"
-                        }}
-                      />
-                    </span>
-                  </div>
-
-
-                  {/* central database — billboarded, floating just above the hub slab */}
+                  {/* central database — billboarded, floating above the hub */}
                   <div className="absolute" style={{ left: "50%", top: "50%", transformStyle: "preserve-3d" }}>
                     <div
                       style={{

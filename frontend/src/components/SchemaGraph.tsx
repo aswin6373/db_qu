@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { ArrowRight, DatabaseZap, KeyRound, Link2, Table2 } from "lucide-react";
-import { DatabaseSchema, SchemaInsights } from "../types/api";
+import { DatabaseColumn, DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
   schema?: DatabaseSchema | null;
@@ -10,14 +11,14 @@ type Props = {
 type Rect = { x: number; y: number; w: number; h: number };
 type Point = { x: number; y: number };
 
-const NODE_W = 208;
-const CELL_W = 256;
-const CELL_H = 64;
+const NODE_W = 236;
+const CELL_W = 284;
 const HEADER_H = 38;
-const ROW_H = 25;
-const MAX_COLUMN_ROWS = 6;
+const ROW_H = 26;
 
 export function SchemaGraph({ schema, insights, title = "Database structure" }: Props) {
+  const [hoveredTable, setHoveredTable] = useState<string | null>(null);
+  const [pinnedTable, setPinnedTable] = useState<string | null>(null);
   const tables = Object.entries(schema?.tables ?? {});
   const tableCount = tables.length;
   const columnCount = tables.reduce((total, [, table]) => total + table.columns.length, 0);
@@ -26,6 +27,21 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
   const edges = insights?.edges ?? [];
 
   const layout = buildLayout(tables, edges);
+
+  const activeTable = pinnedTable ?? hoveredTable;
+  const relatedEdges = activeTable
+    ? edges.filter((edge) => edge.from === activeTable || edge.to === activeTable)
+    : [];
+  const relatedTables = new Set<string>(activeTable ? [activeTable] : []);
+  for (const edge of relatedEdges) {
+    relatedTables.add(edge.from);
+    relatedTables.add(edge.to);
+  }
+  const relatedEdgeKeys = new Set(relatedEdges.map((edge) => `${edge.from}-${edge.column}-${edge.to}`));
+
+  function togglePinned(name: string) {
+    setPinnedTable((current) => (current === name ? null : name));
+  }
 
   return (
     <section className="card p-6">
@@ -46,7 +62,7 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
             {score}/100 readiness
           </span>
           <span className="status-pill">PK primary</span>
-          <span className="status-pill">MUL indexed</span>
+          <span className="status-pill">FK linked</span>
         </div>
       </div>
 
@@ -55,143 +71,127 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
           No schema discovered yet. Save a live MySQL connection to load tables and columns.
         </div>
       ) : (
-        <div className="space-y-5">
-          {/* ER diagram */}
-          <div className="panel-soft overflow-x-auto p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Link2 className="text-brand-600" size={16} />
-              <h3 className="text-sm font-bold text-slate-900">Entity relationships</h3>
-              <span className="ml-auto text-[11px] font-medium text-slate-400">
-                {edges.length} link{edges.length === 1 ? "" : "s"} · lines join foreign keys to their tables
-              </span>
-            </div>
-            {layout.nodes.length > 0 && (
-              <div className="relative mx-auto" style={{ height: layout.height, minWidth: layout.width }}>
-                <svg
-                  className="absolute left-0 top-0"
-                  height={layout.height}
-                  width={layout.width}
-                >
-                  {layout.links.map((link) => {
-                    const path = linkPath(link.from, link.to);
-                    return (
-                      <g key={`${link.edge.from}-${link.edge.column}-${link.edge.to}`}>
-                        <path d={path} fill="none" stroke="rgb(148 163 184 / 0.55)" strokeWidth={1.5} />
-                        <circle cx={link.from.x} cy={link.from.y} r={3} className="fill-brand-500" />
-                        <circle cx={link.to.x} cy={link.to.y} r={3} className="fill-brand-500" />
-                      </g>
-                    );
-                  })}
-                </svg>
-                {layout.nodes.map((node) => (
-                  <article
-                    className={`absolute rounded-xl border bg-white shadow-sm transition hover:shadow-md ${
-                      node.degree > 0 ? "border-brand-200 ring-1 ring-brand-100" : "border-slate-200"
-                    }`}
-                    key={node.name}
-                    style={{ left: node.rect.x, top: node.rect.y, width: node.rect.w, height: node.rect.h }}
-                  >
-                    <header className="flex items-center justify-between gap-2 rounded-t-xl border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-white px-3"
-                      style={{ height: HEADER_H }}
-                    >
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <Table2 className="shrink-0 text-brand-600" size={13} />
-                        <strong className="truncate font-mono text-[12px] text-slate-800" title={node.name}>{node.name}</strong>
-                      </span>
-                      {node.degree > 0 && (
-                        <span className="shrink-0 rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
-                          {node.degree} link{node.degree === 1 ? "" : "s"}
-                        </span>
-                      )}
-                    </header>
-                    <ul className="px-2 py-1.5">
-                      {node.visibleColumns.map((column) => {
-                        const isForeignKey = node.foreignKeyColumns.has(column.name);
-                        return (
-                          <li className="flex items-center justify-between gap-2 px-1" key={column.name} style={{ height: ROW_H - 1 }}>
-                            <span className="truncate font-mono text-[11px] text-slate-600" title={column.name}>{column.name}</span>
-                            <span className="flex shrink-0 items-center gap-1">
-                              {isForeignKey && (
-                                <span className="inline-flex items-center gap-0.5 rounded bg-brand-50 px-1 py-0.5 text-[9px] font-bold text-brand-600">
-                                  <ArrowRight size={8} /> FK
-                                </span>
-                              )}
-                              {column.key === "PRI" && (
-                                <span className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-600">
-                                  <KeyRound size={8} /> PK
-                                </span>
-                              )}
-                            </span>
-                          </li>
-                        );
-                      })}
-                      {node.hiddenColumnCount > 0 && (
-                        <li className="px-1 pt-0.5 text-[10px] font-medium text-slate-400">
-                          +{node.hiddenColumnCount} more column{node.hiddenColumnCount === 1 ? "" : "s"}
-                        </li>
-                      )}
-                    </ul>
-                  </article>
-                ))}
-                {layout.links.map((link) => {
-                  const mid = pathMidpoint(link.from, link.to);
-                  return (
-                    <span
-                      className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[9px] font-medium text-slate-500 shadow-sm"
-                      key={`label-${link.edge.from}-${link.edge.column}-${link.edge.to}`}
-                      style={{ left: mid.x, top: mid.y }}
-                    >
-                      {link.edge.column}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-            {edges.length === 0 && (
-              <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs leading-5 text-slate-400">
-                No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> create the links
-                between tables.
-              </p>
-            )}
+        <div className="panel-soft overflow-x-auto p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Link2 className="text-brand-600" size={16} />
+            <h3 className="text-sm font-bold text-slate-900">Entity relationships</h3>
+            <span className="ml-auto text-[11px] font-medium text-slate-400">
+              {edges.length} link{edges.length === 1 ? "" : "s"} · hover or click a table to trace its relationships
+            </span>
           </div>
-
-          {/* Table cards */}
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tables.map(([tableName, table]) => (
-              <article className="card card-hover overflow-hidden" key={tableName}>
-                <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-2.5">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Table2 className="shrink-0 text-brand-600" size={15} />
-                    <strong className="truncate font-mono text-[13px] text-slate-800">{tableName}</strong>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                    {table.columns.length} cols
+          <div
+            className="relative mx-auto"
+            onClick={() => setPinnedTable(null)}
+            style={{ height: layout.height, minWidth: layout.width, width: layout.width }}
+          >
+            <svg className="absolute left-0 top-0 overflow-visible" height={layout.height} width={layout.width}>
+              {layout.links.map((link) => {
+                const key = `${link.edge.from}-${link.edge.column}-${link.edge.to}`;
+                const isRelated = !activeTable || relatedEdgeKeys.has(key);
+                return (
+                  <g key={key} className={isRelated ? undefined : "opacity-20"}>
+                    <path
+                      d={link.path}
+                      fill="none"
+                      strokeWidth={activeTable && isRelated ? 2.5 : 1.5}
+                      className={activeTable && isRelated ? "stroke-brand-500" : "stroke-slate-400/60"}
+                    />
+                    <circle cx={link.from.x} cy={link.from.y} r={3.5} className={activeTable && isRelated ? "fill-brand-600" : "fill-brand-500"} />
+                    <circle cx={link.to.x} cy={link.to.y} r={3.5} className={activeTable && isRelated ? "fill-brand-600" : "fill-brand-500"} />
+                  </g>
+                );
+              })}
+            </svg>
+            {layout.nodes.map((node) => {
+              const isSelected = node.name === activeTable;
+              const isRelated = !activeTable || relatedTables.has(node.name);
+              return (
+                <article
+                  className={`absolute cursor-pointer rounded-xl border bg-white transition hover:shadow-md ${
+                    isSelected
+                      ? "z-10 border-brand-400 shadow-lg ring-2 ring-brand-200"
+                      : node.degree > 0 && isRelated
+                        ? "border-brand-200 ring-1 ring-brand-100"
+                        : "border-slate-200"
+                  } ${isRelated ? "" : "opacity-30"}`}
+                  key={node.name}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    togglePinned(node.name);
+                  }}
+                  onMouseEnter={() => setHoveredTable(node.name)}
+                  onMouseLeave={() => setHoveredTable(null)}
+                  style={{ left: node.rect.x, top: node.rect.y, width: node.rect.w, height: node.rect.h }}
+                >
+                <header
+                  className="flex items-center justify-between gap-2 rounded-t-xl border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-white px-3"
+                  style={{ height: HEADER_H }}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <Table2 className="shrink-0 text-brand-600" size={13} />
+                    <strong className="truncate font-mono text-[12px] text-slate-800" title={node.name}>{node.name}</strong>
                   </span>
-                </div>
-                <div className="max-h-64 overflow-auto p-2">
-                  {table.columns.map((column) => (
-                    <div
-                      className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-brand-50/50"
-                      key={`${tableName}-${column.name}`}
-                    >
-                      <span className="truncate font-medium text-slate-700">
-                        {column.name}
-                        {column.nullable === false && <span className="ml-1 text-[10px] text-slate-300">*</span>}
+                  <span className="flex shrink-0 items-center gap-1">
+                    {node.degree > 0 && (
+                      <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                        {node.degree} link{node.degree === 1 ? "" : "s"}
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-500">{column.type}</span>
-                        {column.key && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600">
-                            <KeyRound size={10} /> {column.key}
+                    )}
+                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                      {node.columns.length} col{node.columns.length === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                </header>
+                <ul>
+                  {node.columns.map((column) => (
+                    <li
+                      className="flex items-center justify-between gap-2 px-3"
+                      key={column.name}
+                      style={{ height: ROW_H }}
+                    >
+                      <span className="truncate font-mono text-[11px] text-slate-600" title={column.name}>{column.name}</span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <span className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[9px] text-slate-500">{column.type}</span>
+                        {node.foreignKeyColumns.has(column.name) && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-brand-50 px-1 py-0.5 text-[9px] font-bold text-brand-600">
+                            <ArrowRight size={8} /> FK
+                          </span>
+                        )}
+                        {column.key === "PRI" && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-600">
+                            <KeyRound size={8} /> PK
                           </span>
                         )}
                       </span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </article>
-            ))}
+              );
+            })}
+            {layout.links.map((link) => {
+              const mid = bezierMidpoint(link.from, link.to);
+              const key = `${link.edge.from}-${link.edge.column}-${link.edge.to}`;
+              const isRelated = !activeTable || relatedEdgeKeys.has(key);
+              return (
+                <span
+                  className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-1.5 py-0.5 font-mono text-[9px] font-medium shadow-sm ${
+                    activeTable && isRelated ? "border-brand-300 text-brand-700" : "border-slate-200 text-slate-500"
+                  } ${isRelated ? "" : "opacity-20"}`}
+                  key={`label-${key}`}
+                  style={{ left: mid.x, top: mid.y }}
+                >
+                  {link.edge.column}
+                </span>
+              );
+            })}
           </div>
+          {edges.length === 0 && (
+            <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs leading-5 text-slate-400">
+              No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> create the links
+              between tables.
+            </p>
+          )}
         </div>
       )}
     </section>
@@ -199,10 +199,10 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
 }
 
 function buildLayout(
-  tables: [string, { columns: Array<{ name: string; key: string }> }][],
+  tables: [string, { columns: DatabaseColumn[] }][],
   edges: Array<{ from: string; to: string; column: string }>
 ) {
-  if (tables.length === 0) return { nodes: [], links: [], width: 0, height: 0 };
+  if (tables.length === 0) return { nodes: [] as LayoutNode[], links: [] as LayoutLink[], width: 0, height: 0 };
 
   const tableMap = new Map(tables);
   const degree = new Map<string, number>();
@@ -235,34 +235,26 @@ function buildLayout(
 
   const cols = Math.min(3, Math.ceil(Math.sqrt(ordered.length)));
   const positions = new Map<string, Rect>();
-  const heights = new Map<string, number>();
-
-  let maxWidth = 0;
-  let cursorY = 12;
   const rowNodes: string[][] = [];
   for (let index = 0; index < ordered.length; index += cols) {
     rowNodes.push(ordered.slice(index, index + cols));
   }
 
+  let maxWidth = 0;
+  let cursorY = 12;
   for (const row of rowNodes) {
     let rowHeight = 0;
-    for (const name of row) {
-      const columnCount = tableMap.get(name)!.columns.length;
-      const visible = Math.min(columnCount, MAX_COLUMN_ROWS);
-      const hidden = columnCount - visible;
-      const height = HEADER_H + 6 + visible * ROW_H + (hidden > 0 ? 20 : 4);
-      heights.set(name, height);
-      rowHeight = Math.max(rowHeight, height);
-    }
     row.forEach((name, colIndex) => {
+      const height = HEADER_H + tableMap.get(name)!.columns.length * ROW_H + 6;
       positions.set(name, {
         x: colIndex * CELL_W + (CELL_W - NODE_W) / 2,
         y: cursorY,
         w: NODE_W,
-        h: heights.get(name)!
+        h: height
       });
+      rowHeight = Math.max(rowHeight, height);
     });
-    cursorY += rowHeight + 26;
+    cursorY += rowHeight + 30;
     maxWidth = Math.max(maxWidth, row.length * CELL_W);
   }
 
@@ -272,57 +264,96 @@ function buildLayout(
     fkColumns.get(edge.from)!.add(edge.column);
   }
 
-  const nodes = ordered.map((name) => {
-    const columns = tableMap.get(name)!.columns;
-    const visibleColumns = columns.slice(0, MAX_COLUMN_ROWS);
-    return {
-      name,
-      rect: positions.get(name)!,
-      degree: degree.get(name) ?? 0,
-      visibleColumns,
-      hiddenColumnCount: columns.length - visibleColumns.length,
-      foreignKeyColumns: fkColumns.get(name) ?? new Set<string>()
-    };
-  });
+  const nodes: LayoutNode[] = ordered.map((name) => ({
+    name,
+    rect: positions.get(name)!,
+    degree: degree.get(name) ?? 0,
+    columns: tableMap.get(name)!.columns,
+    foreignKeyColumns: fkColumns.get(name) ?? new Set<string>()
+  }));
 
-  const links = edges
-    .map((edge) => {
-      const from = positions.get(edge.from);
-      const to = positions.get(edge.to);
-      if (!from || !to) return null;
-      return { edge, from: anchorPoint(from, to), to: anchorPoint(to, from) };
-    })
-    .filter((link): link is NonNullable<typeof link> => link !== null);
+  const nodeByName = new Map(nodes.map((node) => [node.name, node]));
+  const links: LayoutLink[] = [];
+  for (const edge of edges) {
+    const sourceNode = nodeByName.get(edge.from);
+    const targetNode = nodeByName.get(edge.to);
+    if (!sourceNode || !targetNode) continue;
+    const from = anchor(sourceNode, targetNode, edge.column);
+    const to = anchor(targetNode, sourceNode, primaryKeyOf(targetNode));
+    links.push(buildLink(edge, from, to));
+  }
 
   return { nodes, links, width: maxWidth, height: cursorY };
 }
 
-function anchorPoint(node: Rect, toward: Rect): Point {
-  const centerX = node.x + node.w / 2;
-  const centerY = node.y + node.h / 2;
-  const targetX = toward.x + toward.w / 2;
-  const targetY = toward.y + toward.h / 2;
-  if (Math.abs(targetX - centerX) > Math.abs(targetY - centerY)) {
-    return targetX > centerX ? { x: node.x + node.w, y: centerY } : { x: node.x, y: centerY };
+type LayoutNode = {
+  name: string;
+  rect: Rect;
+  degree: number;
+  columns: DatabaseColumn[];
+  foreignKeyColumns: Set<string>;
+};
+
+type LayoutLink = {
+  edge: { from: string; to: string; column: string };
+  from: Point;
+  to: Point;
+  path: string;
+};
+
+function primaryKeyOf(node: LayoutNode): string {
+  const primary = node.columns.find((column) => column.key === "PRI");
+  return primary?.name ?? node.columns[0]?.name ?? "";
+}
+
+function rowY(node: LayoutNode, columnName: string, fallback: "top" | "bottom"): number {
+  const index = node.columns.findIndex((column) => column.name === columnName);
+  if (index >= 0) return node.rect.y + HEADER_H + index * ROW_H + ROW_H / 2;
+  return fallback === "top" ? node.rect.y + HEADER_H / 2 : node.rect.y + node.rect.h - 3;
+}
+
+function anchor(node: LayoutNode, toward: LayoutNode, columnName: string): Point {
+  const y = rowY(node, columnName, "top");
+  const centerX = node.rect.x + node.rect.w / 2;
+  const towardCenterX = toward.rect.x + toward.rect.w / 2;
+  if (Math.abs(towardCenterX - centerX) >= 60) {
+    return towardCenterX > centerX ? { x: node.rect.x + node.rect.w, y } : { x: node.rect.x, y };
   }
-  return targetY > centerY ? { x: centerX, y: node.y + node.h } : { x: centerX, y: node.y };
+  const towardCenterY = toward.rect.y + toward.rect.h / 2;
+  const centerY = node.rect.y + node.rect.h / 2;
+  return towardCenterY > centerY ? { x: centerX, y: node.rect.y + node.rect.h } : { x: centerX, y: node.rect.y };
 }
 
-function linkPath(from: Point, to: Point): string {
+function buildLink(edge: { from: string; to: string; column: string }, from: Point, to: Point): LayoutLink {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const control1 = { x: from.x + dx * 0.4, y: from.y + dy * 0.1 };
-  const control2 = { x: from.x + dx * 0.6, y: to.y - dy * 0.1 };
-  return `M ${from.x} ${from.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${to.x} ${to.y}`;
+  let path: string;
+  if (Math.abs(dx) >= 60) {
+    const bend = Math.max(40, Math.min(120, Math.abs(dx) * 0.5)) * Math.sign(dx);
+    path = `M ${from.x} ${from.y} C ${from.x + bend} ${from.y}, ${to.x - bend} ${to.y}, ${to.x} ${to.y}`;
+  } else {
+    const bend = Math.max(30, Math.min(90, Math.abs(dy) * 0.5)) * Math.sign(dy || 1);
+    path = `M ${from.x} ${from.y} C ${from.x} ${from.y + bend}, ${to.x} ${to.y - bend}, ${to.x} ${to.y}`;
+  }
+  return { edge, from, to, path };
 }
 
-function pathMidpoint(from: Point, to: Point): Point {
+function bezierMidpoint(from: Point, to: Point): Point {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const control1 = { x: from.x + dx * 0.4, y: from.y + dy * 0.1 };
-  const control2 = { x: from.x + dx * 0.6, y: to.y - dy * 0.1 };
+  let c1: Point;
+  let c2: Point;
+  if (Math.abs(dx) >= 60) {
+    const bend = Math.max(40, Math.min(120, Math.abs(dx) * 0.5)) * Math.sign(dx);
+    c1 = { x: from.x + bend, y: from.y };
+    c2 = { x: to.x - bend, y: to.y };
+  } else {
+    const bend = Math.max(30, Math.min(90, Math.abs(dy) * 0.5)) * Math.sign(dy || 1);
+    c1 = { x: from.x, y: from.y + bend };
+    c2 = { x: to.x, y: to.y - bend };
+  }
   return {
-    x: (from.x + 3 * control1.x + 3 * control2.x + to.x) / 8,
-    y: (from.y + 3 * control1.y + 3 * control2.y + to.y) / 8
+    x: (from.x + 3 * c1.x + 3 * c2.x + to.x) / 8,
+    y: (from.y + 3 * c1.y + 3 * c2.y + to.y) / 8
   };
 }

@@ -33,6 +33,12 @@ function nodeHeight(columnCount: number): number {
 const DB_W = 86;
 const DB_H = 104;
 
+const KEY_BADGES: Record<string, { label: string; className: string }> = {
+  PRI: { label: "PK", className: "bg-amber-300/15 text-amber-300" },
+  UNI: { label: "UQ", className: "bg-violet-300/15 text-violet-300" },
+  MUL: { label: "IX", className: "bg-teal/15 text-teal-soft" }
+};
+
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -287,11 +293,25 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                               {pkCount > 0 && <KeyRound className="shrink-0 text-amber-300" size={10} />}
                             </div>
                             <ul className="space-y-0.5 py-1">
-                              {table.columns.slice(0, 4).map((column) => (
-                                <li className="truncate font-mono text-[9px] leading-4 text-slate-400 sm:text-[10px]" key={column.name}>
-                                  {column.name}
-                                </li>
-                              ))}
+                              {table.columns.slice(0, 4).map((column) => {
+                                const badge = KEY_BADGES[column.key.toUpperCase()] ?? null;
+                                const dataType = column.type.split("(")[0].toLowerCase();
+                                return (
+                                  <li className="flex items-center justify-between gap-1 font-mono text-[9px] leading-4 sm:text-[10px]" key={column.name}>
+                                    <span className="truncate text-slate-400">{column.name}</span>
+                                    <span className="flex shrink-0 items-center gap-1">
+                                      {dataType && (
+                                        <span className="text-[8px] uppercase tracking-wide text-slate-500 sm:text-[9px]">{dataType}</span>
+                                      )}
+                                      {badge && (
+                                        <span className={`rounded px-1 text-[7px] font-bold uppercase leading-[12px] ${badge.className}`}>
+                                          {badge.label}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </li>
+                                );
+                              })}
                               {table.columns.length > 4 && (
                                 <li className="text-[9px] font-medium text-teal-soft/70 sm:text-[10px]">
                                   +{table.columns.length - 4} more

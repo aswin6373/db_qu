@@ -31,12 +31,6 @@ const DB_W = 96;
 const DB_H = 114;
 
 
-/* Pedestal puck under every table card (drawn flat on the floor plane).
-   This is a true circle — the world's rotateX/rotateZ + perspective do
-   100% of the squashing, so we never hand-draw an ellipse here. */
-const PED_D = 96;
-
-
 const KEY_BADGES: Record<string, { label: string; className: string }> = {
   PRI: { label: "PK", className: "bg-amber-100 text-amber-600 ring-1 ring-amber-200/70" },
   UNI: { label: "UQ", className: "bg-violet-100 text-violet-700 ring-1 ring-violet-200/70" },
@@ -208,50 +202,69 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   />
 
 
-                  {/* connector lines — nothing shows by default. Hovering or
-                      clicking a table reveals only its own links: one back to
-                      the hub, plus one per related table. */}
+                  {/* hub spokes — every table always has a line back to the
+                      central database. The highlighted table's spoke brightens;
+                      unrelated spokes fade while something is highlighted. */}
+                  <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                    <defs>
+                      <linearGradient id="tube-core" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#8fe8db" />
+                        <stop offset="50%" stopColor="#d9fff8" />
+                        <stop offset="100%" stopColor="#8fe8db" />
+                      </linearGradient>
+                    </defs>
+                    {tables.map(([name], index) => {
+                      const [x, y] = layout[index];
+                      const isActive = active === name;
+                      const dim = activeSet !== null && !activeSet.has(name);
+                      return (
+                        <g
+                          key={`spoke-${name}`}
+                          opacity={dim ? 0.12 : 1}
+                          style={{ transition: "opacity 200ms ease" }}
+                        >
+                          <line stroke="#46c8b8" strokeWidth={isActive ? 3.2 : 2.4} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 0.3 : 0.12} strokeLinecap="round" />
+                          <line stroke="#6fd8ca" strokeWidth={isActive ? 1.8 : 1.2} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 0.95 : 0.55} strokeLinecap="round" />
+                          <line
+                            className="edge-line"
+                            stroke="url(#tube-core)"
+                            strokeWidth={0.8}
+                            x1={50} x2={x} y1={50} y2={y}
+                            strokeDasharray="4 6"
+                            strokeLinecap="round"
+                          />
+                        </g>
+                      );
+                    })}
+                  </svg>
+
+
+                  {/* relationship lines — only shown while a table is
+                      highlighted, and only between tables that are actually
+                      related; unrelated tables never get a line between them. */}
                   {active && slotByName.has(active) && (
                     <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      <defs>
-                        <linearGradient id="tube-core" x1="0" x2="1" y1="0" y2="1">
-                          <stop offset="0%" stopColor="#8fe8db" />
-                          <stop offset="50%" stopColor="#d9fff8" />
-                          <stop offset="100%" stopColor="#8fe8db" />
-                        </linearGradient>
-                      </defs>
-                      {(() => {
+                      {edges.map((edge) => {
+                        if (edge.from !== active && edge.to !== active) return null;
+                        const other = edge.from === active ? edge.to : edge.from;
+                        const slot = slotByName.get(other);
+                        if (!slot) return null;
                         const [ax, ay] = slotByName.get(active)!;
-                        const links: Array<{ key: string; x2: number; y2: number }> = [{ key: "hub", x2: ax, y2: ay }];
-                        edges.forEach((edge) => {
-                          if (edge.from !== active && edge.to !== active) return;
-                          const other = edge.from === active ? edge.to : edge.from;
-                          const slot = slotByName.get(other);
-                          if (!slot) return;
-                          links.push({ key: `${edge.from}-${edge.column}-${edge.to}`, x2: slot[0], y2: slot[1] });
-                        });
-                        // first link is hub -> active; the rest are active -> neighbor
-                        return links.map((link, index) => {
-                          const [x1, y1] = index === 0 ? [50, 50] : [ax, ay];
-                          return (
-                            <g key={link.key}>
-                              <line stroke="#46c8b8" strokeWidth={3.2} x1={x1} x2={link.x2} y1={y1} y2={link.y2} opacity={0.18} strokeLinecap="round" />
-                              <line stroke="#6fd8ca" strokeWidth={1.6} x1={x1} x2={link.x2} y1={y1} y2={link.y2} opacity={0.85} strokeLinecap="round" />
-                              <line
-                                className="edge-line"
-                                stroke="url(#tube-core)"
-                                strokeWidth={1}
-                                x1={x1}
-                                x2={link.x2}
-                                y1={y1}
-                                y2={link.y2}
-                                strokeDasharray="4 6"
-                                strokeLinecap="round"
-                              />
-                            </g>
-                          );
-                        });
-                      })()}
+                        return (
+                          <g key={`${edge.from}-${edge.column}-${edge.to}`}>
+                            <line stroke="#46c8b8" strokeWidth={2.6} x1={ax} x2={slot[0]} y1={ay} y2={slot[1]} opacity={0.22} strokeLinecap="round" />
+                            <line stroke="#6fd8ca" strokeWidth={1.3} x1={ax} x2={slot[0]} y1={ay} y2={slot[1]} opacity={0.9} strokeLinecap="round" />
+                            <line
+                              className="edge-line"
+                              stroke="url(#tube-core)"
+                              strokeWidth={0.8}
+                              x1={ax} x2={slot[0]} y1={ay} y2={slot[1]}
+                              strokeDasharray="4 6"
+                              strokeLinecap="round"
+                            />
+                          </g>
+                        );
+                      })}
                     </svg>
                   )}
 
@@ -284,51 +297,6 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                       />
                     </span>
                   </div>
-
-
-                  {/* pedestal pucks under each table card (flat on the floor).
-                      Drawn as true circles in a square box — the world's
-                      rotateX/rotateZ + perspective do all the foreshortening,
-                      the same way they already flatten the floor-grid squares. */}
-                  {tables.map(([name], index) => {
-                    const [x, y] = layout[index];
-                    const dim = activeSet !== null && !activeSet.has(name);
-                    return (
-                      <span
-                        key={`ped-${name}`}
-                        className="pointer-events-none absolute"
-                        style={{
-                          left: `${x}%`,
-                          top: `${y}%`,
-                          width: PED_D,
-                          height: PED_D,
-                          transform: "translate(-50%, -50%)",
-                          opacity: dim ? 0.25 : 1,
-                          transition: "opacity 200ms ease"
-                        }}
-                      >
-                        <svg height={PED_D} viewBox="0 0 96 96" width={PED_D}>
-                          <defs>
-                            <linearGradient id={`ped-side-${index}`} x1="0" x2="0" y1="0" y2="1">
-                              <stop offset="0%" stopColor="#c7d5da" />
-                              <stop offset="100%" stopColor="#9db0b9" />
-                            </linearGradient>
-                            <radialGradient id={`ped-top-${index}`} cx="35%" cy="30%" r="75%">
-                              <stop offset="0%" stopColor="#fbfdfd" />
-                              <stop offset="100%" stopColor="#dbe6ea" />
-                            </radialGradient>
-                          </defs>
-                          {/* rim/thickness: same circle, nudged down a few units
-                              in LOCAL (pre-transform) space — after rotateX this
-                              reads as a thin cylinder edge, never a hand-warped arc */}
-                          <circle cx="48" cy="53" r="38" fill={`url(#ped-side-${index})`} />
-                          {/* top face — a true circle, no rx/ry guessing */}
-                          <circle cx="48" cy="45" r="38" fill={`url(#ped-top-${index})`} stroke="#b7c9d0" strokeWidth="1.5" />
-                          <circle cx="48" cy="45" r="25" fill="rgba(47,158,151,0.10)" />
-                        </svg>
-                      </span>
-                    );
-                  })}
 
 
                   {/* central database — billboarded, floating just above the hub slab */}

@@ -124,23 +124,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         eyebrow="Data sources"
         title="Database connection"
         description="Register your MySQL database, verify access, and cache schema metadata for safer AI-generated SQL."
-        action={
-          <div className="flex gap-2">
-            {hasConnection && isEditing && (
-              <button className="btn-secondary" onClick={cancelEdit} type="button">
-                Cancel
-              </button>
-            )}
-            {hasConnection && !isEditing && (
-              <button className="btn-accent" onClick={startEdit} type="button">
-                <PlugZap size={15} /> Replace database
-              </button>
-            )}
-            <button className="btn-secondary" disabled={isRefreshing} onClick={onRefresh} type="button">
-              <RefreshCw size={15} /> Refresh
-            </button>
-          </div>
-        }
       />
 
       {feedback && (
@@ -167,6 +150,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
             insight={insights[connection.id]}
             isRefreshing={isRefreshing}
             onRefreshSchema={() => refreshConnection(connection.id)}
+            onReplace={startEdit}
           />
         )
       )}
@@ -186,12 +170,14 @@ function ConnectionCard({
   connection,
   insight,
   isRefreshing,
-  onRefreshSchema
+  onRefreshSchema,
+  onReplace
 }: {
   connection: Connection;
   insight?: SchemaInsights;
   isRefreshing: boolean;
   onRefreshSchema: () => void;
+  onReplace: () => void;
 }) {
   return (
     <article className="card animate-fade-up overflow-hidden">
@@ -222,6 +208,9 @@ function ConnectionCard({
             {isRefreshing ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} />}
             Refresh schema
           </button>
+          <button className="btn-accent" onClick={onReplace} type="button">
+            <PlugZap size={14} /> Replace database
+          </button>
         </div>
       </div>
 
@@ -232,15 +221,13 @@ function ConnectionCard({
         <DetailField label="Username" value={connection.username} />
       </div>
 
-      <p className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-3 text-xs text-slate-400">
-        <Info size={13} />
-        <span>One database per workspace. Replacing keeps your query history.</span>
-        {connection.ssl_mode && connection.ssl_mode !== "PREFERRED" && (
+      {connection.ssl_mode && connection.ssl_mode !== "PREFERRED" && (
+        <p className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-3 text-xs text-slate-400">
           <span className="rounded bg-brand-50 px-1.5 py-0.5 font-medium text-brand-700">
             SSL {connection.ssl_mode.toLowerCase()}
           </span>
-        )}
-      </p>
+        </p>
+      )}
     </article>
   );
 }

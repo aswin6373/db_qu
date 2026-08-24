@@ -95,6 +95,7 @@ export function App() {
   }
 
   function finishOnboarding() {
+    setBooted(false);
     setOnboarding(false);
     setActive("dashboard");
   }

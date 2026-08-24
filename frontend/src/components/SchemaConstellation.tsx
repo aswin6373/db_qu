@@ -9,30 +9,32 @@ type Props = {
   title?: string;
 };
 
-/* Safe-zone ring around the scene centre (% of the viewport-sized world).
-   The DB cylinder sits at (50,50), so no node goes there. */
+/* Anchor points on the floor plane (% of the viewport-sized world). Solved
+   numerically so the projected (billboard) cards form a roomy 3-3-2 grid
+   around the DB cylinder with clear gaps at every tilt/parallax extreme —
+   top row, side pair, bottom row, then the two screen-centre fill slots. */
 const SLOTS: Array<[number, number]> = [
-  [38, 18],
-  [62, 22],
-  [74, 42],
-  [66, 68],
-  [42, 76],
-  [26, 60],
-  [24, 34],
-  [33, 47]
+  [58, -25.2],
+  [101.2, 25.8],
+  [24, 11],
+  [81.7, 79.3],
+  [11, 61.2],
+  [48.9, 106.1],
+  [79.6, 0.3],
+  [29.1, 85.1]
 ];
 
-const NODE_W = 150;
-const MAX_VISIBLE_COLUMNS = 5;
+const NODE_W = 144;
+const MAX_VISIBLE_COLUMNS = 4;
 const DB_W = 86;
 const DB_H = 104;
 
-/* Exact card height for its content: 6px top pad + ~22px header + 8px list
+/* Exact card height for its content: 6px top pad + ~20px header + 8px list
    padding + 4px bottom pad + 16px per visible row (columns + optional
-   "+n more" line), with a pixel of slack so nothing clips. */
+   "+n more" line), so nothing clips. */
 function nodeHeight(columnCount: number): number {
   const rows = Math.min(columnCount, MAX_VISIBLE_COLUMNS) + (columnCount > MAX_VISIBLE_COLUMNS ? 1 : 0);
-  return 40 + rows * 16;
+  return 38 + rows * 16;
 }
 
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
@@ -85,9 +87,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   const activeSet = hovered ? neighborsOf(hovered) : null;
 
   /* Isometric base + cursor parallax. Billboard = exact inverse of the world
-     rotation so upright cards always face the viewer. */
-  const rotX = 54 - tilt.y * 7;
-  const rotZ = -40 + tilt.x * 10;
+     rotation so upright cards always face the viewer. Kept gentle so the
+     verified slot layout keeps its gaps at the extremes. */
+  const rotX = 54 - tilt.y * 4;
+  const rotZ = -40 + tilt.x * 6;
   const billboard = `rotateZ(${-rotZ}deg) rotateX(${-rotX}deg)`;
 
   const handleMove = (event: MouseEvent<HTMLDivElement>) => {
@@ -159,8 +162,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(7,17,32,0.96) 74%)" }}
                   />
 
-                  {/* relationship lines & particles, flat on the floor plane */}
-                  <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  {/* relationship lines & particles, flat on the floor plane.
+                      Canvas spans -50%..150% so slots outside the frame
+                      (negative / >100%) still draw their spokes fully. */}
+                  <svg className="absolute inset-[-50%]" preserveAspectRatio="none" viewBox="0 0 200 200">
                     {tables.map(([name], index) => {
                       const [x, y] = SLOTS[index % SLOTS.length];
                       const dim = activeSet !== null && !activeSet.has(name);
@@ -170,10 +175,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                           opacity={dim ? 0.05 : 0.22}
                           stroke="#2f9e97"
                           strokeWidth={0.18}
-                          x1={50}
-                          x2={x}
-                          y1={50}
-                          y2={y}
+                          x1={100}
+                          x2={x + 50}
+                          y1={100}
+                          y2={y + 50}
                         />
                       );
                     })}
@@ -181,7 +186,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                       const from = slotByName.get(edge.from);
                       const to = slotByName.get(edge.to);
                       if (!from || !to) return null;
-                      const path = `M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}`;
+                      const path = `M ${from[0] + 50} ${from[1] + 50} L ${to[0] + 50} ${to[1] + 50}`;
                       const dim = activeSet !== null && !(activeSet.has(edge.from) && activeSet.has(edge.to));
                       return (
                         <g key={`${edge.from}-${edge.column}-${edge.to}`} opacity={dim ? 0.12 : 1}>

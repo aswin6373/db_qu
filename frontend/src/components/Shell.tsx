@@ -145,8 +145,12 @@ function SidebarContent({
       </div>
 
       {/* New chat — top of the sidebar */}
-      <button className={`btn-accent w-full ${orgName ? "mt-4" : "mt-6"}`} onClick={startNewChat} type="button">
-        <MessageSquarePlus size={16} /> New chat
+      <button
+        className={`focus-ring relative flex w-full items-center gap-3 rounded-lg bg-teal/15 px-3 py-2.5 text-left text-sm font-medium text-teal-soft shadow-md shadow-teal/20 transition hover:bg-teal/20 hover:text-white ${orgName ? "mt-4" : "mt-6"}`}
+        onClick={startNewChat}
+        type="button"
+      >
+        <MessageSquarePlus size={17} /> New chat
       </button>
 
       <nav className="mt-4 space-y-1">

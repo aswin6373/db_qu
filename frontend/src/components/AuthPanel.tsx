@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Database, Github, Loader2, LogIn, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 
@@ -84,12 +84,7 @@ export function AuthPanel({ onToken }: Props) {
               <Sparkles size={14} /> Now in public beta
             </p>
             <h1 className="mt-6 text-[2.7rem] font-extrabold leading-[1.08] tracking-tight text-navy sm:text-6xl xl:text-[4.4rem]">
-              The{" "}
-              <span className="relative inline-block text-teal">
-                smartest
-                <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
-              </span>{" "}
-              SQL Agent
+              The <TypewriterWord /> SQL Agent
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-navy-soft lg:mx-0">
               Natural language <Dot /> Validated SQL <Dot /> Guarded writes <Dot /> Schema-aware
@@ -282,5 +277,42 @@ function LandingFeature({ icon, title, text }: { icon: React.ReactNode; title: s
       <h3 className="mt-3 text-[15px] font-bold text-navy">{title}</h3>
       <p className="mt-1 text-[13px] leading-5 text-navy-soft">{text}</p>
     </div>
+  );
+}
+
+const TYPEWRITER_WORDS = ["smartest", "safest", "fastest", "easiest"];
+
+function TypewriterWord() {
+  const [wordIndex, setWordIndex] = useState(0);
+  const [text, setText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const word = TYPEWRITER_WORDS[wordIndex % TYPEWRITER_WORDS.length];
+    let delay: number;
+    if (isDeleting) {
+      if (text.length === 0) {
+        setWordIndex((index) => (index + 1) % TYPEWRITER_WORDS.length);
+        setIsDeleting(false);
+        return;
+      }
+      delay = 45;
+    } else if (text.length === word.length) {
+      delay = 1900;
+    } else {
+      delay = 90;
+    }
+    const timeout = window.setTimeout(() => {
+      setText(isDeleting ? word.slice(0, text.length - 1) : word.slice(0, text.length + 1));
+      if (text.length === word.length) setIsDeleting(true);
+    }, delay);
+    return () => window.clearTimeout(timeout);
+  }, [text, isDeleting, wordIndex]);
+
+  return (
+    <span className="relative inline-block text-teal">
+      {text}
+      <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
+    </span>
   );
 }

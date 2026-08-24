@@ -25,6 +25,24 @@ app = FastAPI(title="QueryMind API")
 settings = get_settings()
 
 
+def ensure_schema_upgrades() -> None:
+    statements = [
+        "ALTER TABLE chat_sessions ADD COLUMN updated_at TIMESTAMP NULL",
+        "ALTER TABLE messages ADD COLUMN query_id INTEGER",
+        "ALTER TABLE messages ADD COLUMN result_json TEXT",
+    ]
+    with engine.begin() as connection:
+        for statement in statements:
+            try:
+                connection.execute(text(statement))
+                logger.info("schema_upgrade applied=%s", statement)
+            except Exception:
+                pass
+
+
+ensure_schema_upgrades()
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     MAX_TRACKED_IPS = 10_000
     HEALTH_PATHS = {"/health", "/health/readiness"}

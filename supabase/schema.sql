@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
   organization_id INTEGER NOT NULL REFERENCES organizations(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
   title VARCHAR(255) NOT NULL DEFAULT 'New chat',
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS ix_chat_sessions_id ON chat_sessions(id);
@@ -49,6 +50,8 @@ CREATE TABLE IF NOT EXISTS messages (
   role VARCHAR(20) NOT NULL,
   content TEXT NOT NULL,
   sql TEXT,
+  query_id INTEGER,
+  result_json TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
 

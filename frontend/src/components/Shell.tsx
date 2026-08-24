@@ -118,7 +118,11 @@ export function Shell({ active, onActive, onLogout, orgName, children }: Props) 
             {orgName && <p className="text-xs font-medium text-navy-soft/70">Workspace · {orgName}</p>}
           </div>
         </div>
-        <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">{children}</div>
+        {active === "chat" ? (
+          <div className="h-[calc(100vh-3.5rem)]">{children}</div>
+        ) : (
+          <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">{children}</div>
+        )}
       </main>
     </div>
   );

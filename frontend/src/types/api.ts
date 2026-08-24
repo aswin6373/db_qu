@@ -57,3 +57,21 @@ export type Dashboard = {
     rows_returned?: number;
   }>;
 };
+
+export type ChatSession = {
+  id: number;
+  title: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  message_count: number;
+};
+
+export type ChatMessage = {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  sql?: string | null;
+  query_id?: number | null;
+  result?: QueryResponse | null;
+  created_at?: string | null;
+};

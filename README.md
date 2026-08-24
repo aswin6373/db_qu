@@ -76,3 +76,9 @@ LLM_PROVIDER=gemini
 ```
 
 Do not leave `FERNET_KEY` empty in production. It is required to decrypt saved database credentials after restarts.
+
+## Deployment
+
+- Frontend: Vercel
+- Backend API: Render (auto-deploys on every push to `main`)
+- Platform database: Supabase PostgreSQL

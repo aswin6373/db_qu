@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 type Props = {
   values: number[];
   stroke?: string;
@@ -7,6 +9,8 @@ type Props = {
 };
 
 export function Sparkline({ values, stroke = "#2f9e97", fillFrom = "rgba(47,158,151,0.25)", height = 44, className }: Props) {
+  const rawId = useId();
+  const gradientId = `spark-${rawId.replace(/[^a-z0-9]/gi, "")}`;
   const width = 100;
   const series = values.length > 0 ? values : [0, 0];
   const max = Math.max(...series, 1);
@@ -18,9 +22,14 @@ export function Sparkline({ values, stroke = "#2f9e97", fillFrom = "rgba(47,158,
     const y = height - 4 - ((value - min) / range) * (height - 10);
     return [x, y] as const;
   });
-  const line = points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(" ");
-  const area = `${line} ${width},${height} 0,${height}`;
-  const gradientId = `spark-${stroke.replace(/[^a-z0-9]/gi, "")}`;
+  const line = points.reduce((acc, point, index) => {
+    if (index === 0) return `M ${point[0].toFixed(2)},${point[1].toFixed(2)}`;
+    const prev = points[index - 1];
+    const midX = ((prev[0] + point[0]) / 2).toFixed(2);
+    return `${acc} Q ${midX},${prev[1].toFixed(2)} ${point[0].toFixed(2)},${point[1].toFixed(2)}`;
+  }, "");
+  const area = `${line} L ${width},${height} L 0,${height} Z`;
+  const last = points[points.length - 1];
 
   return (
     <svg className={className} preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`} width="100%" height={height}>
@@ -30,11 +39,9 @@ export function Sparkline({ values, stroke = "#2f9e97", fillFrom = "rgba(47,158,
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </linearGradient>
       </defs>
-      <polygon fill={`url(#${gradientId})`} points={area} />
-      <polyline fill="none" points={line} stroke={stroke} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-      {points.length > 0 && (
-        <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} fill={stroke} r="2.4" />
-      )}
+      <path d={area} fill={`url(#${gradientId})`} />
+      <path d={line} fill="none" stroke={stroke} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      {last && <circle cx={last[0]} cy={last[1]} fill={stroke} r="2.4" />}
     </svg>
   );
 }

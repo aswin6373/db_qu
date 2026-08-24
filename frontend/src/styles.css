@@ -139,6 +139,36 @@ select {
   background-size: 26px 26px;
 }
 
+/* 3D schema constellation */
+.scene-viewport {
+  perspective: 1400px;
+}
+.floor-grid {
+  background-image: linear-gradient(rgba(124, 194, 188, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 194, 188, 0.09) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+@keyframes node-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.node-float {
+  animation: node-float 6.5s ease-in-out infinite;
+}
+@keyframes edge-flow {
+  to {
+    stroke-dashoffset: -30;
+  }
+}
+.edge-line {
+  animation: edge-flow 3.2s linear infinite;
+}
+
 /* Skeleton shimmer */
 .skeleton {
   @apply relative overflow-hidden rounded-lg bg-slate-200/60;

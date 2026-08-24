@@ -48,9 +48,6 @@ select {
   .card {
     @apply rounded-xl border border-slate-200/80 bg-white shadow-card;
   }
-  .card-dark {
-    @apply rounded-2xl border border-white/10 bg-[#0d1a2b] shadow-lift;
-  }
   .card-hover {
     @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
   }
@@ -144,8 +141,8 @@ select {
   perspective: 1400px;
 }
 .floor-grid {
-  background-image: linear-gradient(rgba(124, 194, 188, 0.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(124, 194, 188, 0.09) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(47, 158, 151, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 158, 151, 0.14) 1px, transparent 1px);
   background-size: 36px 36px;
 }
 @keyframes node-float {

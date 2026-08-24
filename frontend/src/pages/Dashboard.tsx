@@ -122,9 +122,9 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
         <SchemaConstellation insights={primaryInsights} schema={primarySchema} title={`${primaryConnection?.name ?? "Workspace"} · schema relationships`} />
 
         <div className="flex flex-col gap-4">
-          <section className="card-dark flex-1 p-5 sm:p-6">
+          <section className="card flex-1 p-5 sm:p-6">
             <SectionTitle icon={<Activity size={15} />} subtitle="Rows returned by your most recent AI queries." title="Query result volume" />
-            <div className="mt-4 rounded-xl border border-white/5 bg-[#091420] p-3">
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
               <Sparkline height={90} values={rowsSeries.length ? rowsSeries : [0, 0, 0]} />
               <div className="mt-2 flex justify-between text-[10px] font-medium uppercase tracking-wider text-slate-500">
                 <span>oldest</span>
@@ -140,7 +140,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             </div>
           </section>
 
-          <section className="card-dark p-5 sm:p-6">
+          <section className="card p-5 sm:p-6">
             <SectionTitle icon={<ShieldCheck size={15} />} subtitle="Active on every query in this workspace." title="Production guardrails" />
             <div className="mt-4 grid gap-2">
               <Guardrail detail="Every statement parsed & schema-checked" label="SQL validation" />
@@ -152,7 +152,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       </div>
 
       {/* Activity logs */}
-      <section className="card-dark p-5 sm:p-6">
+      <section className="card p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle icon={<Activity size={15} />} subtitle="The five most recent AI-generated queries in this organization." title="Recent activity logs" />
           {statuses.length > 1 && (
@@ -161,8 +161,8 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                 <button
                   className={`rounded-full border px-3 py-1 text-[11px] font-semibold capitalize transition ${
                     statusFilter === status
-                      ? "border-teal/40 bg-teal/15 text-teal-soft"
-                      : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:text-slate-200"
+                      ? "border-brand-200 bg-brand-50 text-brand-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
                   }`}
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -174,33 +174,33 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             </div>
           )}
         </div>
-        <div className="mt-4 divide-y divide-white/5">
+        <div className="mt-4 divide-y divide-slate-100">
           {visibleActivity.map((item) => (
-            <div className="group flex flex-col gap-2 py-3.5 transition first:pt-0 last:pb-0 hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between" key={item.id}>
+            <div className="group flex flex-col gap-2 py-3.5 transition first:pt-0 last:pb-0 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between" key={item.id}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium text-slate-200">{item.question}</p>
+                  <p className="truncate text-sm font-medium text-slate-800">{item.question}</p>
                   {item.created_at && (
-                    <span className="shrink-0 font-mono text-[11px] text-slate-500">{timeAgo(item.created_at)}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-slate-400">{timeAgo(item.created_at)}</span>
                   )}
                 </div>
-                <code className="mt-1 block max-w-xl truncate rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs text-slate-500">
+                <code className="mt-1 block max-w-xl truncate rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">
                   {item.sql}
                 </code>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {item.rows_returned != null && (
-                  <span className="rounded-md border border-white/5 bg-white/[0.04] px-2 py-0.5 font-mono text-[11px] font-medium text-slate-400">
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-500">
                     {item.rows_returned} rows
                   </span>
                 )}
-                <DarkStatusPill status={item.status} />
+                <StatusPill status={item.status} />
                 <button
                   aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
                   className={`grid h-7 w-7 place-items-center rounded-md border transition ${
                     copiedId === item.id
-                      ? "border-teal/40 bg-teal/15 text-teal-soft"
-                      : "border-transparent text-slate-500 opacity-0 hover:border-white/10 hover:text-slate-200 group-hover:opacity-100"
+                      ? "border-brand-200 bg-brand-50 text-brand-700"
+                      : "border-transparent text-slate-400 opacity-0 hover:border-slate-200 hover:text-slate-600 group-hover:opacity-100"
                   }`}
                   onClick={() => copySql(item.id, item.sql)}
                   title="Copy SQL"
@@ -212,7 +212,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             </div>
           ))}
           {visibleActivity.length === 0 && (
-            <p className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
               No query activity yet. Start a conversation in AI Chat.
             </p>
           )}
@@ -268,15 +268,15 @@ function KpiCard({
   const isNumber = typeof value === "number";
   const shown = useCountUp(isNumber ? (value as number) : 0);
   return (
-    <div className="card-dark group relative animate-fade-up overflow-hidden p-5">
+    <div className="card card-hover group relative animate-fade-up overflow-hidden p-5">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal/70 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-2">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal/15 text-teal-soft">{icon}</span>
-        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-50 text-brand-600">{icon}</span>
+        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
       </div>
-      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-white tabular-nums">
+      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
         {isNumber ? shown.toLocaleString() : value}
-        {suffix && <span className="ml-0.5 text-sm font-semibold text-slate-500">{suffix}</span>}
+        {suffix && <span className="ml-0.5 text-sm font-semibold text-slate-400">{suffix}</span>}
       </strong>
       {caption && <p className="mt-1.5 truncate text-[11px] font-medium text-slate-500">{caption}</p>}
       {footer && <div className="mt-2">{footer}</div>}
@@ -297,7 +297,7 @@ function ReadinessRing({ score }: { score: number }) {
   const stroke = clamped >= 70 ? "#34d399" : clamped >= 40 ? "#fbbf24" : "#fb7185";
   return (
     <svg height="44" viewBox="0 0 40 40" width="44">
-      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(148,163,184,0.16)" strokeWidth="3.6" />
+      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(148,163,184,0.3)" strokeWidth="3.6" />
       <circle
         cx="20"
         cy="20"
@@ -310,7 +310,7 @@ function ReadinessRing({ score }: { score: number }) {
         strokeWidth="3.6"
         style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%", transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1), stroke 300ms" }}
       />
-      <text dominantBaseline="central" fill="#e2e8f0" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
+      <text dominantBaseline="central" fill="#334155" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
         {clamped}
       </text>
     </svg>
@@ -319,9 +319,9 @@ function ReadinessRing({ score }: { score: number }) {
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2.5 text-center">
-      <strong className="block font-mono text-lg font-bold tabular-nums text-white">{value.toLocaleString()}</strong>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center">
+      <strong className="block font-mono text-lg font-bold tabular-nums text-slate-900">{value.toLocaleString()}</strong>
+      <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
     </div>
   );
 }
@@ -330,8 +330,8 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
   return (
     <div>
       <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal/15 text-teal-soft">{icon}</span>
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">{title}</h2>
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">{icon}</span>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
       </div>
       {subtitle && <p className="mt-1.5 pl-[42px] text-[13px] leading-5 text-slate-500">{subtitle}</p>}
     </div>
@@ -340,29 +340,14 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
 
 function Guardrail({ label, detail }: { label: string; detail: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.03] px-3.5 py-2.5 transition hover:border-teal/25 hover:bg-white/[0.05]">
-      <ShieldCheck className="shrink-0 text-teal-soft" size={15} />
+    <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 transition hover:border-brand-200 hover:bg-brand-50/40">
+      <ShieldCheck className="shrink-0 text-brand-600" size={15} />
       <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold text-slate-200">{label}</p>
+        <p className="truncate text-[13px] font-semibold text-slate-800">{label}</p>
         <p className="truncate text-[11px] text-slate-500">{detail}</p>
       </div>
-      <span className="ml-auto shrink-0 rounded-full bg-teal/15 px-2 py-0.5 text-[10px] font-bold uppercase text-teal-soft">on</span>
+      <span className="ml-auto shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600">on</span>
     </div>
-  );
-}
-
-function DarkStatusPill({ status }: { status: string }) {
-  const map: Record<string, { dot: string; pill: string }> = {
-    executed: { dot: "bg-emerald-400", pill: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" },
-    pending_confirmation: { dot: "bg-amber-400", pill: "border-amber-400/30 bg-amber-400/10 text-amber-300" },
-    failed: { dot: "bg-rose-400", pill: "border-rose-400/30 bg-rose-400/10 text-rose-300" }
-  };
-  const tone = map[status] ?? { dot: "bg-slate-400", pill: "border-white/10 bg-white/5 text-slate-400" };
-  return (
-    <span className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${tone.pill}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
-      {status.replace(/_/g, " ")}
-    </span>
   );
 }
 

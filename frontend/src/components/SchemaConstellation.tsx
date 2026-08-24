@@ -34,9 +34,9 @@ const DB_W = 86;
 const DB_H = 104;
 
 const KEY_BADGES: Record<string, { label: string; className: string }> = {
-  PRI: { label: "PK", className: "bg-amber-300/15 text-amber-300" },
-  UNI: { label: "UQ", className: "bg-violet-300/15 text-violet-300" },
-  MUL: { label: "IX", className: "bg-teal/15 text-teal-soft" }
+  PRI: { label: "PK", className: "bg-amber-100 text-amber-700" },
+  UNI: { label: "UQ", className: "bg-violet-100 text-violet-700" },
+  MUL: { label: "IX", className: "bg-brand-50 text-brand-700" }
 };
 
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
@@ -104,19 +104,19 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   };
 
   return (
-    <section className="card-dark flex flex-col overflow-hidden p-5 sm:p-6">
+    <section className="card flex flex-col overflow-hidden p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal/15 text-teal-soft">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
             <DatabaseZap size={16} />
           </span>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-200">{title}</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] font-medium text-slate-400">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-medium text-slate-500">
             {tables.length} tables · {edges.length} rel
           </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-[11px] font-semibold text-teal-soft">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-[11px] font-semibold text-brand-700">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-teal" />
@@ -128,12 +128,12 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
 
       <div ref={frameRef} className="relative min-h-[420px] flex-1 sm:min-h-[480px]" onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(null); }} onMouseMove={handleMove}>
         {/* clipping wrapper only — never put overflow on the 3D chain itself */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl border border-white/5 bg-[#071120]">
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-white via-brand-50/40 to-cream/70">
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(circle at 22% 28%, rgba(124,194,188,0.12), transparent 42%), radial-gradient(circle at 78% 72%, rgba(47,158,151,0.09), transparent 46%)"
+                "radial-gradient(circle at 22% 28%, rgba(124,194,188,0.18), transparent 42%), radial-gradient(circle at 78% 72%, rgba(47,158,151,0.12), transparent 46%)"
             }}
           />
 
@@ -160,7 +160,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   <div className="floor-grid absolute inset-[-35%] opacity-80" />
                   <div
                     className="pointer-events-none absolute inset-[-35%]"
-                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(7,17,32,0.96) 74%)" }}
+                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(255,255,255,0.92) 74%)" }}
                   />
 
                   {/* relationship lines & particles, flat on the floor plane */}
@@ -193,12 +193,12 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                             className="edge-line"
                             d={path}
                             fill="none"
-                            stroke="#7cc2bc"
+                            stroke="#52aaa2"
                             strokeDasharray="1.6 1.4"
                             strokeLinecap="round"
                             strokeWidth={0.4}
                           />
-                          <circle fill="#a7dcd7" r={0.55}>
+                          <circle fill="#2f9e97" r={0.55}>
                             <animateMotion dur={`${2.8 + (index % 4) * 0.9}s`} path={path} repeatCount="indefinite" />
                           </circle>
                         </g>
@@ -230,20 +230,20 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   <div className="absolute" style={{ left: "50%", top: "50%", transformStyle: "preserve-3d" }}>
                     <div style={{ width: DB_W, height: DB_H, marginLeft: -DB_W / 2, marginTop: -DB_H / 2, transform: billboard }}>
                       <div className="node-float">
-                        <svg filter="drop-shadow(0 0 22px rgba(47,158,151,0.6))" height={DB_H} viewBox="0 0 100 120" width={DB_W}>
+                        <svg filter="drop-shadow(0 0 18px rgba(47,158,151,0.3))" height={DB_H} viewBox="0 0 100 120" width={DB_W}>
                           <defs>
                             <linearGradient id="db-body" x1="0" x2="1" y1="0" y2="0">
-                              <stop offset="0%" stopColor="#12303c" />
-                              <stop offset="45%" stopColor="#1d5f63" />
-                              <stop offset="100%" stopColor="#0e2733" />
+                              <stop offset="0%" stopColor="#256f68" />
+                              <stop offset="45%" stopColor="#37a094" />
+                              <stop offset="100%" stopColor="#1b5a54" />
                             </linearGradient>
                             <linearGradient id="db-top" x1="0" x2="1" y1="0" y2="1">
-                              <stop offset="0%" stopColor="#3aa9a1" />
-                              <stop offset="100%" stopColor="#1f7a74" />
+                              <stop offset="0%" stopColor="#8fd2cb" />
+                              <stop offset="100%" stopColor="#43a49b" />
                             </linearGradient>
                           </defs>
                           <path d="M10 25 v70 a40 14 0 0 0 80 0 v-70" fill="url(#db-body)" stroke="#2f9e97" strokeWidth="1.5" />
-                          <ellipse cx="50" cy="25" fill="url(#db-top)" rx="40" ry="14" stroke="#7cc2bc" strokeWidth="1.5" />
+                          <ellipse cx="50" cy="25" fill="url(#db-top)" rx="40" ry="14" stroke="#38a29a" strokeWidth="1.5" />
                           <path d="M10 55 a40 14 0 0 0 80 0" fill="none" opacity="0.7" stroke="#7cc2bc" strokeWidth="1.4" />
                           <path d="M10 75 a40 14 0 0 0 80 0" fill="none" opacity="0.45" stroke="#7cc2bc" strokeWidth="1.4" />
                         </svg>
@@ -279,18 +279,18 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                           type="button"
                         >
                           <div
-                            className={`h-full w-full overflow-hidden rounded-lg border px-2 pb-1 pt-1.5 transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:shadow-[0_0_24px_rgba(47,158,151,0.35)] ${
-                              focused ? "border-teal/60 bg-[#0e2537]" : "border-white/10 bg-[#0c1c2e]"
+                            className={`h-full w-full overflow-hidden rounded-lg border px-2 pb-1 pt-1.5 shadow-sm transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:shadow-[0_0_24px_rgba(47,158,151,0.25)] ${
+                              focused ? "border-brand-400 bg-white" : "border-slate-200 bg-white"
                             }`}
                           >
-                            <div className="flex items-center justify-between gap-1 border-b border-white/5 pb-1">
+                            <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
                               <span className="flex min-w-0 items-center gap-1.5">
-                                <Table2 className="shrink-0 text-teal-soft" size={11} />
-                                <strong className="truncate font-mono text-[10px] font-semibold text-slate-100 sm:text-[11px]">
+                                <Table2 className="shrink-0 text-brand-600" size={11} />
+                                <strong className="truncate font-mono text-[10px] font-semibold text-slate-800 sm:text-[11px]">
                                   {tableName}
                                 </strong>
                               </span>
-                              {pkCount > 0 && <KeyRound className="shrink-0 text-amber-300" size={10} />}
+                              {pkCount > 0 && <KeyRound className="shrink-0 text-amber-500" size={10} />}
                             </div>
                             <ul className="space-y-0.5 py-1">
                               {table.columns.slice(0, 4).map((column) => {
@@ -298,10 +298,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                                 const dataType = column.type.split("(")[0].toLowerCase();
                                 return (
                                   <li className="flex items-center justify-between gap-1 font-mono text-[9px] leading-4 sm:text-[10px]" key={column.name}>
-                                    <span className="truncate text-slate-400">{column.name}</span>
+                                    <span className="truncate text-slate-500">{column.name}</span>
                                     <span className="flex shrink-0 items-center gap-1">
                                       {dataType && (
-                                        <span className="text-[8px] uppercase tracking-wide text-slate-500 sm:text-[9px]">{dataType}</span>
+                                        <span className="text-[8px] uppercase tracking-wide text-slate-400 sm:text-[9px]">{dataType}</span>
                                       )}
                                       {badge && (
                                         <span className={`rounded px-1 text-[7px] font-bold uppercase leading-[12px] ${badge.className}`}>
@@ -313,7 +313,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                                 );
                               })}
                               {table.columns.length > 4 && (
-                                <li className="text-[9px] font-medium text-teal-soft/70 sm:text-[10px]">
+                                <li className="text-[9px] font-medium text-brand-600/80 sm:text-[10px]">
                                   +{table.columns.length - 4} more
                                 </li>
                               )}
@@ -329,7 +329,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {/* screen-space vignette over the scene */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-xl"
-                style={{ background: "radial-gradient(circle at 50% 48%, transparent 55%, rgba(7,17,32,0.6) 100%)" }}
+                style={{ background: "radial-gradient(circle at 50% 48%, transparent 55%, rgba(22,50,79,0.05) 100%)" }}
               />
             </>
           )}
@@ -337,11 +337,11 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
 
         {tables.length > 0 && (
           <>
-            <span className="absolute bottom-3 left-3 rounded-full border border-teal/25 bg-teal/10 px-2.5 py-1 text-[11px] font-medium text-teal-soft">
+            <span className="absolute bottom-3 left-3 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
               {edges.length} relationship{edges.length === 1 ? "" : "s"}
               {hiddenCount > 0 ? ` · +${hiddenCount} table${hiddenCount === 1 ? "" : "s"} hidden` : ""}
             </span>
-            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-slate-400">
+            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
               <MousePointer2 size={11} /> Move cursor to orbit
             </span>
           </>

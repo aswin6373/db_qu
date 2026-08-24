@@ -3,17 +3,21 @@ import type { MouseEvent } from "react";
 import { DatabaseZap, KeyRound, MousePointer2, Table2 } from "lucide-react";
 import { DatabaseSchema, SchemaInsights } from "../types/api";
 
+
 type Props = {
   schema?: DatabaseSchema | null;
   insights?: SchemaInsights | null;
   title?: string;
 };
 
+
 /* Tables are placed on evenly-spaced ring(s) around the central database so the
    layout stays balanced no matter how many tables are discovered. */
 const MAX_TABLES = 12;
 
+
 const NODE_W = 116;
+
 
 /* Exact card height for its content: header ~26px + list padding + 16px per
    visible row (columns + "+n more" line) with a pixel of slack so nothing clips. */
@@ -22,13 +26,16 @@ function nodeHeight(columnCount: number): number {
   return 46 + rows * 16;
 }
 
+
 const DB_W = 96;
 const DB_H = 114;
+
 
 /* Pedestal puck under every table card (drawn flat on the floor plane).
    This is a true circle — the world's rotateX/rotateZ + perspective do
    100% of the squashing, so we never hand-draw an ellipse here. */
 const PED_D = 96;
+
 
 const KEY_BADGES: Record<string, { label: string; className: string }> = {
   PRI: { label: "PK", className: "bg-amber-100 text-amber-600 ring-1 ring-amber-200/70" },
@@ -37,11 +44,14 @@ const KEY_BADGES: Record<string, { label: string; className: string }> = {
 };
 const FK_BADGE = { label: "FK", className: "bg-amber-50 text-amber-500 ring-1 ring-amber-200/60" };
 
+
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -54,15 +64,18 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     return () => observer.disconnect();
   }, []);
 
+
   /* Shrink the whole scene uniformly so every node stays inside the frame
      on narrow viewports (billboards inherit the parent scale). */
   const fitScale = frameSize.width
     ? Math.max(0.55, Math.min(1, Math.min(frameSize.width / 660, frameSize.height / 470)))
     : 1;
 
+
   const allTables = useMemo(() => Object.entries(schema?.tables ?? {}), [schema]);
   const tables = allTables.slice(0, MAX_TABLES);
   const hiddenCount = allTables.length - tables.length;
+
 
   /* Radial layout: one evenly-spaced ring for up to 8 tables, then two
      staggered rings so cards never stack on the same spot. */
@@ -83,6 +96,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     ];
   }, [tables]);
 
+
   const slotByName = useMemo(
     () => new Map(tables.map(([name], index) => [name, layout[index]] as const)),
     [tables, layout]
@@ -95,6 +109,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     [insights, slotByName]
   );
 
+
   const neighborsOf = (name: string) => {
     const set = new Set<string>([name]);
     edges.forEach((edge) => {
@@ -103,13 +118,16 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     });
     return set;
   };
-  const activeSet = hovered ? neighborsOf(hovered) : null;
+  const active = pinned ?? hovered;
+  const activeSet = active ? neighborsOf(active) : null;
+
 
   /* Isometric base + cursor parallax. Billboard = exact inverse of the world
      rotation so upright cards always face the viewer. */
   const rotX = 54 - tilt.y * 7;
   const rotZ = -40 + tilt.x * 10;
   const billboard = `rotateZ(${-rotZ}deg) rotateX(${-rotX}deg)`;
+
 
   const handleMove = (event: MouseEvent<HTMLDivElement>) => {
     const rect = frameRef.current?.getBoundingClientRect();
@@ -119,6 +137,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
       y: Math.max(-1, Math.min(1, ((event.clientY - rect.top) / rect.height) * 2 - 1))
     });
   };
+
 
   return (
     <section className="card flex flex-col overflow-hidden p-5 sm:p-6">
@@ -143,7 +162,14 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
         </div>
       </div>
 
-      <div ref={frameRef} className="relative min-h-[420px] flex-1 sm:min-h-[500px]" onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(null); }} onMouseMove={handleMove}>
+
+      <div
+        ref={frameRef}
+        className="relative min-h-[420px] flex-1 sm:min-h-[500px]"
+        onClick={() => setPinned(null)}
+        onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(null); }}
+        onMouseMove={handleMove}
+      >
         {/* clipping wrapper only — never put overflow on the 3D chain itself */}
         <div className="absolute inset-0 overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-white via-brand-50/40 to-cream/70">
           <div
@@ -153,6 +179,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                 "radial-gradient(circle at 24% 26%, rgba(124,194,188,0.20), transparent 44%), radial-gradient(circle at 78% 74%, rgba(47,158,151,0.13), transparent 48%)"
             }}
           />
+
 
           {tables.length === 0 ? (
             <div className="grid h-full place-items-center px-6 text-center">
@@ -180,70 +207,54 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     style={{ background: "radial-gradient(circle at 50% 50%, transparent 34%, rgba(255,255,255,0.88) 80%)" }}
                   />
 
-                  {/* glowing fiber tubes on the floor: hub -> every table pedestal */}
-                  <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                    <defs>
-                      <linearGradient id="tube-core" x1="0" x2="1" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#8fe8db" />
-                        <stop offset="50%" stopColor="#d9fff8" />
-                        <stop offset="100%" stopColor="#8fe8db" />
-                      </linearGradient>
-                    </defs>
-                    {tables.map(([name], index) => {
-                      const [x, y] = layout[index];
-                      const dim = activeSet !== null && !activeSet.has(name);
-                      const dur = 2.6 + (index % 4) * 0.8;
-                      return (
-                        <g key={`spoke-${name}`} opacity={dim ? 0.1 : 1}>
-                          {/* soft outer glow */}
-                          <line stroke="#46c8b8" strokeWidth={3.4} x1={50} x2={x} y1={50} y2={y} opacity={0.16} strokeLinecap="round" />
-                          {/* tube body */}
-                          <line stroke="#6fd8ca" strokeWidth={1.7} x1={50} x2={x} y1={50} y2={y} opacity={0.75} strokeLinecap="round" />
-                          {/* bright energy core, flowing toward the table */}
-                          <line
-                            className="edge-line"
-                            stroke="url(#tube-core)"
-                            strokeWidth={0.8}
-                            x1={50} x2={x} y1={50} y2={y}
-                            strokeDasharray="4 6"
-                            strokeLinecap="round"
-                          />
-                          {/* travelling light pulses */}
-                          <circle fill="#46c8b8" r={3.1} opacity={0.28}>
-                            <animateMotion dur={`${dur}s`} begin={`${-index * 0.7}s`} path={`M 50 50 L ${x} ${y}`} repeatCount="indefinite" />
-                          </circle>
-                          <circle fill="#ecfffb" r={1.35}>
-                            <animateMotion dur={`${dur}s`} begin={`${-index * 0.7}s`} path={`M 50 50 L ${x} ${y}`} repeatCount="indefinite" />
-                          </circle>
-                        </g>
-                      );
-                    })}
-                    {/* table <-> table relationships, thinner and quieter */}
-                    {edges.map((edge, index) => {
-                      const from = slotByName.get(edge.from);
-                      const to = slotByName.get(edge.to);
-                      if (!from || !to) return null;
-                      const path = `M ${from[0]} ${from[1]} L ${to[0]} ${to[1]}`;
-                      const dim = activeSet !== null && !(activeSet.has(edge.from) && activeSet.has(edge.to));
-                      return (
-                        <g key={`${edge.from}-${edge.column}-${edge.to}`} opacity={dim ? 0.12 : 0.8}>
-                          <path d={path} fill="none" stroke="#5fbcb3" strokeWidth={1.9} strokeLinecap="round" opacity={0.18} />
-                          <path
-                            className="edge-line"
-                            d={path}
-                            fill="none"
-                            stroke="#1f7a73"
-                            strokeDasharray="2.4 1.6"
-                            strokeLinecap="round"
-                            strokeWidth={0.7}
-                          />
-                          <circle fill="#1f7a73" r={0.8}>
-                            <animateMotion dur={`${2.8 + (index % 4) * 0.9}s`} path={path} repeatCount="indefinite" />
-                          </circle>
-                        </g>
-                      );
-                    })}
-                  </svg>
+
+                  {/* connector lines — nothing shows by default. Hovering or
+                      clicking a table reveals only its own links: one back to
+                      the hub, plus one per related table. */}
+                  {active && slotByName.has(active) && (
+                    <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                      <defs>
+                        <linearGradient id="tube-core" x1="0" x2="1" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#8fe8db" />
+                          <stop offset="50%" stopColor="#d9fff8" />
+                          <stop offset="100%" stopColor="#8fe8db" />
+                        </linearGradient>
+                      </defs>
+                      {(() => {
+                        const [ax, ay] = slotByName.get(active)!;
+                        const links: Array<{ key: string; x2: number; y2: number }> = [{ key: "hub", x2: ax, y2: ay }];
+                        edges.forEach((edge) => {
+                          if (edge.from !== active && edge.to !== active) return;
+                          const other = edge.from === active ? edge.to : edge.from;
+                          const slot = slotByName.get(other);
+                          if (!slot) return;
+                          links.push({ key: `${edge.from}-${edge.column}-${edge.to}`, x2: slot[0], y2: slot[1] });
+                        });
+                        // first link is hub -> active; the rest are active -> neighbor
+                        return links.map((link, index) => {
+                          const [x1, y1] = index === 0 ? [50, 50] : [ax, ay];
+                          return (
+                            <g key={link.key}>
+                              <line stroke="#46c8b8" strokeWidth={3.2} x1={x1} x2={link.x2} y1={y1} y2={link.y2} opacity={0.18} strokeLinecap="round" />
+                              <line stroke="#6fd8ca" strokeWidth={1.6} x1={x1} x2={link.x2} y1={y1} y2={link.y2} opacity={0.85} strokeLinecap="round" />
+                              <line
+                                className="edge-line"
+                                stroke="url(#tube-core)"
+                                strokeWidth={1}
+                                x1={x1}
+                                x2={link.x2}
+                                y1={y1}
+                                y2={link.y2}
+                                strokeDasharray="4 6"
+                                strokeLinecap="round"
+                              />
+                            </g>
+                          );
+                        });
+                      })()}
+                    </svg>
+                  )}
+
 
                   {/* central hub pedestal — glowing rounded slab the database sits on */}
                   <div className="absolute" style={{ left: "50%", top: "50%", transformStyle: "preserve-3d" }}>
@@ -273,6 +284,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                       />
                     </span>
                   </div>
+
 
                   {/* pedestal pucks under each table card (flat on the floor).
                       Drawn as true circles in a square box — the world's
@@ -318,21 +330,6 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     );
                   })}
 
-                  {/* glowing joints where tubes meet the pedestals */}
-                  <svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                    <circle cx={50} cy={50} fill="rgba(94,214,200,0.30)" r={4.6} />
-                    <circle cx={50} cy={50} fill="#d9fff8" r={2} />
-                    {tables.map(([name], index) => {
-                      const [x, y] = layout[index];
-                      const dim = activeSet !== null && !activeSet.has(name);
-                      return (
-                        <g key={`port-${name}`} opacity={dim ? 0.15 : 1}>
-                          <circle cx={x} cy={y} fill="rgba(94,214,200,0.28)" r={3.6} />
-                          <circle cx={x} cy={y} fill="#d9fff8" r={1.5} />
-                        </g>
-                      );
-                    })}
-                  </svg>
 
                   {/* central database — billboarded, floating just above the hub slab */}
                   <div className="absolute" style={{ left: "50%", top: "50%", transformStyle: "preserve-3d" }}>
@@ -342,7 +339,9 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                         height: DB_H,
                         marginLeft: -DB_W / 2,
                         marginTop: -DB_H / 2,
-                        transform: `translateY(-${DB_H / 2 + 4}px) ${billboard}`
+                        /* counter-rotate first, then lift — lift now happens
+                           in screen space, not along the tilted floor axis */
+                        transform: `${billboard} translateY(-${DB_H / 2 + 4}px)`
                       }}
                     >
                       <div className="node-float" style={{ animationDuration: "7s" }}>
@@ -386,6 +385,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     </div>
                   </div>
 
+
                   {/* table cards — extruded slabs standing on their pedestals,
                       counter-rotated to face the viewer */}
                   {tables.map(([tableName, table], index) => {
@@ -393,13 +393,17 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     const nodeH = nodeHeight(table.columns.length);
                     const pkCount = table.columns.filter((column) => column.key === "PRI").length;
                     const dim = activeSet !== null && !activeSet.has(tableName);
-                    const focused = hovered === tableName;
+                    const focused = active === tableName;
                     return (
                       <div className="absolute" key={tableName} style={{ left: `${x}%`, top: `${y}%`, transformStyle: "preserve-3d" }}>
                         <button
                           aria-label={`Table ${tableName}`}
                           className="group/node absolute left-0 top-0 block focus:outline-none"
                           onBlur={() => setHovered(null)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPinned((current) => (current === tableName ? null : tableName));
+                          }}
                           onFocus={() => setHovered(tableName)}
                           onMouseEnter={() => setHovered(tableName)}
                           onMouseLeave={() => setHovered(null)}
@@ -408,8 +412,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                             height: nodeH,
                             marginLeft: -NODE_W / 2,
                             marginTop: -nodeH / 2,
-                            /* screen-space lift first, then counter-rotation */
-                            transform: `translateY(-${nodeH / 2 + 2}px) ${billboard}`,
+                            /* counter-rotate first, then lift — lift now
+                               happens in screen space, so the card sits
+                               directly above its own pedestal every time */
+                            transform: `${billboard} translateY(-${nodeH / 2 + 2}px)`,
                             opacity: dim ? 0.3 : 1,
                             transition: "opacity 200ms ease"
                           }}
@@ -484,6 +490,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                 </div>
               </div>
 
+
               {/* screen-space vignette over the scene */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-xl"
@@ -493,6 +500,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
           )}
         </div>
 
+
         {tables.length > 0 && (
           <>
             <span className="absolute bottom-3 left-3 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
@@ -500,7 +508,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {hiddenCount > 0 ? ` · +${hiddenCount} table${hiddenCount === 1 ? "" : "s"} hidden` : ""}
             </span>
             <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
-              <MousePointer2 size={11} /> Move cursor to orbit
+              <MousePointer2 size={11} /> Hover or tap a table to see its links
             </span>
           </>
         )}

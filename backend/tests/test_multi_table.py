@@ -5,6 +5,42 @@ from types import SimpleNamespace
 import app.services.ai as ai
 from app.services.ai import QueryUnderstandingError, generate_sql
 
+SCHEMA = {
+    "tables": {
+        "customers": {
+            "columns": [
+                {"name": "id", "type": "int", "key": "PRI", "nullable": False},
+                {"name": "name", "type": "varchar", "key": "", "nullable": False},
+            ]
+        }
+    }
+}
+
+MULTI_SCHEMA = {
+    "tables": {
+        "customers": {
+            "columns": [
+                {"name": "id", "type": "int", "key": "PRI", "nullable": False},
+                {"name": "name", "type": "varchar", "key": "", "nullable": False},
+            ]
+        },
+        "products": {
+            "columns": [
+                {"name": "id", "type": "int", "key": "PRI", "nullable": False},
+                {"name": "name", "type": "varchar", "key": "", "nullable": False},
+                {"name": "price", "type": "decimal", "key": "", "nullable": False},
+            ]
+        },
+        "orders": {
+            "columns": [
+                {"name": "id", "type": "int", "key": "PRI", "nullable": False},
+                {"name": "customer_id", "type": "int", "key": "MUL", "nullable": False},
+                {"name": "product_id", "type": "int", "key": "MUL", "nullable": False},
+            ]
+        }
+    }
+}
+
 
 def test_multi_table_question_reaches_llm_without_single_table_block(monkeypatch):
     captured = {}

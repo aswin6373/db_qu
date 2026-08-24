@@ -1,3 +1,4 @@
+from typing import Optional
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -25,7 +26,7 @@ def create_access_token(subject: str) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def decode_access_token(token: str) -> str | None:
+def decode_access_token(token: str) -> Optional[str]:
     settings = get_settings()
     try:
         payload = jwt.decode(

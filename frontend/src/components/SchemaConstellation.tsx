@@ -24,6 +24,12 @@ const SLOTS: Array<[number, number]> = [
 
 const NODE_W = 112;
 const NODE_H = 96;
+
+/* Exact card height for its content: 6px top pad + ~22px header + 8px list padding + 4px bottom pad + 16px per visible row (columns + "+n more" line), with a pixel of slack so nothing clips.*/
+function nodeHeight(columnCount: number): number {
+  const rows = Math.min(columnCount, 4) + (columnCount > 4 ? 1 : 0);
+  return 40 + rows * 16;
+}
 const DB_W = 86;
 const DB_H = 104;
 
@@ -257,9 +263,9 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                           onMouseLeave={() => setHovered(null)}
                           style={{
                             width: NODE_W,
-                            height: NODE_H,
+                            height: nodeHeight(table.columns.length),
                             marginLeft: -NODE_W / 2,
-                            marginTop: -NODE_H / 2,
+                            marginTop: -nodeHeight(table.columns.length) / 2,
                             transform: billboard,
                             opacity: dim ? 0.3 : 1,
                             transition: "opacity 200ms ease"

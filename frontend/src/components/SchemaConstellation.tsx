@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { DatabaseZap, KeyRound, MousePointer2, Table2 } from "lucide-react";
 import { DatabaseSchema, SchemaInsights } from "../types/api";
@@ -9,17 +9,17 @@ type Props = {
   title?: string;
 };
 
-/* Coordinates are % of the oversized world plane; keep nodes inside [16,84]
-   so they stay visible in the clipped viewport at any orbit angle. */
+/* Safe-zone ring around the scene centre (% of the viewport-sized world).
+   The DB cylinder sits at (50,50), so no node goes there. */
 const SLOTS: Array<[number, number]> = [
-  [20, 26],
-  [45, 15],
-  [72, 22],
-  [81, 50],
-  [66, 77],
-  [37, 80],
-  [17, 63],
-  [30, 44]
+  [38, 18],
+  [62, 22],
+  [74, 42],
+  [66, 68],
+  [42, 76],
+  [26, 60],
+  [24, 34],
+  [33, 47]
 ];
 
 const NODE_W = 112;
@@ -31,6 +31,24 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   const frameRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setFrameSize({ width, height });
+    });
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  /* Shrink the whole scene uniformly so every node stays inside the frame
+     on narrow viewports (billboards inherit the parent scale). */
+  const fitScale = frameSize.width
+    ? Math.max(0.55, Math.min(1, Math.min(frameSize.width / 620, frameSize.height / 440)))
+    : 1;
 
   const allTables = useMemo(() => Object.entries(schema?.tables ?? {}), [schema]);
   const tables = allTables.slice(0, 8);
@@ -115,16 +133,21 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
             </div>
           ) : (
             <>
-              {/* 3D stage: perspective -> world(preserve-3d, rotated) -> children */}
+              {/* 3D stage: perspective -> world(preserve-3d, rotated) -> children.
+                  The world is viewport-sized; only the floor texture is oversized
+                  so rotated corners stay covered. */}
               <div className="absolute inset-0" style={{ perspective: "1400px" }}>
                 <div
-                  className="absolute inset-[-20%] transition-transform duration-150 ease-out will-change-transform"
-                  style={{ transformStyle: "preserve-3d", transform: `rotateX(${rotX}deg) rotateZ(${rotZ}deg)` }}
+                  className="absolute inset-0 transition-transform duration-150 ease-out will-change-transform"
+                  style={{
+                    transformStyle: "preserve-3d",
+                    transform: `scale(${fitScale}) rotateX(${rotX}deg) rotateZ(${rotZ}deg)`
+                  }}
                 >
                   {/* floor */}
-                  <div className="floor-grid absolute inset-0 opacity-80" />
+                  <div className="floor-grid absolute inset-[-35%] opacity-80" />
                   <div
-                    className="pointer-events-none absolute inset-0"
+                    className="pointer-events-none absolute inset-[-35%]"
                     style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(7,17,32,0.96) 74%)" }}
                   />
 

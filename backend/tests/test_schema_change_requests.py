@@ -46,3 +46,27 @@ def test_add_row_request_is_not_treated_as_schema_change():
     with pytest.raises(QueryUnderstandingError) as exc:
         generate_sql("add a customer named Rahul", SCHEMA)
     assert "ALTER TABLE" not in str(exc.value)
+
+
+def test_natural_phrasing_put_a_column_is_understood():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("put a phone column in customers", SCHEMA)
+    assert "ADD COLUMN `phone`" in str(exc.value)
+
+
+def test_name_before_column_word_is_understood():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("customers should have a phone column", SCHEMA)
+    assert "ADD COLUMN `phone`" in str(exc.value)
+
+
+def test_insert_a_column_is_not_treated_as_row_insert():
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("insert a column called fax in customers", SCHEMA)
+    assert "ADD COLUMN `fax`" in str(exc.value)
+
+
+def test_read_question_mentioning_column_stays_a_read():
+    sql = generate_sql("show customers with the city column", SCHEMA)
+    assert sql.upper().startswith("SELECT")
+    assert "ALTER TABLE" not in sql.upper()

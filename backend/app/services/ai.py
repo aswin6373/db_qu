@@ -46,11 +46,28 @@ def summarize_result(question: str, columns: list[str], rows: list[dict], requir
     return f"Found {len(rows)} row(s) for: {question}"
 
 
+READ_STARTER_RE = re.compile(
+    r"^\s*(?:select|show|list|find|get|display|fetch|count|how many|what|which|who)\b",
+    re.IGNORECASE,
+)
+STRONG_DDL_RE = re.compile(r"\b(drop|truncate|rename|alter)\b", re.IGNORECASE)
+DDL_VERB_RE = re.compile(
+    r"\b(add|create|new|drop|remove|delete|rename|modify|alter|change|truncate|"
+    r"make|put|insert|append|extend|include|introduce|give|want|need|needs|have|has|should)\b",
+    re.IGNORECASE,
+)
+DDL_NOUN_RE = re.compile(r"\b(column|field|attribute|table|index|schema)\b", re.IGNORECASE)
+
+
 def _detect_schema_change_request(question: str, schema: dict) -> str | None:
     lowered = question.lower()
-    if not re.search(r"\b(column|table|index|schema)\b", lowered):
+    if not DDL_NOUN_RE.search(lowered):
         return None
-    if not re.search(r"\b(add|create|new|drop|remove|delete|rename|modify|alter|change|truncate)\b", lowered):
+    if not DDL_VERB_RE.search(lowered):
+        return None
+    # "show customers with the city column" is a read, not a schema change —
+    # unless a strong DDL verb like drop/truncate/alter appears.
+    if READ_STARTER_RE.search(question) and not STRONG_DDL_RE.search(lowered):
         return None
 
     table: str | None
@@ -60,28 +77,39 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
         table = None
 
     add_column = re.search(
-        r"\b(?:add|create|new)\b[^.?!]*?\bcolumn\b\s+(?:called\s+|named\s+)?[`'\"]?([a-zA-Z_]\w*)[`'\"]?"
+        r"\b(?:add|create|new|make|put|insert|append|extend|include|give|want|need|has|have|should)\b"
+        r"[^.?!]*?"
+        r"(?:[`'\"]?([a-zA-Z_]\w*)[`'\"]?\s+)?\b(?:column|field)\b"
+        r"(?:\s+(?:called\s+|named\s+)?[`'\"]?([a-zA-Z_]\w*)[`'\"]?)?"
         r"(?:\s+(?:with\s+)?(?:type\s+)?([a-zA-Z]+(?:\(\s*\d+(?:\s*,\s*\d+)?\s*\))?))?",
         lowered,
     )
     drop_column = re.search(
-        r"\b(?:drop|remove|delete)\b[^.?!]*?\bcolumn\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
+        r"\b(?:drop|remove|delete)\b[^.?!]*?\b(?:column|field)\b\s+[`'\"]?([a-zA-Z_]\w*)[`'\"]?",
         lowered,
     )
 
-    filler_words = {"in", "to", "from", "into", "on", "with", "that", "which", "of", "and", "the"}
+    filler_words = {
+        "in", "to", "from", "into", "on", "with", "that", "which", "of", "and", "the",
+        "new", "column", "field", "called", "named", "type"
+    }
 
     if add_column:
-        column_name = add_column.group(1)
-        raw_type = add_column.group(2)
-        if column_name in filler_words:
+        pre_name, post_name, raw_type = add_column.group(1), add_column.group(2), add_column.group(3)
+        column_name = next(
+            (candidate for candidate in (post_name, pre_name) if candidate and candidate.lower() not in filler_words),
+            None,
+        )
+        if raw_type and raw_type.lower() in filler_words:
+            raw_type = None
+        if not column_name:
             if table:
                 return (
                     "I couldn't tell which column to add. For example: \"add column phone in customers\". "
                     f"To add it yourself, run: ALTER TABLE `{table}` ADD COLUMN `column_name` VARCHAR(255) NULL;"
                 )
             return _schema_change_needs_table(schema, "add a column")
-        column_type = _normalize_column_type(None if raw_type in filler_words else raw_type)
+        column_type = _normalize_column_type(raw_type)
         if table:
             return (
                 f"Schema changes like adding columns are blocked in QueryMind for safety. "

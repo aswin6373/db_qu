@@ -235,6 +235,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     </defs>
                     {tables.map(([name], index) => {
                       const [x, y] = layout[index];
+                      const isActive = active === name;
                       const dim = activeSet !== null && !activeSet.has(name);
                       return (
                         <g
@@ -243,10 +244,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                           style={{ transition: "opacity 200ms ease" }}
                         >
                           {/* every spoke uses the exact same thin three-layer
-                              style — highlighting only fades opacity, it never
+                              style — highlighting only changes opacity, it never
                               changes the line itself */}
-                          <line stroke="#46c8b8" strokeWidth={1.8} x1={50} x2={x} y1={50} y2={y} opacity={0.14} strokeLinecap="round" />
-                          <line stroke="#6fd8ca" strokeWidth={0.9} x1={50} x2={x} y1={50} y2={y} opacity={0.6} strokeLinecap="round" />
+                          <line stroke="#46c8b8" strokeWidth={1.8} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 0.4 : 0.14} strokeLinecap="round" />
+                          <line stroke="#6fd8ca" strokeWidth={0.9} x1={50} x2={x} y1={50} y2={y} opacity={isActive ? 1 : 0.6} strokeLinecap="round" />
                           <line
                             className="edge-line"
                             stroke="url(#tube-core)"

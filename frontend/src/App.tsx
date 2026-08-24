@@ -11,13 +11,17 @@ import { Connection, Dashboard as DashboardType, DatabaseSchema, SchemaInsights 
 export function App() {
   const [token, setToken] = useState(() => localStorage.getItem("querymind_token") ?? "");
   const [active, setActive] = useState("dashboard");
+  const [booted, setBooted] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [dashboard, setDashboard] = useState<DashboardType | null>(null);
   const [schemas, setSchemas] = useState<Record<number, DatabaseSchema>>({});
   const [insights, setInsights] = useState<Record<number, SchemaInsights>>({});
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setBooted(true);
+      return;
+    }
     localStorage.setItem("querymind_token", token);
     refreshAll();
   }, [token]);
@@ -39,32 +43,36 @@ export function App() {
 
   async function refreshAll() {
     if (!token) return;
-    const [connectionData, dashboardData] = await Promise.all([
-      apiRequest<Connection[]>("/connections", {}, token).catch(() => []),
-      apiRequest<DashboardType>("/organizations/dashboard", {}, token).catch(() => null)
-    ]);
-    setConnections(connectionData);
-    setDashboard(dashboardData);
-    if (connectionData.length === 0) {
-      setActive("connections");
-      setSchemas({});
-      setInsights({});
-      return;
+    try {
+      const [connectionData, dashboardData] = await Promise.all([
+        apiRequest<Connection[]>("/connections", {}, token).catch(() => []),
+        apiRequest<DashboardType>("/organizations/dashboard", {}, token).catch(() => null)
+      ]);
+      setConnections(connectionData);
+      setDashboard(dashboardData);
+      if (connectionData.length === 0) {
+        setActive("connections");
+        setSchemas({});
+        setInsights({});
+        return;
+      }
+      const schemaEntries = await Promise.all(
+        connectionData.map(async (connection) => {
+          const schema = await apiRequest<DatabaseSchema>(`/connections/${connection.id}/schema`, {}, token).catch(() => null);
+          return [connection.id, schema] as const;
+        })
+      );
+      const insightEntries = await Promise.all(
+        connectionData.map(async (connection) => {
+          const insight = await apiRequest<SchemaInsights>(`/connections/${connection.id}/insights`, {}, token).catch(() => null);
+          return [connection.id, insight] as const;
+        })
+      );
+      setSchemas(Object.fromEntries(schemaEntries.filter(([, schema]) => schema !== null)) as Record<number, DatabaseSchema>);
+      setInsights(Object.fromEntries(insightEntries.filter(([, insight]) => insight !== null)) as Record<number, SchemaInsights>);
+    } finally {
+      setBooted(true);
     }
-    const schemaEntries = await Promise.all(
-      connectionData.map(async (connection) => {
-        const schema = await apiRequest<DatabaseSchema>(`/connections/${connection.id}/schema`, {}, token).catch(() => null);
-        return [connection.id, schema] as const;
-      })
-    );
-    const insightEntries = await Promise.all(
-      connectionData.map(async (connection) => {
-        const insight = await apiRequest<SchemaInsights>(`/connections/${connection.id}/insights`, {}, token).catch(() => null);
-        return [connection.id, insight] as const;
-      })
-    );
-    setSchemas(Object.fromEntries(schemaEntries.filter(([, schema]) => schema !== null)) as Record<number, DatabaseSchema>);
-    setInsights(Object.fromEntries(insightEntries.filter(([, insight]) => insight !== null)) as Record<number, SchemaInsights>);
   }
 
   function logout() {
@@ -76,12 +84,33 @@ export function App() {
     return <AuthPanel onToken={setToken} />;
   }
 
+  if (!booted) {
+    return <BootSplash />;
+  }
+
   return (
-    <Shell active={active} onActive={setActive} onLogout={logout}>
+    <Shell active={active} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
       {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
       {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
       {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
       {active === "history" && <History dashboard={dashboard} />}
     </Shell>
+  );
+}
+
+function BootSplash() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-slate-950">
+      <div className="flex flex-col items-center gap-5">
+        <span className="grid h-14 w-14 animate-pulse-soft place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-violet-600 text-white shadow-xl shadow-brand-600/30">
+          <svg fill="none" height="26" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="26">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+            <path d="M3 12A9 3 0 0 0 21 12" />
+          </svg>
+        </span>
+        <p className="text-sm font-medium text-slate-400">Preparing your workspace…</p>
+      </div>
+    </div>
   );
 }

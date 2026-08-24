@@ -1,4 +1,4 @@
-import { AlertTriangle, DatabaseZap, GitBranch, KeyRound, Sparkles, Table2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, DatabaseZap, GitBranch, KeyRound, Sparkles, Table2 } from "lucide-react";
 import { DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
@@ -7,7 +7,7 @@ type Props = {
   title?: string;
 };
 
-export function SchemaGraph({ schema, insights, title = "Database Structure" }: Props) {
+export function SchemaGraph({ schema, insights, title = "Database structure" }: Props) {
   const tables = Object.entries(schema?.tables ?? {});
   const tableCount = tables.length;
   const columnCount = tables.reduce((total, [, table]) => total + table.columns.length, 0);
@@ -15,90 +15,125 @@ export function SchemaGraph({ schema, insights, title = "Database Structure" }: 
   const score = insights?.score ?? (tableCount > 0 ? 70 : 0);
 
   return (
-    <section className="panel p-5">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="card p-6">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <DatabaseZap className="text-forest" size={18} />
-            <h2 className="text-lg font-semibold text-ink">{title}</h2>
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+              <DatabaseZap size={16} />
+            </span>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">{title}</h2>
           </div>
-          <p className="mt-1 text-sm text-steel">{insights?.summary ?? `${tableCount} tables, ${columnCount} columns, ${keyCount} key columns`}</p>
+          <p className="mt-1 pl-[42px] text-sm text-slate-500">
+            {insights?.summary ?? `${tableCount} tables · ${columnCount} columns · ${keyCount} key columns`}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-steel">
-          <span className="status-pill text-forest">{score}/100 readiness</span>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className={`status-pill ${score >= 70 ? "pill-success" : score >= 40 ? "pill-warn" : ""}`}>
+            {score}/100 readiness
+          </span>
           <span className="status-pill">PK primary</span>
           <span className="status-pill">MUL indexed</span>
         </div>
       </div>
 
       {tables.length === 0 ? (
-        <p className="rounded-md border border-dashed border-line bg-paper px-4 py-8 text-center text-sm text-steel">No schema discovered yet. Save a live MySQL connection to load tables and columns.</p>
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center text-sm text-slate-500">
+          No schema discovered yet. Save a live MySQL connection to load tables and columns.
+        </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-lg border border-line bg-paper p-4">
-              <div className="mb-4 flex items-center gap-2">
-                <GitBranch className="text-forest" size={17} />
-                <h3 className="font-semibold text-ink">Relationship Map</h3>
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            {/* Relationships */}
+            <div className="panel-soft p-4">
+              <div className="mb-3.5 flex items-center gap-2">
+                <GitBranch className="text-brand-600" size={16} />
+                <h3 className="text-sm font-bold text-slate-900">Relationship map</h3>
               </div>
               {insights?.edges.length ? (
                 <div className="space-y-2">
                   {insights.edges.map((edge) => (
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm" key={`${edge.from}-${edge.column}-${edge.to}`}>
-                      <span className="truncate font-semibold text-ink">{edge.from}</span>
-                      <span className="rounded bg-mist px-2 py-1 text-xs font-medium text-steel">{edge.column}</span>
-                      <span className="truncate text-right font-semibold text-forest">{edge.to}</span>
+                    <div
+                      className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
+                      key={`${edge.from}-${edge.column}-${edge.to}`}
+                    >
+                      <span className="truncate font-semibold text-slate-800">{edge.from}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-mono text-[11px] font-medium text-brand-700">
+                        {edge.column} <ArrowRight size={11} />
+                      </span>
+                      <span className="truncate text-right font-semibold text-brand-700">{edge.to}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="rounded-md border border-dashed border-line bg-white px-4 py-8 text-center text-sm text-steel">No relationships inferred yet. Columns ending in `_id` help QueryMind understand joins.</p>
+                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-7 text-center text-xs leading-5 text-slate-400">
+                  No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> help QueryMind
+                  understand joins.
+                </p>
               )}
             </div>
-            <div className="rounded-lg border border-line bg-paper p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Sparkles className="text-forest" size={17} />
-                <h3 className="font-semibold text-ink">AI Improvement Suggestions</h3>
+
+            {/* Suggestions */}
+            <div className="panel-soft p-4">
+              <div className="mb-3.5 flex items-center gap-2">
+                <Sparkles className="text-brand-600" size={16} />
+                <h3 className="text-sm font-bold text-slate-900">AI improvement suggestions</h3>
               </div>
               {insights?.suggestions.length ? (
                 <div className="space-y-2">
                   {insights.suggestions.map((suggestion) => (
-                    <div className="rounded-md border border-line bg-white p-3" key={`${suggestion.severity}-${suggestion.title}`}>
+                    <div
+                      className={`rounded-lg border p-3 ${
+                        suggestion.severity === "high" ? "border-rose-100 bg-rose-50/60" : "border-amber-100 bg-amber-50/60"
+                      }`}
+                      key={`${suggestion.severity}-${suggestion.title}`}
+                    >
                       <div className="flex items-center gap-2">
-                        <AlertTriangle className={suggestion.severity === "high" ? "text-coral" : "text-amber"} size={15} />
-                        <strong className="text-sm text-ink">{suggestion.title}</strong>
+                        <AlertTriangle className={suggestion.severity === "high" ? "text-rose-500" : "text-amber-500"} size={14} />
+                        <strong className="text-[13px] text-slate-800">{suggestion.title}</strong>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-steel">{suggestion.detail}</p>
+                      <p className="mt-1 pl-[22px] text-xs leading-5 text-slate-500">{suggestion.detail}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="rounded-md border border-dashed border-line bg-white px-4 py-8 text-center text-sm text-steel">No structural suggestions right now.</p>
+                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-7 text-center text-xs text-slate-400">
+                  No structural suggestions right now — your schema looks clean.
+                </p>
               )}
             </div>
           </div>
 
+          {/* Table cards */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {tables.map(([tableName, table]) => (
-              <article className="overflow-hidden rounded-lg border border-line bg-paper" key={tableName}>
-                <div className="flex items-center justify-between border-b border-line bg-white px-3 py-2.5">
+              <article className="card card-hover overflow-hidden" key={tableName}>
+                <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-2.5">
                   <div className="flex min-w-0 items-center gap-2">
-                    <Table2 className="text-forest" size={17} />
-                    <strong className="truncate">{tableName}</strong>
+                    <Table2 className="shrink-0 text-brand-600" size={15} />
+                    <strong className="truncate font-mono text-[13px] text-slate-800">{tableName}</strong>
                   </div>
-                  <span className="text-xs font-medium text-steel">{table.columns.length} cols</span>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                    {table.columns.length} cols
+                  </span>
                 </div>
                 <div className="max-h-64 overflow-auto p-2">
                   {table.columns.map((column) => (
-                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-white" key={`${tableName}-${column.name}`}>
-                      <span className="truncate font-medium">{column.name}</span>
-                      <span className="rounded bg-mist px-2 py-0.5 text-xs font-medium text-steel">{column.type}</span>
-                      <span className="h-5 min-w-8 text-right text-xs font-semibold text-amber">
-                        {column.key ? (
-                          <span className="inline-flex items-center gap-1">
-                            <KeyRound size={12} /> {column.key}
+                    <div
+                      className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors hover:bg-brand-50/50"
+                      key={`${tableName}-${column.name}`}
+                    >
+                      <span className="truncate font-medium text-slate-700">
+                        {column.name}
+                        {column.nullable === false && <span className="ml-1 text-[10px] text-slate-300">*</span>}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-500">{column.type}</span>
+                        {column.key && (
+                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-600">
+                            <KeyRound size={10} /> {column.key}
                           </span>
-                        ) : null}
+                        )}
                       </span>
                     </div>
                   ))}

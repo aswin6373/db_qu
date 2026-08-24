@@ -9,18 +9,9 @@ type Props = {
   title?: string;
 };
 
-/* Safe-zone ring around the scene centre (% of the viewport-sized world).
-   The DB cylinder sits at (50,50), so no node goes there. */
-const SLOTS: Array<[number, number]> = [
-  [43.7, 20.7],
-  [71.3, 25.3],
-  [85.1, 48.3],
-  [75.9, 78.2],
-  [48.3, 87.4],
-  [29.9, 69.0],
-  [27.6, 39.1],
-  [38.0, 54.0]
-];
+/* Tables are placed on evenly-spaced ring(s) around the central database so the
+   layout stays balanced no matter how many tables are discovered. */
+const MAX_TABLES = 12;
 
 const NODE_W = 112;
 const NODE_H = 96;
@@ -63,12 +54,31 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     : 1;
 
   const allTables = useMemo(() => Object.entries(schema?.tables ?? {}), [schema]);
-  const tables = allTables.slice(0, 8);
+  const tables = allTables.slice(0, MAX_TABLES);
   const hiddenCount = allTables.length - tables.length;
 
+  /* Radial layout: one evenly-spaced ring for up to 8 tables, then two
+     staggered rings so cards never stack on the same spot. */
+  const layout = useMemo<Array<[number, number]>>(() => {
+    const count = tables.length;
+    if (count === 0) return [];
+    const ring: (size: number, rx: number, ry: number, startDeg: number) => Array<[number, number]> =
+      (size, rx, ry, startDeg) =>
+        Array.from({ length: size }, (_, index) => {
+          const angle = ((startDeg + (360 / size) * index) * Math.PI) / 180;
+          return [50 + rx * Math.cos(angle), 50 + ry * Math.sin(angle)] as [number, number];
+        });
+    if (count <= 8) return ring(count, 33, 34, -90);
+    const innerCount = Math.min(6, Math.ceil(count / 2));
+    return [
+      ...ring(innerCount, 26, 27, -90),
+      ...ring(count - innerCount, 40.5, 41.5, -90 - 180 / (count - innerCount))
+    ];
+  }, [tables]);
+
   const slotByName = useMemo(
-    () => new Map(tables.map(([name], index) => [name, SLOTS[index % SLOTS.length]] as const)),
-    [tables]
+    () => new Map(tables.map(([name], index) => [name, layout[index]] as const)),
+    [tables, layout]
   );
   const edges = useMemo(
     () =>
@@ -160,25 +170,19 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   <div className="floor-grid absolute inset-[-35%] opacity-80" />
                   <div
                     className="pointer-events-none absolute inset-[-35%]"
-                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 30%, rgba(255,255,255,0.92) 74%)" }}
+                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 38%, rgba(255,255,255,0.85) 82%)" }}
                   />
 
                   {/* relationship lines & particles, flat on the floor plane */}
                   <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                     {tables.map(([name], index) => {
-                      const [x, y] = SLOTS[index % SLOTS.length];
+                      const [x, y] = layout[index];
                       const dim = activeSet !== null && !activeSet.has(name);
                       return (
-                        <line
-                          key={`spoke-${name}`}
-                          opacity={dim ? 0.05 : 0.22}
-                          stroke="#2f9e97"
-                          strokeWidth={0.18}
-                          x1={50}
-                          x2={x}
-                          y1={50}
-                          y2={y}
-                        />
+                        <g key={`spoke-${name}`} opacity={dim ? 0.08 : 0.55}>
+                          <line stroke="#7cc2bc" strokeWidth={0.9} x1={50} x2={x} y1={50} y2={y} />
+                          <line stroke="#2f9e97" strokeWidth={0.35} x1={50} x2={x} y1={50} y2={y} />
+                        </g>
                       );
                     })}
                     {edges.map((edge, index) => {
@@ -189,16 +193,17 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                       const dim = activeSet !== null && !(activeSet.has(edge.from) && activeSet.has(edge.to));
                       return (
                         <g key={`${edge.from}-${edge.column}-${edge.to}`} opacity={dim ? 0.12 : 1}>
+                          <path d={path} fill="none" stroke="#5fbcb3" strokeWidth={1.4} strokeLinecap="round" opacity={0.35} />
                           <path
                             className="edge-line"
                             d={path}
                             fill="none"
-                            stroke="#52aaa2"
-                            strokeDasharray="1.6 1.4"
+                            stroke="#1f7a73"
+                            strokeDasharray="2.2 1.6"
                             strokeLinecap="round"
-                            strokeWidth={0.4}
+                            strokeWidth={0.7}
                           />
-                          <circle fill="#2f9e97" r={0.55}>
+                          <circle fill="#1f7a73" r={0.85}>
                             <animateMotion dur={`${2.8 + (index % 4) * 0.9}s`} path={path} repeatCount="indefinite" />
                           </circle>
                         </g>
@@ -208,7 +213,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
 
                   {/* glow pads under each table, drawn on the floor */}
                   {tables.map(([name], index) => {
-                    const [x, y] = SLOTS[index % SLOTS.length];
+                    const [x, y] = layout[index];
                     const dim = activeSet !== null && !activeSet.has(name);
                     return (
                       <span

@@ -25,9 +25,10 @@ function nodeHeight(columnCount: number): number {
 const DB_W = 96;
 const DB_H = 114;
 
-/* Pedestal puck under every table card (drawn flat on the floor plane). */
-const PED_W = 96;
-const PED_H = 46;
+/* Pedestal puck under every table card (drawn flat on the floor plane).
+   This is a true circle — the world's rotateX/rotateZ + perspective do
+   100% of the squashing, so we never hand-draw an ellipse here. */
+const PED_D = 96;
 
 const KEY_BADGES: Record<string, { label: string; className: string }> = {
   PRI: { label: "PK", className: "bg-amber-100 text-amber-600 ring-1 ring-amber-200/70" },
@@ -164,7 +165,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {/* 3D stage: perspective -> world(preserve-3d, rotated) -> children.
                   The world is viewport-sized; only the floor texture is oversized
                   so rotated corners stay covered. */}
-              <div className="absolute inset-0" style={{ perspective: "1400px" }}>
+              <div className="absolute inset-0" style={{ perspective: "2200px" }}>
                 <div
                   className="absolute inset-0 transition-transform duration-150 ease-out will-change-transform"
                   style={{
@@ -273,7 +274,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                     </span>
                   </div>
 
-                  {/* pedestal pucks under each table card (flat on the floor) */}
+                  {/* pedestal pucks under each table card (flat on the floor).
+                      Drawn as true circles in a square box — the world's
+                      rotateX/rotateZ + perspective do all the foreshortening,
+                      the same way they already flatten the floor-grid squares. */}
                   {tables.map(([name], index) => {
                     const [x, y] = layout[index];
                     const dim = activeSet !== null && !activeSet.has(name);
@@ -284,41 +288,31 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                         style={{
                           left: `${x}%`,
                           top: `${y}%`,
-                          width: PED_W,
-                          height: PED_H,
+                          width: PED_D,
+                          height: PED_D,
                           transform: "translate(-50%, -50%)",
                           opacity: dim ? 0.25 : 1,
                           transition: "opacity 200ms ease"
                         }}
                       >
-                        <svg height={PED_H} viewBox="0 0 96 46" width={PED_W}>
+                        <svg height={PED_D} viewBox="0 0 96 96" width={PED_D}>
                           <defs>
                             <linearGradient id={`ped-side-${index}`} x1="0" x2="0" y1="0" y2="1">
-                              <stop offset="0%" stopColor="#dbe6ea" />
-                              <stop offset="100%" stopColor="#a9bcc4" />
+                              <stop offset="0%" stopColor="#c7d5da" />
+                              <stop offset="100%" stopColor="#9db0b9" />
                             </linearGradient>
-                            <linearGradient id={`ped-top-${index}`} x1="0" x2="1" y1="0" y2="1">
+                            <radialGradient id={`ped-top-${index}`} cx="35%" cy="30%" r="75%">
                               <stop offset="0%" stopColor="#fbfdfd" />
-                              <stop offset="100%" stopColor="#dde8ea" />
-                            </linearGradient>
+                              <stop offset="100%" stopColor="#dbe6ea" />
+                            </radialGradient>
                           </defs>
-                          {/* NOTE: this SVG sits inside a parent that is rotated in real 3D
-                              (rotateX ~54deg) by the "world" wrapper above, with NO counter-
-                              rotation/billboard applied to pedestals. That 3D rotation is what
-                              flattens a circle into the elliptical "puck" look on screen — so
-                              the shapes drawn here should be close to a TRUE CIRCLE (ry close to
-                              rx), not pre-squashed. Drawing a pre-squashed ellipse here caused it
-                              to be flattened a second time by the real transform, producing the
-                              thin sliver/lens artifact. */}
-                          <ellipse cx="48" cy="30" fill="rgba(23,74,68,0.16)" rx="42" ry="15" />
-                          <path
-                            d="M8 14 v8 a40 21 0 0 0 80 0 v-8"
-                            fill={`url(#ped-side-${index})`}
-                            stroke="#9db3bc"
-                            strokeWidth="1"
-                          />
-                          <ellipse cx="48" cy="14" fill={`url(#ped-top-${index})`} rx="40" ry="21" stroke="#b7c9d0" strokeWidth="1" />
-                          <ellipse cx="48" cy="14" fill="rgba(47,158,151,0.10)" rx="27" ry="14" />
+                          {/* rim/thickness: same circle, nudged down a few units
+                              in LOCAL (pre-transform) space — after rotateX this
+                              reads as a thin cylinder edge, never a hand-warped arc */}
+                          <circle cx="48" cy="53" r="38" fill={`url(#ped-side-${index})`} />
+                          {/* top face — a true circle, no rx/ry guessing */}
+                          <circle cx="48" cy="45" r="38" fill={`url(#ped-top-${index})`} stroke="#b7c9d0" strokeWidth="1.5" />
+                          <circle cx="48" cy="45" r="25" fill="rgba(47,158,151,0.10)" />
                         </svg>
                       </span>
                     );

@@ -42,6 +42,8 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 "question": log.natural_language,
                 "sql": log.generated_sql,
                 "status": log.status,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+                "rows_returned": len((json.loads(log.result_preview or "{}") or {}).get("rows", [])),
                 "preview": json.loads(log.result_preview or "{}"),
             }
             for log in logs

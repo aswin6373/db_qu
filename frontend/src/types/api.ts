@@ -53,5 +53,7 @@ export type Dashboard = {
     question: string;
     sql: string;
     status: string;
+    created_at?: string | null;
+    rows_returned?: number;
   }>;
 };

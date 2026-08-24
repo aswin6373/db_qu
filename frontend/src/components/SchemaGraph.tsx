@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, DatabaseZap, GitBranch, KeyRound, Sparkles, Table2 } from "lucide-react";
+import { ArrowRight, DatabaseZap, GitBranch, KeyRound, Table2 } from "lucide-react";
 import { DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
@@ -43,65 +43,32 @@ export function SchemaGraph({ schema, insights, title = "Database structure" }: 
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            {/* Relationships */}
-            <div className="panel-soft p-4">
-              <div className="mb-3.5 flex items-center gap-2">
-                <GitBranch className="text-brand-600" size={16} />
-                <h3 className="text-sm font-bold text-slate-900">Relationship map</h3>
-              </div>
-              {insights?.edges.length ? (
-                <div className="space-y-2">
-                  {insights.edges.map((edge) => (
-                    <div
-                      className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
-                      key={`${edge.from}-${edge.column}-${edge.to}`}
-                    >
-                      <span className="truncate font-semibold text-slate-800">{edge.from}</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-mono text-[11px] font-medium text-brand-700">
-                        {edge.column} <ArrowRight size={11} />
-                      </span>
-                      <span className="truncate text-right font-semibold text-brand-700">{edge.to}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-7 text-center text-xs leading-5 text-slate-400">
-                  No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> help QueryMind
-                  understand joins.
-                </p>
-              )}
+          <div className="panel-soft p-4">
+            <div className="mb-3.5 flex items-center gap-2">
+              <GitBranch className="text-brand-600" size={16} />
+              <h3 className="text-sm font-bold text-slate-900">Relationship map</h3>
             </div>
-
-            {/* Suggestions */}
-            <div className="panel-soft p-4">
-              <div className="mb-3.5 flex items-center gap-2">
-                <Sparkles className="text-brand-600" size={16} />
-                <h3 className="text-sm font-bold text-slate-900">AI improvement suggestions</h3>
+            {insights?.edges.length ? (
+              <div className="grid gap-2 md:grid-cols-2">
+                {insights.edges.map((edge) => (
+                  <div
+                    className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
+                    key={`${edge.from}-${edge.column}-${edge.to}`}
+                  >
+                    <span className="truncate font-semibold text-slate-800">{edge.from}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-mono text-[11px] font-medium text-brand-700">
+                      {edge.column} <ArrowRight size={11} />
+                    </span>
+                    <span className="truncate text-right font-semibold text-brand-700">{edge.to}</span>
+                  </div>
+                ))}
               </div>
-              {insights?.suggestions.length ? (
-                <div className="space-y-2">
-                  {insights.suggestions.map((suggestion) => (
-                    <div
-                      className={`rounded-lg border p-3 ${
-                        suggestion.severity === "high" ? "border-rose-100 bg-rose-50/60" : "border-amber-100 bg-amber-50/60"
-                      }`}
-                      key={`${suggestion.severity}-${suggestion.title}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className={suggestion.severity === "high" ? "text-rose-500" : "text-amber-500"} size={14} />
-                        <strong className="text-[13px] text-slate-800">{suggestion.title}</strong>
-                      </div>
-                      <p className="mt-1 pl-[22px] text-xs leading-5 text-slate-500">{suggestion.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-7 text-center text-xs text-slate-400">
-                  No structural suggestions right now — your schema looks clean.
-                </p>
-              )}
-            </div>
+            ) : (
+              <p className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-7 text-center text-xs leading-5 text-slate-400">
+                No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> help QueryMind
+                understand joins.
+              </p>
+            )}
           </div>
 
           {/* Table cards */}

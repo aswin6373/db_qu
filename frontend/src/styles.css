@@ -159,11 +159,23 @@ select {
 }
 @keyframes edge-flow {
   to {
-    stroke-dashoffset: -30;
+    stroke-dashoffset: -40;
   }
 }
 .edge-line {
   animation: edge-flow 3.2s linear infinite;
+}
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.glow-pulse {
+  animation: glow-pulse 4.5s ease-in-out infinite;
 }
 
 /* Skeleton shimmer */

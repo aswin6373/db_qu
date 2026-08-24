@@ -15,15 +15,21 @@ def generate_sql(question: str, schema: dict) -> str:
     schema_change = _detect_schema_change_request(question, schema)
     if schema_change:
         raise QueryUnderstandingError(schema_change)
-    table = _ensure_question_can_target_schema(question, schema)
-    _ensure_insert_has_enough_details(question, schema, table)
+    if not (schema.get("tables") or {}):
+        raise QueryUnderstandingError(
+            "I could not find any discovered tables for this connection. Re-test the database connection so QueryMind can read the schema."
+        )
     if settings.llm_provider == "gemini":
         try:
+            # The LLM can handle JOINs across multiple tables — no single-table restriction.
             return _generate_sql_with_gemini(question, schema)
         except (RuntimeError, httpx.HTTPError):
             return _generate_sql_with_ollama_or_fallback(question, schema)
     if settings.llm_provider == "ollama":
         return _generate_sql_with_ollama_or_fallback(question, schema)
+    # Deterministic fallback can only target one table.
+    table = _ensure_question_can_target_schema(question, schema)
+    _ensure_insert_has_enough_details(question, schema, table)
     return _generate_sql_fallback(question, schema)
 
 
@@ -355,7 +361,9 @@ def _generate_sql_fallback(question: str, schema: dict) -> str:
     if any(word in lowered for word in ["insert", "add", "create"]):
         values = _insert_values_from_question(question, schema, table)
         columns = ", ".join(values.keys())
-        escaped_values = ", ".join(f"'{value.replace("'", "''")}'" for value in values.values())
+        escaped_values = ", ".join(
+            "'" + value.replace("'", "''") + "'" for value in values.values()
+        )
         return f"INSERT INTO {table} ({columns}) VALUES ({escaped_values})"
     return f"SELECT * FROM {table} LIMIT 50"
 

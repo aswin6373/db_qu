@@ -302,15 +302,23 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                               <stop offset="100%" stopColor="#dde8ea" />
                             </linearGradient>
                           </defs>
-                          <ellipse cx="48" cy="38" fill="rgba(23,74,68,0.16)" rx="42" ry="7" />
+                          {/* NOTE: this SVG sits inside a parent that is rotated in real 3D
+                              (rotateX ~54deg) by the "world" wrapper above, with NO counter-
+                              rotation/billboard applied to pedestals. That 3D rotation is what
+                              flattens a circle into the elliptical "puck" look on screen — so
+                              the shapes drawn here should be close to a TRUE CIRCLE (ry close to
+                              rx), not pre-squashed. Drawing a pre-squashed ellipse here caused it
+                              to be flattened a second time by the real transform, producing the
+                              thin sliver/lens artifact. */}
+                          <ellipse cx="48" cy="30" fill="rgba(23,74,68,0.16)" rx="42" ry="15" />
                           <path
-                            d="M8 20 v12 a40 10 0 0 0 80 0 v-12"
+                            d="M8 14 v8 a40 21 0 0 0 80 0 v-8"
                             fill={`url(#ped-side-${index})`}
                             stroke="#9db3bc"
                             strokeWidth="1"
                           />
-                          <ellipse cx="48" cy="20" fill={`url(#ped-top-${index})`} rx="40" ry="10" stroke="#b7c9d0" strokeWidth="1" />
-                          <ellipse cx="48" cy="20" fill="rgba(47,158,151,0.10)" rx="27" ry="6.5" />
+                          <ellipse cx="48" cy="14" fill={`url(#ped-top-${index})`} rx="40" ry="21" stroke="#b7c9d0" strokeWidth="1" />
+                          <ellipse cx="48" cy="14" fill="rgba(47,158,151,0.10)" rx="27" ry="14" />
                         </svg>
                       </span>
                     );

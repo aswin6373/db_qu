@@ -259,6 +259,73 @@ def test_superlative_questions_route_to_agent(client, monkeypatch):
     assert body["rows"] == [{"customer_id": 1, "spent": 500}]
 
 
+def test_ai_router_sends_aggregation_question_to_agent(client, monkeypatch):
+    """Keyword regexes miss phrasings like 'who buy most products' — the AI
+    intent router must catch them and hand the question to the agent."""
+    from app.api import query as query_api
+    from app.services.ai import Intent
+
+    enable_agent(monkeypatch)
+    monkeypatch.setattr(query_api, "classify_question", lambda *args, **kwargs: Intent(analytical=True))
+
+    RecordingConnector.calls = []
+    monkeypatch.setattr(query_api, "build_connector", lambda connection: RecordingConnector())
+    patch_agent_llm(
+        monkeypatch,
+        [
+            action("run_sql", "SELECT c.name, SUM(oi.quantity) AS bought FROM customers c JOIN orders o ON o.customer_id = c.id JOIN order_items oi ON oi.order_id = o.id GROUP BY c.name ORDER BY bought DESC LIMIT 1"),
+            action("finish", sql="SELECT c.name, SUM(oi.quantity) AS bought FROM customers c JOIN order_items oi ON oi.order_id = o.id GROUP BY c.name ORDER BY bought DESC LIMIT 1", summary="Customer #1 bought the most products."),
+        ],
+    )
+
+    token = register_and_token(client, "agent-router@example.com", "Agent Router")
+    connection_id = create_connection_with_schema(client, token)
+    response = client.post(
+        "/query/generate",
+        json={"question": "who buy most products", "connection_id": connection_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [step["tool"] for step in body["steps"]] == ["run_sql", "finish"]
+    assert "bought the most" in body["summary"]
+
+
+def test_naive_answer_escalates_to_agent(client, monkeypatch):
+    """Safety net: when the intent router misses but the one-shot pipeline
+    answers an aggregation question with a flat SELECT, the result is
+    escalated to the agent instead of shipping wrong rows."""
+    from app.api import query as query_api
+    from app.services.ai import Intent
+
+    enable_agent(monkeypatch)
+    monkeypatch.setattr(query_api, "classify_question", lambda *args, **kwargs: Intent())
+    monkeypatch.setattr(query_api, "generate_sql", lambda *args, **kwargs: "SELECT * FROM orders LIMIT 50")
+
+    RecordingConnector.calls = []
+    monkeypatch.setattr(query_api, "build_connector", lambda connection: RecordingConnector())
+    patch_agent_llm(
+        monkeypatch,
+        [
+            action("run_sql", "SELECT customer_id, COUNT(*) AS order_count FROM orders GROUP BY customer_id ORDER BY order_count DESC LIMIT 1"),
+            action("finish", sql="SELECT customer_id, COUNT(*) AS order_count FROM orders GROUP BY customer_id ORDER BY order_count DESC LIMIT 1", summary="Customer #1 placed the most orders."),
+        ],
+    )
+
+    token = register_and_token(client, "agent-escalate@example.com", "Agent Escalate")
+    connection_id = create_connection_with_schema(client, token)
+    response = client.post(
+        "/query/generate",
+        json={"question": "who bought the most orders", "connection_id": connection_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [step["tool"] for step in body["steps"]] == ["run_sql", "finish"]
+    assert "most orders" in body["summary"]
+    assert body["rows"] == [{"customer_id": 1, "spent": 500}]
+
+
 def test_simple_questions_stay_on_fast_pipeline(client, monkeypatch):
     from app.api import query as query_api
 

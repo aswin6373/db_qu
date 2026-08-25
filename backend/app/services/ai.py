@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from dataclasses import dataclass
 
@@ -6,6 +7,8 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.sql_validator import validate_sql
+
+logger = logging.getLogger("querymind")
 
 
 class QueryUnderstandingError(ValueError):
@@ -18,6 +21,15 @@ class SchemaAnswer(Exception):
     def __init__(self, text: str):
         self.text = text
         super().__init__(text)
+
+
+@dataclass
+class Intent:
+    """Result of the single pre-flight intent call: needs a clarifying question,
+    and/or the question requires multi-step agent analysis."""
+
+    clarification: str | None = None
+    analytical: bool = False
 
 
 @dataclass
@@ -121,29 +133,26 @@ def generate_sql(
     return _validated_sql(sql, schema)
 
 
-def evaluate_clarity(
-    question: str,
-    schema: dict,
-    history: list[dict] | None = None,
-    ai_config: AIConfig | None = None,
-    db_type: str = "mysql",
-) -> str | None:
-    """Return a short clarifying question when the request cannot be confidently
-    mapped to the schema; return None when QueryMind should go ahead and run."""
-    eff = _effective_ai(ai_config)
-    if eff.provider not in {"gemini", "openai", "ollama"} or not (schema.get("tables") or {}):
-        return None
+def _intent_prompt(question: str, schema: dict, history: list[dict] | None, db_type: str) -> str:
     dialect = _dialect_label(db_type)
-    prompt = f"""
+    return f"""
 You are QueryMind's intent checker for a {dialect} assistant.
 
-Decide whether you could write ONE correct {dialect} query that fully satisfies the
-user's latest message using ONLY the schema below and the conversation context.
+Decide two things about the user's latest message:
+
+1. Could you write ONE correct {dialect} query that fully satisfies it using ONLY
+the schema below and the conversation context? If not, write a short friendly
+clarifying question.
+
+2. Does answering it well require MULTI-STEP analysis — discovering row counts,
+superlatives like "the biggest table" or "who bought the most", comparisons,
+rankings, or aggregations spread across tables? Those need a tool-using agent,
+not a single query. Set "analytical": true for them, false for simple lookups.
 
 Respond with exactly one JSON object and nothing else:
-{{"can_execute": true}}
+{{"can_execute": true, "analytical": false}}
 or
-{{"can_execute": false, "question": "<one short friendly clarifying question>"}}
+{{"can_execute": false, "question": "<one short friendly clarifying question>", "analytical": false}}
 
 Ask a clarifying question ONLY when the latest message is genuinely unclear:
 - it does not clearly reference any existing table or column from the schema,
@@ -166,6 +175,19 @@ Schema:
 Latest user message:
 {question}
 """.strip()
+
+
+def _call_intent(
+    question: str,
+    schema: dict,
+    history: list[dict] | None,
+    ai_config: AIConfig | None,
+    db_type: str,
+) -> Intent:
+    eff = _effective_ai(ai_config)
+    if eff.provider not in {"gemini", "openai", "ollama"} or not (schema.get("tables") or {}):
+        return Intent()
+    prompt = _intent_prompt(question, schema, history, db_type)
     try:
         if eff.provider == "gemini":
             raw = _gemini_generate(prompt, eff)
@@ -174,25 +196,41 @@ Latest user message:
         else:
             raw = _ollama_generate(prompt, eff)
     except (RuntimeError, httpx.HTTPError):
-        return None
-    return _parse_clarity_response(raw)
+        return Intent()
+    clarification, analytical = _parse_intent_response(raw)
+    return Intent(clarification=clarification, analytical=analytical)
 
 
-def _parse_clarity_response(raw: str) -> str | None:
+def classify_question(
+    question: str,
+    schema: dict,
+    history: list[dict] | None = None,
+    ai_config: AIConfig | None = None,
+    db_type: str = "mysql",
+) -> Intent:
+    """Full intent result: clarification plus whether the question needs the
+    multi-step agent (AI-driven routing instead of keyword matching)."""
+    return _call_intent(question, schema, history, ai_config, db_type)
+
+
+def _parse_intent_response(raw: str) -> tuple[str | None, bool]:
     raw = re.sub(r"```(?:json)?", "", raw, flags=re.IGNORECASE).strip("` \n")
     match = re.search(r"\{.*\}", raw, flags=re.DOTALL)
     if not match:
-        return None
+        return None, False
     try:
         data = json.loads(match.group(0))
     except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict) or data.get("can_execute") is not False:
-        return None
+        return None, False
+    if not isinstance(data, dict):
+        return None, False
+    analytical = data.get("analytical") is True
+    if data.get("can_execute") is not False:
+        return None, analytical
     question = str(data.get("question", "")).strip()
     if not question or len(question) > 400:
-        return None
-    return question
+        return None, analytical
+    return question, analytical
 
 
 def _history_block(history: list[dict] | None) -> str:
@@ -261,13 +299,13 @@ def summarize_result(
     if eff.provider == "gemini":
         try:
             summary = _summarize_with_gemini(question, columns, rows, eff)
-        except (RuntimeError, httpx.HTTPError):
-            pass
+        except (RuntimeError, httpx.HTTPError) as exc:
+            logger.warning("summary_llm_failed provider=gemini error=%s", exc)
     elif eff.provider == "openai":
         try:
             summary = _summarize_with_openai(question, columns, rows, eff)
-        except (RuntimeError, httpx.HTTPError):
-            pass
+        except (RuntimeError, httpx.HTTPError) as exc:
+            logger.warning("summary_llm_failed provider=openai error=%s", exc)
     if not summary and eff.provider in {"gemini", "openai", "ollama"}:
         # For gemini/openai this Ollama call is a rescue path — bound it tightly
         # so a missing local server cannot stretch the request.
@@ -278,14 +316,15 @@ def summarize_result(
         )
         try:
             summary = _summarize_with_ollama(question, columns, rows, eff, timeout=ollama_timeout)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("summary_ollama_failed error=%s", exc)
     summary = _sanitize_summary(summary, query_type, len(rows))
     if summary:
         return summary
     if not rows:
         return "The query ran successfully, but it did not return any rows."
-    return f"Found {len(rows)} row(s) for: {question}"
+    # Neutral wording: never echo the user's raw question back at them.
+    return f"Query finished — {len(rows)} row(s) returned."
 
 
 def _sanitize_summary(summary: str, query_type: str, row_count: int) -> str:
@@ -303,6 +342,11 @@ READ_STARTER_RE = re.compile(
     re.IGNORECASE,
 )
 STRONG_DDL_RE = re.compile(r"\b(drop|truncate|rename|alter)\b", re.IGNORECASE)
+# The generic "schema changes are blocked" reply may only fire on unmistakable
+# DDL verbs. Everyday phrasing like "i want the top biggest table with 10 rows"
+# contains a schema noun ("table") and a weak verb ("want") but is a read — it
+# must fall through to the AI, not the canned safety message.
+GENERIC_DDL_RE = re.compile(r"\b(drop|truncate|rename|alter|create)\b", re.IGNORECASE)
 DDL_VERB_RE = re.compile(
     r"\b(add|create|new|drop|remove|delete|rename|modify|alter|change|truncate|"
     r"make|put|insert|append|extend|include|introduce|give|want|need|needs|have|has|should)\b",
@@ -396,6 +440,8 @@ def _detect_schema_change_request(question: str, schema: dict, db_type: str = "m
             )
         return _schema_change_needs_table(schema, "drop a column")
 
+    if not GENERIC_DDL_RE.search(lowered):
+        return None
     return (
         "Schema changes (creating, altering, or dropping tables and columns) are blocked in QueryMind "
         "for safety. I can only read data or run confirmed INSERT, UPDATE, and DELETE statements. "

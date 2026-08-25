@@ -25,4 +25,4 @@ def test_normal_select_summary_is_untouched():
         requires_confirmation=False,
         query_type="select",
     )
-    assert summary == "Found 1 row(s) for: show all customers"
+    assert summary == "Query finished — 1 row(s) returned."

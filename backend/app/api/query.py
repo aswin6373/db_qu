@@ -17,10 +17,11 @@ from app.db.session import get_db
 from app.models import ChatSession, Message, Organization, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
 from app.services.ai import (
+    Intent,
     QueryUnderstandingError,
     SchemaAnswer,
     _detect_schema_change_request,
-    evaluate_clarity,
+    classify_question,
     generate_sql,
     summarize_result,
 )
@@ -53,6 +54,24 @@ _AGENT_HINT_RE = re.compile(
 )
 _WRITE_INTENT_RE = re.compile(
     r"\b(?:insert|update|delete|drop|create|remove|modify|alter|truncate|rename)\b",
+    re.IGNORECASE,
+)
+# Questions whose wording implies aggregation/comparison. Used twice: to avoid
+# wasting the intent call on obviously simple reads, and to escalate a naive
+# one-shot answer (SELECT * with no grouping) to the agent.
+_IMPLIES_AGGREGATION_RE = re.compile(
+    r"\b(?:who|which|what)\b[^.?!]{0,40}?\b(?:most|least|best|worst|highest|lowest|top)\b"
+    r"|\b(?:average|avg|total|sum|count|how many|compare|comparison|versus|rank\w*)\b",
+    re.IGNORECASE,
+)
+_DEEP_HINT_RE = re.compile(
+    r"\b(?:biggest|largest|smallest|busiest|trend|growth|decline|insight|distribution|"
+    r"outliers?|anomal\w*|unusual|forecast|relationship|correlat\w*|why|how come|who)\b",
+    re.IGNORECASE,
+)
+# A generated SQL statement this simple cannot answer an aggregation question.
+_SQL_HAS_AGGREGATE_RE = re.compile(
+    r"\b(?:GROUP\s+BY|SUM\s*\(|COUNT\s*\(|AVG\s*\(|MIN\s*\(|MAX\s*\(|JOIN)\b",
     re.IGNORECASE,
 )
 
@@ -189,9 +208,7 @@ def _recent_history(db: Session, user: User, session_id: int | None, limit: int 
 
 
 def _mentions_known_schema(question: str, schema: dict) -> bool:
-    """True when the question already names a real table or column. Such
-    questions skip the clarity LLM round trip: the SQL generator validates
-    against the schema anyway, so an extra pre-check only adds latency."""
+    """True when the question already names a real table or column."""
     lowered = question.lower()
     tables = schema.get("tables") or {}
     for table, meta in tables.items():
@@ -204,6 +221,15 @@ def _mentions_known_schema(question: str, schema: dict) -> bool:
             if len(column_name) > 2 and re.search(rf"\b{re.escape(column_name)}\b", lowered):
                 return True
     return False
+
+
+def _is_likely_simple_read(question: str, schema: dict) -> bool:
+    """True when the question names a real table/column and carries no
+    analytical wording — the intent LLM call is skipped so simple lookups
+    stay fast. Anything ambiguous goes through the AI router instead."""
+    if _IMPLIES_AGGREGATION_RE.search(question) or _DEEP_HINT_RE.search(question):
+        return False
+    return _mentions_known_schema(question, schema)
 
 
 def _is_followup_answer(chat_session: ChatSession | None, db: Session) -> bool:
@@ -352,21 +378,28 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         if agent_response is not None:
             return agent_response
 
-    # Follow-up answers ("yes", "the biggest one") are resolved by the SQL
-    # generator from the conversation — the clarity pre-check would only add
-    # an LLM round trip (and can ping-pong clarifications). Past the time
-    # budget there is no room for it either.
+    # One combined intent call decides clarification AND whether the question
+    # needs the multi-step agent — AI-driven routing that catches typos and
+    # phrasings no keyword list can ("whihc have most rows", "who buy most").
+    # The keyword regex above only short-circuits the obvious cases; simple
+    # lookups that name a real table skip this call entirely to stay fast.
     if (
         not _is_followup_answer(chat_session, db)
-        and not _mentions_known_schema(payload.question, schema)
+        and not _is_likely_simple_read(payload.question, schema)
         and time.monotonic() < deadline
     ):
         try:
-            clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql")
+            intent: Intent = classify_question(
+                payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql"
+            )
         except Exception:
-            clarifying_question = None
-        if clarifying_question:
-            return clarification_response(clarifying_question)
+            intent = Intent()
+        if intent.clarification:
+            return clarification_response(intent.clarification)
+        if intent.analytical and agent_eligible:
+            agent_response = run_agent_mode()
+            if agent_response is not None:
+                return agent_response
 
     try:
         sql = generate_sql(payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql")
@@ -405,11 +438,26 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         finally:
             connector.close()
 
+    # Escalation safety net: an aggregation-shaped question answered by a
+    # naive flat SELECT (e.g. "who bought the most" -> SELECT * FROM products)
+    # means the one-shot pipeline misread it — let the agent redo the analysis
+    # instead of shipping obviously wrong rows.
+    if (
+        not validation.requires_confirmation
+        and agent_eligible
+        and _IMPLIES_AGGREGATION_RE.search(payload.question)
+        and not _SQL_HAS_AGGREGATE_RE.search(sql)
+        and time.monotonic() < deadline
+    ):
+        rescue = run_agent_mode()
+        if rescue is not None:
+            return rescue
+
     if not validation.requires_confirmation and time.monotonic() >= deadline:
         # Time budget spent: skip the summary LLM call and ship the
         # deterministic wording instead of risking a serverless timeout.
         summary = (
-            f"Found {len(rows)} row(s) for: {payload.question}"
+            f"Query finished — {len(rows)} row(s) returned."
             if rows
             else "The query ran successfully, but it did not return any rows."
         )

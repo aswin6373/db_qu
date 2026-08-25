@@ -3,7 +3,7 @@ import json
 from conftest import TestingSessionLocal
 from app.core.config import get_settings
 from app.models import DBConnection
-from app.services.ai import evaluate_clarity
+from app.services.ai import classify_question
 
 SCHEMA = {
     "tables": {
@@ -104,20 +104,27 @@ def _with_gemini(monkeypatch, response_text: str):
 
 def test_evaluate_clarity_asks_when_llm_says_unclear(client, monkeypatch):
     _with_gemini(monkeypatch, '{"can_execute": false, "question": "Do you mean the customers table?"}')
-    question = evaluate_clarity("fix it", SCHEMA, [])
-    assert question == "Do you mean the customers table?"
+    intent = classify_question("fix it", SCHEMA, [])
+    assert intent.clarification == "Do you mean the customers table?"
 
 
 def test_evaluate_clarity_proceeds_when_clear(client, monkeypatch):
     _with_gemini(monkeypatch, '{"can_execute": true}')
-    assert evaluate_clarity("count rows in customers", SCHEMA, []) is None
+    assert classify_question("count rows in customers", SCHEMA, []).clarification is None
 
 
 def test_evaluate_clarity_fails_open_on_garbage(client, monkeypatch):
     _with_gemini(monkeypatch, "Sorry, I am not sure what you mean!")
-    assert evaluate_clarity("anything", SCHEMA, []) is None
+    assert classify_question("anything", SCHEMA, []).clarification is None
 
 
 def test_evaluate_clarity_parses_fenced_json(client, monkeypatch):
     _with_gemini(monkeypatch, '```json\n{"can_execute": false, "question": "Which table: a or b?"}\n```')
-    assert evaluate_clarity("update that one", SCHEMA, []) == "Which table: a or b?"
+    assert classify_question("update that one", SCHEMA, []).clarification == "Which table: a or b?"
+
+
+def test_intent_router_flags_analytical_questions(client, monkeypatch):
+    _with_gemini(monkeypatch, '{"can_execute": true, "analytical": true}')
+    intent = classify_question("who buy most products", SCHEMA, [])
+    assert intent.clarification is None
+    assert intent.analytical is True

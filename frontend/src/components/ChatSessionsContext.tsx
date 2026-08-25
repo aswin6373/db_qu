@@ -9,7 +9,7 @@ type ChatSessionsValue = {
   activeId: number | null;
   newChat: () => void;
   openSession: (id: number) => void;
-  ensureSession: () => Promise<number>;
+  ensureSession: (connectionId?: number | null) => Promise<number>;
   refresh: () => void;
   renameSession: (session: ChatSession, title: string) => Promise<void>;
   deleteSession: (session: ChatSession) => Promise<void>;
@@ -52,9 +52,12 @@ export function ChatSessionsProvider({ token, children }: { token: string; child
     setActiveId(id);
   }, []);
 
-  const ensureSession = useCallback(async () => {
+  const ensureSession = useCallback(async (connectionId?: number | null) => {
     if (activeId !== null) return activeId;
-    const created = await apiRequest<ChatSession>("/chat/sessions", { method: "POST", body: JSON.stringify({}) }, token);
+    const created = await apiRequest<ChatSession>("/chat/sessions", {
+      method: "POST",
+      body: JSON.stringify(connectionId ? { connection_id: connectionId } : {})
+    }, token);
     setSessions((items) => [created, ...items]);
     setActiveId(created.id);
     return created.id;

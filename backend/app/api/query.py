@@ -146,10 +146,31 @@ DEMO_SCHEMA = {
 
 @router.post("/generate", response_model=QueryGenerateResponse)
 def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if payload.connection_id is None:
+    chat_session = None
+    if payload.session_id is not None:
+        chat_session = _org_chat_session(payload.session_id, user, db)
+
+    # A chat is locked to the database chosen when it was created.
+    if chat_session is not None and chat_session.connection_id is not None:
+        connection_id = chat_session.connection_id
+        if payload.connection_id is not None and payload.connection_id != connection_id:
+            raise HTTPException(
+                status_code=409,
+                detail="This chat is linked to another database. Start a new chat to use a different one.",
+            )
+    else:
+        # Legacy chats (or new ones) bind to a database here — once set, it never changes.
+        connection_id = payload.connection_id
+        if connection_id is None and chat_session is not None:
+            raise HTTPException(status_code=400, detail="Pick a database for this chat before asking questions.")
+        if chat_session is not None and connection_id is not None:
+            chat_session.connection_id = connection_id
+            db.commit()
+
+    if connection_id is None:
         raise HTTPException(status_code=400, detail="Connect a database before asking AI questions.")
 
-    connection = _get_org_connection(payload.connection_id, user, db)
+    connection = _get_org_connection(connection_id, user, db)
     schema = json.loads(connection.schema_cache or "{}")
     history = _recent_history(db, user, payload.session_id)
 

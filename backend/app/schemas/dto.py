@@ -111,6 +111,7 @@ class DashboardResponse(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     title: str = Field(default="New chat", max_length=255)
+    connection_id: int | None = None
 
 
 class ChatSessionUpdate(BaseModel):
@@ -120,6 +121,8 @@ class ChatSessionUpdate(BaseModel):
 class ChatSessionResponse(BaseModel):
     id: int
     title: str
+    connection_id: int | None = None
+    connection_name: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     message_count: int = 0

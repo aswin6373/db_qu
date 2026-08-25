@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Bot, Check, CircleHelp, Copy, FileDown, Loader2, PlugZap, Send, Sparkles, Table2, User, X } from "lucide-react";
+import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Send, Sparkles, Table2, User, X } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
+import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
 import { apiRequest } from "../lib/api";
 import { downloadQueryReport } from "../lib/reportPdf";
@@ -29,7 +30,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [question, setQuestion] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [connectionId, setConnectionId] = useState<number | "">("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
   const [confirmedQueryIds, setConfirmedQueryIds] = useState<Set<number>>(new Set());
   const [dismissedQueryIds, setDismissedQueryIds] = useState<Set<number>>(new Set());
@@ -42,11 +43,14 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const activeSession = sessions.find((session) => session.id === activeId) ?? null;
   const hasConnection = connections.length > 0;
 
-  useEffect(() => {
-    if (!connectionId && connections.length > 0) {
-      setConnectionId(connections[0].id);
-    }
-  }, [connectionId, connections]);
+  // A chat is permanently linked to the database chosen when it was created.
+  // (Legacy chats without a binding fall back to the first connection on their first message.)
+  const selectedConnectionId =
+    activeSession?.connection_id && connections.some((connection) => connection.id === activeSession.connection_id)
+      ? activeSession.connection_id
+      : connections[0]?.id || "";
+  const selectedConnectionName =
+    connections.find((connection) => connection.id === Number(selectedConnectionId))?.name ?? "";
 
   useEffect(() => {
     if (isSending) return;
@@ -90,17 +94,17 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
   async function send() {
     const nextQuestion = question.trim();
-    if (isSending || !nextQuestion || !connectionId) return;
+    if (isSending || !nextQuestion || !selectedConnectionId) return;
     setQuestion("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setMessages((items) => [...items, { id: tempIdRef.current--, role: "user", content: nextQuestion }]);
     setIsSending(true);
     try {
-      const sessionId = await ensureSession();
+      const sessionId = await ensureSession(Number(selectedConnectionId));
       loadedSessionRef.current = sessionId;
       const result = await apiRequest<QueryResponse>("/query/generate", {
         method: "POST",
-        body: JSON.stringify({ question: nextQuestion, connection_id: connectionId, session_id: sessionId })
+        body: JSON.stringify({ question: nextQuestion, connection_id: Number(selectedConnectionId), session_id: sessionId })
       }, token);
       setMessages((items) => [...items, { id: tempIdRef.current--, role: "assistant", content: result.summary, result }]);
       refresh();
@@ -160,6 +164,17 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
             </p>
           )}
         </div>
+        {activeSession && hasConnection && (
+          <span
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5"
+            title="This chat is linked to this database"
+          >
+            <Database size={14} className="shrink-0 text-brand-600" />
+            <span className="max-w-36 truncate text-xs font-semibold text-slate-700">
+              {activeSession.connection_id ? selectedConnectionName : "No database"}
+            </span>
+          </span>
+        )}
       </header>
 
       {/* Messages */}
@@ -176,7 +191,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                   {message.result && !message.result.needs_clarification && (
                     <ResultBlock
                       confirmingQueryId={confirmingQueryId}
-                      connectionName={connections.find((connection) => connection.id === connectionId)?.name}
+                      connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
                       dismissedQueryIds={dismissedQueryIds}
                       isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
                       onCancel={cancelWrite}
@@ -201,11 +216,13 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               {messages.length === 0 && !isSending && (
                 <EmptyConversation
                   hasConnection={hasConnection}
+                  needsDatabase={!activeSession}
                   onOpenConnections={onOpenConnections}
                   onPick={(suggestion) => {
                     setQuestion(suggestion);
                     textareaRef.current?.focus();
                   }}
+                  onPickDatabase={() => setPickerOpen(true)}
                 />
               )}
             </>
@@ -222,39 +239,40 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               <PlugZap size={15} /> Connect a database to start asking questions
             </button>
           )}
+          {hasConnection && !activeSession && (
+            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100/70" onClick={() => setPickerOpen(true)} type="button">
+              <Database size={15} /> Choose a database to start this chat
+            </button>
+          )}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-lift focus-within:border-brand-300">
             <textarea
               className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
-              disabled={isSending || !hasConnection}
+              disabled={isSending || !hasConnection || !activeSession}
               onChange={(event) => {
                 setQuestion(event.target.value);
                 autoResize(event.target);
               }}
               onKeyDown={onKeyDown}
-              placeholder={hasConnection ? "Ask your database anything…" : "Connect a database first"}
+              placeholder={
+                !hasConnection
+                  ? "Connect a database first"
+                  : !activeSession
+                    ? "Choose a database above to start this chat"
+                    : "Ask your database anything…"
+              }
               ref={textareaRef}
               rows={1}
               value={question}
             />
             <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2">
-              <select
-                aria-label="Database connection"
-                className="field h-8 max-w-44 text-xs sm:hidden"
-                disabled={isSending}
-                value={connectionId}
-                onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
-              >
-                {connections.length === 0 && <option value="">No database</option>}
-                {connections.map((connection) => (
-                  <option key={connection.id} value={connection.id}>{connection.name}</option>
-                ))}
-              </select>
-              <span className="ml-1 hidden text-[11px] text-slate-400 sm:block">
-                Enter to send · Shift+Enter for a new line
+              <span className="ml-1 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-400">
+                <Database size={12} className="shrink-0 text-brand-500" />
+                <span className="truncate">{selectedConnectionName || "No database selected"}</span>
+                <span className="hidden sm:inline">· Enter to send · Shift+Enter for a new line</span>
               </span>
               <button
                 className="btn-accent ml-auto h-9 w-9 !px-0"
-                disabled={isSending || !question.trim() || !connectionId}
+                disabled={isSending || !question.trim() || !selectedConnectionId}
                 title="Send"
                 type="submit"
               >
@@ -317,12 +335,16 @@ function Dot({ delay }: { delay: string }) {
 
 function EmptyConversation({
   hasConnection,
+  needsDatabase,
   onOpenConnections,
-  onPick
+  onPick,
+  onPickDatabase
 }: {
   hasConnection: boolean;
+  needsDatabase: boolean;
   onOpenConnections: () => void;
   onPick: (suggestion: string) => void;
+  onPickDatabase: () => void;
 }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
@@ -330,11 +352,13 @@ function EmptyConversation({
         <Sparkles size={24} />
       </span>
       <h2 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
-        {hasConnection ? "What do you want to know?" : "Connect a database to begin"}
+        {hasConnection ? (needsDatabase ? "Pick a database for this chat" : "What do you want to know?") : "Connect a database to begin"}
       </h2>
-      <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+      <p className="mt-2 max-w-md text-sm leading-6 text-navy-soft">
         {hasConnection
-          ? "Ask in plain English. QueryMind generates SQL, validates it against your schema, and pauses before any write."
+          ? needsDatabase
+            ? "Every chat is linked to one database. Choose which one this conversation should use — it stays fixed afterwards."
+            : "Ask in plain English. QueryMind generates SQL, validates it against your schema, and pauses before any write."
           : "AI chat unlocks after QueryMind discovers your database structure."}
       </p>
       {!hasConnection && (
@@ -342,7 +366,12 @@ function EmptyConversation({
           <PlugZap size={16} /> Connect database
         </button>
       )}
-      {hasConnection && (
+      {hasConnection && needsDatabase && (
+        <button className="btn-accent mt-5" onClick={onPickDatabase} type="button">
+          <Database size={16} /> Choose a database
+        </button>
+      )}
+      {hasConnection && !needsDatabase && (
         <div className="mt-7 grid w-full max-w-xl gap-2 sm:grid-cols-2">
           {SUGGESTIONS.map((suggestion) => (
             <button

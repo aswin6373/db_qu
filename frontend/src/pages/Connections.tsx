@@ -8,8 +8,11 @@ import {
   Info,
   Loader2,
   PlugZap,
+  Plus,
   RefreshCw,
   ShieldCheck,
+  Trash2,
+  X,
   XCircle
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
@@ -27,7 +30,7 @@ type Props = {
 
 type Feedback = { kind: "success" | "error" | "info"; text: string };
 
-type Mode = "view" | "edit";
+type Mode = "view" | "add";
 
 const EMPTY_FORM = {
   name: "",
@@ -48,25 +51,24 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  // A workspace can hold many databases; this picks whose schema is shown below the list.
+  const [selectedId, setSelectedId] = useState<number | null>(connections[0]?.id ?? null);
+  const [mode, setMode] = useState<Mode>("view");
 
-  const connection = connections[0];
-  const hasConnection = Boolean(connection);
+  const isEditing = mode === "add";
+  const selectedConnection =
+    connections.find((connection) => connection.id === selectedId) ?? connections[0] ?? null;
 
-  // One derived mode drives the whole page: view the active connection or edit a new one.
-  const [mode, setMode] = useState<Mode>(hasConnection ? "view" : "edit");
-  const effectiveMode: Mode = mode === "view" && !hasConnection ? "edit" : mode;
-  const isEditing = effectiveMode === "edit";
-
-  function startEdit() {
-    setForm((current) => ({ ...EMPTY_FORM, port: current.port }));
+  function startAdd() {
+    setForm({ ...EMPTY_FORM });
     setFeedback(null);
-    setMode("edit");
+    setMode("add");
   }
 
   function cancelEdit() {
     setFeedback(null);
-    setMode(hasConnection ? "view" : "edit");
+    setMode("view");
   }
 
   function updateField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -78,32 +80,20 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
     setFeedback(null);
     setIsSaving(true);
     try {
-      if (hasConnection) {
-        // The backend allows one connection per workspace, so a replace must remove the old row first.
-        await apiRequest(`/connections/${connection.id}`, { method: "DELETE" }, token).catch((err) => {
-          if (!(err instanceof Error && /404|not found/i.test(err.message))) throw err;
-        });
-      }
-      await apiRequest("/connections", { method: "POST", body: JSON.stringify(form) }, token);
+      const created = await apiRequest<Connection>("/connections", { method: "POST", body: JSON.stringify(form) }, token);
       setForm({ ...EMPTY_FORM });
+      setMode("view");
+      setSelectedId(created.id);
       setFeedback({
         kind: "success",
-        text: hasConnection ? "Database replaced and schema discovered." : "Connection saved and schema discovery completed."
+        text: `${created.name} connected and its schema was discovered.`
       });
-      setMode("view");
       onRefresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Connection failed";
       setFeedback({
         kind: "error",
-        text: hasConnection && !/already has a database connection/i.test(message)
-          ? `${message} Your previous database was already removed — submit again to finish replacing it.`
-          : message
+        text: err instanceof Error ? err.message : "Connection failed"
       });
-      if (hasConnection) {
-        setMode("view");
-        onRefresh();
-      }
     } finally {
       setIsSaving(false);
     }
@@ -111,7 +101,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
 
   async function refreshConnection(connectionId: number) {
     setFeedback(null);
-    setIsRefreshing(true);
+    setRefreshingId(connectionId);
     try {
       await apiRequest(`/connections/${connectionId}/refresh`, { method: "POST" }, token);
       setFeedback({ kind: "success", text: "Schema refreshed from the live database." });
@@ -119,7 +109,19 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
     } catch (err) {
       setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Refresh failed" });
     } finally {
-      setIsRefreshing(false);
+      setRefreshingId(null);
+    }
+  }
+
+  async function deleteConnection(connection: Connection) {
+    try {
+      await apiRequest(`/connections/${connection.id}`, { method: "DELETE" }, token);
+      setFeedback({ kind: "success", text: `${connection.name} was removed. Your query history is kept.` });
+      if (selectedId === connection.id) setSelectedId(null);
+      onRefresh();
+    } catch (err) {
+      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Delete failed" });
+      throw err;
     }
   }
 
@@ -127,8 +129,8 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
     <section className="space-y-7">
       <PageHeader
         eyebrow="Data sources"
-        title="Database connection"
-        description="Register your MySQL database, verify access, and cache schema metadata for safer AI-generated SQL."
+        title="Database connections"
+        description={`Connect every MySQL database your workspace uses — production, analytics, staging — and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
       />
 
       {feedback && (
@@ -141,30 +143,46 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
       {isEditing ? (
         <ConnectionForm
           form={form}
-          hasConnection={hasConnection}
           isSaving={isSaving}
           onCancel={cancelEdit}
           onFieldChange={updateField}
           onSubmit={submit}
-          previousName={hasConnection ? connection.name : undefined}
         />
+      ) : connections.length === 0 ? (
+        <EmptyState onAdd={startAdd} />
       ) : (
-        connection && (
-          <ConnectionCard
-            connection={connection}
-            isRefreshing={isRefreshing}
-            onRefreshSchema={() => refreshConnection(connection.id)}
-            onReplace={startEdit}
-          />
-        )
-      )}
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-navy-soft">
+              {connections.length} database{connections.length === 1 ? "" : "s"} connected
+              <span className="ml-2 text-xs text-navy-soft/60">Click a card to view its schema below</span>
+            </p>
+            <button className="btn-accent !h-10 shrink-0 !px-4 !font-medium" onClick={startAdd} type="button">
+              <Plus size={15} /> Add database
+            </button>
+          </div>
+          <div className="space-y-3">
+            {connections.map((connection) => (
+              <ConnectionCard
+                connection={connection}
+                isSelected={selectedConnection?.id === connection.id}
+                key={connection.id}
+                isRefreshing={refreshingId === connection.id}
+                onDelete={deleteConnection}
+                onSelect={() => setSelectedId(connection.id)}
+                onRefreshSchema={() => refreshConnection(connection.id)}
+              />
+            ))}
+          </div>
 
-      {connection && (
-        <SchemaGraph
-          insights={insights[connection.id]}
-          key={connection.id}
-          schema={schemas[connection.id]}
-        />
+          {selectedConnection && (
+            <SchemaGraph
+              insights={insights[selectedConnection.id]}
+              key={selectedConnection.id}
+              schema={schemas[selectedConnection.id]}
+            />
+          )}
+        </>
       )}
     </section>
   );
@@ -172,31 +190,58 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
 
 function ConnectionCard({
   connection,
+  isSelected,
   isRefreshing,
-  onRefreshSchema,
-  onReplace
+  onDelete,
+  onSelect,
+  onRefreshSchema
 }: {
   connection: Connection;
+  isSelected: boolean;
   isRefreshing: boolean;
+  onDelete: (connection: Connection) => Promise<void>;
+  onSelect: () => void;
   onRefreshSchema: () => void;
-  onReplace: () => void;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function remove() {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(connection);
+      setConfirmingDelete(false);
+    } catch {
+      setConfirmingDelete(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
-    <article className="card animate-fade-up overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
-            <Database size={20} />
+    <article
+      className={`card animate-fade-up cursor-pointer overflow-hidden transition ${
+        isSelected ? "!border-brand-300 ring-1 ring-brand-200" : "hover:!border-slate-300"
+      } ${isDeleting ? "opacity-60" : ""}`}
+      onClick={onSelect}
+    >
+      <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+            <Database size={18} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <strong className="text-lg font-bold text-slate-900">{connection.name}</strong>
-              <span className="status-pill pill-success">
-                <CheckCircle2 size={13} /> connected
-              </span>
+              <strong className="text-base font-bold text-slate-900">{connection.name}</strong>
+              {isSelected && (
+                <span className="status-pill pill-success">
+                  <CheckCircle2 size={13} /> viewing schema
+                </span>
+              )}
               {connection.ssh_host && (
                 <span className="status-pill pill-info">
-                  <ShieldCheck size={13} /> via {connection.ssh_host}
+                  <ShieldCheck size={13} /> ssh
                 </span>
               )}
             </div>
@@ -205,59 +250,87 @@ function ConnectionCard({
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <button className="btn-secondary" disabled={isRefreshing} onClick={onRefreshSchema} type="button">
-            {isRefreshing ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} />}
-            Refresh schema
-          </button>
-          <button className="btn-accent !h-10 !px-3.5 !font-medium" onClick={onReplace} type="button">
-            <PlugZap size={14} /> Replace database
-          </button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
+          {confirmingDelete ? (
+            <>
+              <span className="text-xs font-medium text-rose-600">Delete this database?</span>
+              <button
+                className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
+                disabled={isDeleting}
+                onClick={remove}
+                title="Confirm delete"
+                type="button"
+              >
+                {isDeleting ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
+              </button>
+              <button
+                aria-label="Keep connection"
+                className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                onClick={() => setConfirmingDelete(false)}
+                type="button"
+              >
+                <X size={15} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn-secondary !h-9 !px-3 !text-xs" disabled={isRefreshing} onClick={onRefreshSchema} type="button">
+                {isRefreshing ? <Loader2 className="animate-spin" size={13} /> : <RefreshCw size={13} />}
+                Refresh schema
+              </button>
+              <button
+                aria-label={`Delete ${connection.name}`}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                onClick={() => setConfirmingDelete(true)}
+                title="Delete connection"
+                type="button"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-3 px-6 py-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
         <DetailField label="Host" value={connection.host} />
         <DetailField label="Port" value={String(connection.port)} />
         <DetailField label="Database" value={connection.database_name} />
         <DetailField label="Username" value={connection.username} />
       </div>
-
-      {connection.ssh_host && (
-        <div className="grid gap-3 border-t border-slate-100 px-6 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailField label="SSH Host" value={connection.ssh_host} />
-          <DetailField label="SSH Port" value={String(connection.ssh_port ?? 22)} />
-          {connection.ssh_username && <DetailField label="SSH User" value={connection.ssh_username} />}
-        </div>
-      )}
-
-      {connection.ssl_mode && connection.ssl_mode !== "PREFERRED" && (
-        <p className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-6 py-3 text-xs text-slate-400">
-          <span className="rounded bg-brand-50 px-1.5 py-0.5 font-medium text-brand-700">
-            SSL {connection.ssl_mode.toLowerCase()}
-          </span>
-        </p>
-      )}
     </article>
+  );
+}
+
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div className="card animate-fade-up flex flex-col items-center px-6 py-14 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
+        <PlugZap size={24} />
+      </span>
+      <h2 className="mt-5 text-lg font-bold tracking-tight text-navy">No databases connected yet</h2>
+      <p className="mt-1.5 max-w-md text-sm leading-6 text-navy-soft">
+        Connect as many MySQL databases as your workspace needs — AI chat lets you pick one per conversation.
+      </p>
+      <button className="btn-accent mt-6" onClick={onAdd} type="button">
+        <Plus size={16} /> Add your first database
+      </button>
+    </div>
   );
 }
 
 function ConnectionForm({
   form,
-  hasConnection,
   isSaving,
   onCancel,
   onFieldChange,
-  onSubmit,
-  previousName
+  onSubmit
 }: {
   form: typeof EMPTY_FORM;
-  hasConnection: boolean;
   isSaving: boolean;
   onCancel: () => void;
   onFieldChange: <K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) => void;
   onSubmit: (event: FormEvent) => void;
-  previousName?: string;
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showSshPassword, setShowSshPassword] = useState(false);
@@ -282,23 +355,12 @@ function ConnectionForm({
           <Database size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">
-            {hasConnection ? "Connect a new database" : "New connection"}
-          </h2>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Connect a new database</h2>
           <p className="text-xs text-slate-500">Credentials are encrypted before they touch the platform database.</p>
         </div>
       </div>
 
       <div className="space-y-6 p-6 sm:p-7">
-        {hasConnection && previousName && (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <ShieldCheck className="mt-0.5 shrink-0" size={16} />
-            <p className="leading-6">
-              Saving will permanently replace <strong>{previousName}</strong> as your workspace database. Your query history is kept.
-            </p>
-          </div>
-        )}
-
         <section>
           <h3 className="eyebrow mb-3 text-slate-400">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
@@ -529,14 +591,12 @@ function ConnectionForm({
       </div>
 
       <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:justify-end">
-        {hasConnection && (
-          <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
-            Cancel
-          </button>
-        )}
+        <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
+          Cancel
+        </button>
         <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
           {isSaving ? <Loader2 className="animate-spin" size={15} /> : <PlugZap size={15} />}
-          {isSaving ? "Testing & discovering…" : hasConnection ? "Replace database" : "Save connection"}
+          {isSaving ? "Testing & discovering…" : "Save connection"}
         </button>
       </div>
     </form>

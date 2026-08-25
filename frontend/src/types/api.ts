@@ -66,6 +66,8 @@ export type Dashboard = {
 export type ChatSession = {
   id: number;
   title: string;
+  connection_id?: number | null;
+  connection_name?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   message_count: number;

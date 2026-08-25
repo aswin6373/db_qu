@@ -57,9 +57,12 @@ class ChatSession(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    connection_id: Mapped[int | None] = mapped_column(ForeignKey("db_connections.id"), nullable=True)
     title: Mapped[str] = mapped_column(String(255), default="New chat", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    connection: Mapped[DBConnection | None] = relationship()
 
 
 class Message(Base):

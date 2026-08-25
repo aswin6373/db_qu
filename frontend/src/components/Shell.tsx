@@ -1,23 +1,27 @@
 import { useState } from "react";
 import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Trash2, X } from "lucide-react";
+import { NewChatDialog } from "./NewChatDialog";
 import { useChatSessions } from "./ChatSessionsContext";
-import type { ChatSession } from "../types/api";
+import type { ChatSession, Connection } from "../types/api";
 
 type Props = {
   active: string;
   onActive: (value: string) => void;
   onLogout: () => void;
   orgName?: string;
+  connections: Connection[];
   children: React.ReactNode;
 };
 
 const nav = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-  { id: "connections", label: "Connection", icon: Database }
+  { id: "connections", label: "Connections", icon: Database }
 ];
 
-export function Shell({ active, onActive, onLogout, orgName, children }: Props) {
+export function Shell({ active, onActive, onLogout, orgName, connections, children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { newChat } = useChatSessions();
   const current = nav.find((item) => item.id === active);
 
   function go(id: string) {
@@ -25,11 +29,31 @@ export function Shell({ active, onActive, onLogout, orgName, children }: Props) 
     setDrawerOpen(false);
   }
 
+  function requestNewChat() {
+    setDrawerOpen(false);
+    if (connections.length === 0) {
+      // Nothing to pick yet — the chat page guides them to connect a database.
+      newChat();
+      onActive("chat");
+      return;
+    }
+    // Drop any open conversation so picking a database starts a genuinely new chat.
+    newChat();
+    setPickerOpen(true);
+  }
+
   return (
     <div className="min-h-screen bg-canvas">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy p-5 shadow-sidebar lg:flex">
-        <SidebarContent active={active} orgName={orgName} onLogout={onLogout} onNavigate={onActive} />
+        <SidebarContent
+          active={active}
+          orgName={orgName}
+          connections={connections}
+          onLogout={onLogout}
+          onNavigate={onActive}
+          onRequestNewChat={requestNewChat}
+        />
       </aside>
 
       {/* Mobile drawer */}
@@ -46,11 +70,13 @@ export function Shell({ active, onActive, onLogout, orgName, children }: Props) 
             <SidebarContent
               active={active}
               orgName={orgName}
+              connections={connections}
               onLogout={() => {
                 setDrawerOpen(false);
                 onLogout();
               }}
               onNavigate={go}
+              onRequestNewChat={requestNewChat}
             />
           </aside>
         </div>
@@ -86,6 +112,17 @@ export function Shell({ active, onActive, onLogout, orgName, children }: Props) 
           <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">{children}</div>
         )}
       </main>
+
+      {pickerOpen && (
+        <NewChatDialog
+          connections={connections}
+          onClose={() => setPickerOpen(false)}
+          onSuccess={() => {
+            onActive("chat");
+            setDrawerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -93,23 +130,26 @@ export function Shell({ active, onActive, onLogout, orgName, children }: Props) 
 function SidebarContent({
   active,
   orgName,
+  connections,
   onLogout,
-  onNavigate
+  onNavigate,
+  onRequestNewChat
 }: {
   active: string;
   orgName?: string;
+  connections: Connection[];
   onLogout: () => void;
   onNavigate: (id: string) => void;
+  onRequestNewChat: () => void;
 }) {
-  const { sessions, isLoading, activeId, newChat, openSession, renameSession, deleteSession } = useChatSessions();
+  const { sessions, isLoading, activeId, openSession, renameSession, deleteSession } = useChatSessions();
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   function startNewChat() {
-    newChat();
-    onNavigate("chat");
+    onRequestNewChat();
   }
 
   function selectSession(session: ChatSession) {
@@ -214,12 +254,17 @@ function SidebarContent({
                   key={session.id}
                 >
                   <button
-                    className="min-w-0 flex-1 truncate px-3 py-2.5 text-left text-sm"
+                    className="min-w-0 flex-1 px-3 py-2 text-left text-sm"
                     onClick={() => selectSession(session)}
                     title={session.title}
                     type="button"
                   >
-                    {session.title}
+                    <span className="block truncate">{session.title}</span>
+                    {session.connection_name && (
+                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-teal-soft/70">
+                        <Database size={10} className="shrink-0" /> {session.connection_name}
+                      </span>
+                    )}
                   </button>
                   {isDeleting ? (
                     <span className="flex items-center gap-1 pr-2">
@@ -328,3 +373,4 @@ function OrgChip({ name }: { name: string }) {
     </div>
   );
 }
+

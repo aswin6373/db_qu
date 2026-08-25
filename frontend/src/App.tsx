@@ -152,7 +152,7 @@ export function App() {
 
   return (
     <ChatSessionsProvider token={token}>
-      <Shell active={active} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
+      <Shell active={active} connections={connections} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
         {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
         {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
         {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}

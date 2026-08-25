@@ -147,7 +147,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
         connection && (
           <ConnectionCard
             connection={connection}
-            insight={insights[connection.id]}
             isRefreshing={isRefreshing}
             onRefreshSchema={() => refreshConnection(connection.id)}
             onReplace={startEdit}
@@ -168,13 +167,11 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
 
 function ConnectionCard({
   connection,
-  insight,
   isRefreshing,
   onRefreshSchema,
   onReplace
 }: {
   connection: Connection;
-  insight?: SchemaInsights;
   isRefreshing: boolean;
   onRefreshSchema: () => void;
   onReplace: () => void;
@@ -192,11 +189,6 @@ function ConnectionCard({
               <span className="status-pill pill-success">
                 <CheckCircle2 size={13} /> connected
               </span>
-              {insight && (
-                <span className={`status-pill ${insight.score >= 70 ? "pill-info" : "pill-warn"}`}>
-                  {insight.score}/100 readiness
-                </span>
-              )}
             </div>
             <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
               mysql://{connection.username}@{connection.host}:{connection.port}/{connection.database_name}
@@ -208,7 +200,7 @@ function ConnectionCard({
             {isRefreshing ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} />}
             Refresh schema
           </button>
-          <button className="btn-accent" onClick={onReplace} type="button">
+          <button className="btn-accent !h-10 !px-3.5 !font-medium" onClick={onReplace} type="button">
             <PlugZap size={14} /> Replace database
           </button>
         </div>

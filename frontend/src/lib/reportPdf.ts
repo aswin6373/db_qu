@@ -6,6 +6,7 @@ export type ReportPayload = {
   sql: string;
   columns: string[];
   rows: Record<string, unknown>[];
+  connectionName?: string;
   chartSvg?: SVGSVGElement | null;
 };
 
@@ -75,7 +76,8 @@ export async function downloadQueryReport(payload: ReportPayload): Promise<void>
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(168, 200, 212);
-  doc.text(new Date().toLocaleString(), MARGIN, 60);
+  const stamp = new Date().toLocaleString();
+  doc.text(payload.connectionName ? `${payload.connectionName}  ·  ${stamp}` : stamp, MARGIN, 60);
 
   let y = 122;
   const sectionTitle = (label: string) => {

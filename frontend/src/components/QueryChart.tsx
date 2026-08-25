@@ -175,7 +175,9 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
     }
   }
 
-  const allValues = spec.series.flatMap((entry) => entry.values);
+  /* scale the axis to only the visible series so toggling a legend chip
+     actually reshapes the graph */
+  const allValues = shownEntries.flatMap(({ entry }) => entry.values);
   const yMax = niceMax(Math.max(1, ...allValues));
   const rawMin = Math.min(0, ...allValues);
   const yMin = rawMin < 0 ? -niceMax(-rawMin) : 0;

@@ -471,7 +471,7 @@ function ResultBlock({
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {chartSpec && (
             <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
               {(["table", "chart"] as const).map((option) => (
@@ -489,20 +489,18 @@ function ResultBlock({
               ))}
             </div>
           )}
-          {result.rows.length === 0 && downloadButton}
+          {downloadButton}
         </div>
       </div>
 
       {chartSpec && (
-        <div className={`relative ${view === "chart" ? "" : "hidden"}`} ref={chartRef}>
-          {view === "chart" && <div className="absolute right-2 top-2 z-10">{downloadButton}</div>}
+        <div className={view === "chart" ? "" : "hidden"} ref={chartRef}>
           <QueryChart spec={chartSpec} totalRows={result.rows.length} />
         </div>
       )}
 
       {result.rows.length > 0 && (view === "table" || !chartSpec) && (
-        <div className="relative">
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -521,8 +519,6 @@ function ResultBlock({
                 ))}
               </tbody>
             </table>
-          </div>
-          <div className="absolute right-2 top-2 z-10">{downloadButton}</div>
         </div>
       )}
     </div>

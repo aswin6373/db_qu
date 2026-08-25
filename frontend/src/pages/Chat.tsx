@@ -176,6 +176,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                   {message.result && !message.result.needs_clarification && (
                     <ResultBlock
                       confirmingQueryId={confirmingQueryId}
+                      connectionName={connections.find((connection) => connection.id === connectionId)?.name}
                       dismissedQueryIds={dismissedQueryIds}
                       isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
                       onCancel={cancelWrite}
@@ -361,6 +362,7 @@ function EmptyConversation({
 
 function ResultBlock({
   confirmingQueryId,
+  connectionName,
   dismissedQueryIds,
   isConfirmed,
   onConfirm,
@@ -368,6 +370,7 @@ function ResultBlock({
   result
 }: {
   confirmingQueryId: number | null;
+  connectionName?: string;
   dismissedQueryIds: Set<number>;
   isConfirmed: boolean;
   result: QueryResponse;
@@ -399,6 +402,7 @@ function ResultBlock({
       await downloadQueryReport({
         chartSvg: chartRef.current?.querySelector("svg") ?? null,
         columns: result.columns,
+        connectionName,
         rows: result.rows,
         sql: result.sql,
         summary: result.summary
@@ -407,6 +411,19 @@ function ResultBlock({
       setIsExporting(false);
     }
   }
+
+  const downloadButton = (
+    <button
+      aria-label="Download PDF report"
+      className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={isExporting}
+      onClick={exportPdf}
+      title="Download PDF report"
+      type="button"
+    >
+      {isExporting ? <Loader2 className="animate-spin" size={13} /> : <FileDown size={13} />}
+    </button>
+  );
 
   return (
     <div className="mt-3 space-y-3">
@@ -472,27 +489,20 @@ function ResultBlock({
               ))}
             </div>
           )}
-          <button
-            aria-label="Download PDF report"
-            className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isExporting}
-            onClick={exportPdf}
-            title="Download PDF report"
-            type="button"
-          >
-            {isExporting ? <Loader2 className="animate-spin" size={13} /> : <FileDown size={13} />}
-          </button>
+          {result.rows.length === 0 && downloadButton}
         </div>
       </div>
 
       {chartSpec && (
-        <div className={view === "chart" ? "" : "hidden"} ref={chartRef}>
+        <div className={`relative ${view === "chart" ? "" : "hidden"}`} ref={chartRef}>
+          {view === "chart" && <div className="absolute right-2 top-2 z-10">{downloadButton}</div>}
           <QueryChart spec={chartSpec} totalRows={result.rows.length} />
         </div>
       )}
 
       {result.rows.length > 0 && (view === "table" || !chartSpec) && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="relative">
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -512,6 +522,8 @@ function ResultBlock({
               </tbody>
             </table>
           </div>
+          <div className="absolute right-2 top-2 z-10">{downloadButton}</div>
+        </div>
       )}
     </div>
   );

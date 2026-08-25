@@ -6,7 +6,7 @@ export type ChartSpec = {
 };
 
 /* Theme palette matching the app: brand teal first, then accents. */
-const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#175d55", "#64748b"];
+const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#0ea5e9", "#ec4899", "#175d55", "#64748b"];
 const NUMERIC_RE = /^-?[\d,]+(\.\d+)?%?$/;
 const DATE_NAME_RE = /(date|month|year|day|week|quarter|time|period)/i;
 const MAX_CATEGORIES = 12;
@@ -189,9 +189,15 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
                     const top = Math.min(zeroY, valueY);
                     const barH = Math.max(Math.abs(valueY - zeroY), 0);
                     const x = groupStart + slotW * seriesIndex + (slotW - barW) / 2;
+                    /* single-series bars each get their own palette color;
+                       multi-series charts color by series instead */
+                    const color =
+                      spec.series.length === 1
+                        ? PALETTE[groupIndex % PALETTE.length]
+                        : PALETTE[seriesIndex % PALETTE.length];
                     return (
                       <g key={entry.name}>
-                        <path d={barPath(x, top, barW, barH, value >= 0)} fill={PALETTE[seriesIndex % PALETTE.length]}>
+                        <path d={barPath(x, top, barW, barH, value >= 0)} fill={color}>
                           <title>{`${label} · ${entry.name}: ${fullFormat.format(value)}`}</title>
                         </path>
                         {showValues && barH > 2 && (

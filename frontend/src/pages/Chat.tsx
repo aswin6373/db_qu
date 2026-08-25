@@ -388,7 +388,7 @@ function ResultBlock({
   const isConfirming = confirmingQueryId === result.query_id;
   const isCancelled = dismissedQueryIds.has(result.query_id);
   const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
-  const [view, setView] = useState<"chart" | "table">(chartSpec ? "chart" : "table");
+  const [view, setView] = useState<"chart" | "table">("table");
 
   return (
     <div className="mt-3 space-y-3">

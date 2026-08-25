@@ -43,6 +43,10 @@ class DBConnection(Base):
     ssl_mode: Mapped[str] = mapped_column(
         String(20), default="PREFERRED", server_default="PREFERRED", nullable=False
     )
+    ssh_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ssh_port: Mapped[int] = mapped_column(Integer, default=22, server_default="22", nullable=False)
+    ssh_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    encrypted_ssh_password: Mapped[str | None] = mapped_column(Text, nullable=True)
     schema_cache: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

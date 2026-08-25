@@ -54,6 +54,10 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(get_curren
         encrypted_password=encrypt_secret(payload.password),
         database_name=payload.database_name,
         ssl_mode=payload.ssl_mode,
+        ssh_host=payload.ssh_host or None,
+        ssh_port=payload.ssh_port if payload.ssh_host else 22,
+        ssh_username=payload.ssh_username if payload.ssh_host else None,
+        encrypted_ssh_password=encrypt_secret(payload.ssh_password) if payload.ssh_host and payload.ssh_password else None,
         schema_cache=json.dumps(schema),
     )
     db.add(connection)
@@ -125,6 +129,24 @@ def build_connector(
                 "Please re-save the connection credentials once so QueryMind can use the new permanent key."
             ),
         ) from exc
+
+    # Stored tunnel settings win unless explicitly overridden.
+    if ssh_host is None and connection.ssh_host:
+        ssh_host = connection.ssh_host
+        ssh_port = connection.ssh_port or 22
+        ssh_username = connection.ssh_username
+        if connection.encrypted_ssh_password:
+            try:
+                ssh_password = decrypt_secret(connection.encrypted_ssh_password)
+            except InvalidToken as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "The SSH tunnel credentials for this connection were saved with an old encryption key. "
+                        "Please re-save the connection so QueryMind can reach your database."
+                    ),
+                ) from exc
+
     return MySQLConnector(
         connection.host,
         connection.port,

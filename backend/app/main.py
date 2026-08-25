@@ -30,6 +30,10 @@ def ensure_schema_upgrades() -> None:
         "ALTER TABLE chat_sessions ADD COLUMN updated_at TIMESTAMP NULL",
         "ALTER TABLE messages ADD COLUMN query_id INTEGER",
         "ALTER TABLE messages ADD COLUMN result_json TEXT",
+        "ALTER TABLE db_connections ADD COLUMN ssh_host VARCHAR(255)",
+        "ALTER TABLE db_connections ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22",
+        "ALTER TABLE db_connections ADD COLUMN ssh_username VARCHAR(255)",
+        "ALTER TABLE db_connections ADD COLUMN encrypted_ssh_password TEXT",
     ]
     with engine.begin() as connection:
         for statement in statements:

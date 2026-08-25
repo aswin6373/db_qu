@@ -55,6 +55,9 @@ class ConnectionResponse(BaseModel):
     username: str
     database_name: str
     ssl_mode: str = "PREFERRED"
+    ssh_host: str | None = None
+    ssh_port: int | None = None
+    ssh_username: str | None = None
 
 
 class QueryGenerateRequest(BaseModel):

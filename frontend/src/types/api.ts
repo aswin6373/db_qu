@@ -60,6 +60,14 @@ export type SchemaInsights = {
   suggestions: Array<{ severity: "high" | "medium" | "low"; title: string; detail: string }>;
 };
 
+export type AgentStep = {
+  tool: string;
+  label: string;
+  sql?: string | null;
+  detail?: string | null;
+  error?: boolean;
+};
+
 export type QueryResponse = {
   query_id: number;
   sql: string;
@@ -69,6 +77,8 @@ export type QueryResponse = {
   columns: string[];
   rows: Record<string, unknown>[];
   needs_clarification?: boolean;
+  meta_answer?: boolean;
+  steps?: AgentStep[];
 };
 
 export type Dashboard = {

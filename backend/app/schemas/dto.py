@@ -104,6 +104,7 @@ class QueryGenerateResponse(BaseModel):
     rows: list[dict] = []
     needs_clarification: bool = False
     meta_answer: bool = False
+    steps: list[dict] = []
 
 
 class SchemaEdge(BaseModel):

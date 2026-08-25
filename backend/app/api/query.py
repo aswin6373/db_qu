@@ -1,6 +1,8 @@
 import json
+import re
 from datetime import datetime
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,10 +13,35 @@ from app.api.organizations import ai_config_for_org
 from app.db.session import get_db
 from app.models import ChatSession, Message, Organization, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
-from app.services.ai import QueryUnderstandingError, SchemaAnswer, evaluate_clarity, generate_sql, schema_meta_answer, summarize_result
+from app.services.ai import (
+    QueryUnderstandingError,
+    SchemaAnswer,
+    _detect_schema_change_request,
+    evaluate_clarity,
+    generate_sql,
+    schema_meta_answer,
+    summarize_result,
+)
+from app.services.agent import AgentError, agent_supported, run_agent
 from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
+
+# Questions that benefit from multi-step reasoning get the agent; everything
+# else stays on the fast one-shot pipeline.
+_AGENT_HINT_RE = re.compile(
+    r"\b(?:why|how come|compare|comparison|versus|trend|over time|growth|drop|dropped|decline|"
+    r"increase|decrease|correlat\w*|relationship|break\s?down|insight)\b"
+    r"|\bper\s+(?:month|week|day|quarter|year)\b"
+    r"|\bby\s+(?:month|week|quarter|year|category|region|status)\b"
+    r"|\bwhich\s+[\w ]{0,30}?\b(?:most|least|best|worst|highest|lowest)\b"
+    r"|\btop\s+\d+\b",
+    re.IGNORECASE,
+)
+_WRITE_INTENT_RE = re.compile(
+    r"\b(?:insert|update|delete|drop|create|remove|modify|alter|truncate|rename)\b",
+    re.IGNORECASE,
+)
 
 
 def serialize_result_preview(columns: list[str], rows: list[dict]) -> str:
@@ -29,6 +56,7 @@ def _result_payload(
     summary: str,
     columns: list[str],
     rows: list[dict],
+    steps: list[dict] | None = None,
 ) -> dict:
     return {
         "query_id": query_id,
@@ -38,6 +66,7 @@ def _result_payload(
         "summary": summary,
         "columns": columns,
         "rows": rows,
+        "steps": steps or [],
     }
 
 
@@ -191,6 +220,46 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             _record_exchange(db, chat_session, payload.question, response)
         return response
 
+    def run_agent_mode() -> QueryGenerateResponse | None:
+        """Multi-step agent attempt; None means it failed and the pipeline should try."""
+        connector = build_connector(connection)
+
+        def execute(sql: str):
+            return connector.execute(sql)
+
+        try:
+            result = run_agent(payload.question, schema, execute, history, ai_config)
+        except (AgentError, httpx.HTTPError, RuntimeError):
+            return None
+
+        log = QueryLog(
+            organization_id=user.organization_id,
+            user_id=user.id,
+            connection_id=connection.id,
+            natural_language=payload.question,
+            generated_sql=result.sql or "-- agent analysis (no single query)",
+            query_type="SELECT",
+            status="executed",
+            result_preview=serialize_result_preview(result.columns, result.rows),
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        response = QueryGenerateResponse(
+            query_id=log.id,
+            sql=result.sql,
+            query_type="SELECT",
+            requires_confirmation=False,
+            summary=result.summary,
+            columns=result.columns,
+            rows=result.rows,
+            steps=result.steps,
+        )
+        if payload.session_id is not None:
+            chat_session = _org_chat_session(payload.session_id, user, db)
+            _record_exchange(db, chat_session, payload.question, response)
+        return response
+
     # Questions about the database itself are answered directly from the schema,
     # before the AI clarity/SQL steps ever run.
     try:
@@ -199,6 +268,15 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         meta_text = None
     if meta_text:
         return direct_answer(meta_text)
+
+    write_intent = bool(_WRITE_INTENT_RE.search(payload.question))
+    agent_eligible = agent_supported(ai_config) and not write_intent
+
+    # Complex analytical questions go to the agent loop first.
+    if agent_eligible and _AGENT_HINT_RE.search(payload.question):
+        agent_response = run_agent_mode()
+        if agent_response is not None:
+            return agent_response
 
     try:
         clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
@@ -212,6 +290,15 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     except SchemaAnswer as exc:
         return direct_answer(exc.text)
     except QueryUnderstandingError as exc:
+        # The pipeline couldn't map the question — give the agent one chance to
+        # reason it through (unless it's a policy message like schema changes).
+        if (
+            agent_eligible
+            and not _detect_schema_change_request(payload.question, schema)
+        ):
+            rescue = run_agent_mode()
+            if rescue is not None:
+                return rescue
         return clarification_response(str(exc))
     validation = validate_sql(sql, schema)
     if not validation.ok:

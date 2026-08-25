@@ -29,11 +29,24 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
     password: "",
     database_name: "",
     ssl_mode: "PREFERRED",
-    test_live: true
+    test_live: true,
+    ssh_host: null as string | null,
+    ssh_port: 22,
+    ssh_username: null as string | null,
+    ssh_password: null as string | null
   });
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [saving, setSaving] = useState(false);
   const [connectedName, setConnectedName] = useState("");
+  const [showSshTunnel, setShowSshTunnel] = useState(false);
+
+  function toggleSshTunnel(enabled: boolean) {
+    setShowSshTunnel(enabled);
+    if (!enabled) {
+      // Drop any half-entered tunnel values so they never reach the backend.
+      setForm((current) => ({ ...current, ssh_host: null, ssh_port: 22, ssh_username: null, ssh_password: null }));
+    }
+  }
 
   function saveDetails(event: FormEvent) {
     event.preventDefault();
@@ -200,12 +213,29 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Host</span>
-                <input className="field font-mono" placeholder="mysql.example.com" required value={form.host} onChange={(event) => setForm({ ...form, host: event.target.value })} />
+                <input className="field font-mono" placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : "mysql.example.com"} required value={form.host} onChange={(event) => setForm({ ...form, host: event.target.value })} />
+                {showSshTunnel && (
+                  <span className="mt-1.5 block text-xs text-navy-soft/70">
+                    Database address as seen from the SSH server — use 127.0.0.1 if MySQL runs on the bastion itself.
+                  </span>
+                )}
               </label>
+              {showSshTunnel && (
+                <label className="block">
+                  <span className="label text-navy-soft">SSH Host</span>
+                  <input className="field font-mono" placeholder="bastion.mycompany.com" required={showSshTunnel} value={form.ssh_host ?? ""} onChange={(event) => setForm({ ...form, ssh_host: event.target.value })} />
+                </label>
+              )}
               <label className="block">
                 <span className="label text-navy-soft">Port</span>
                 <input className="field" max={65535} min={1} type="number" value={form.port} onChange={(event) => setForm({ ...form, port: Number(event.target.value) || 3306 })} />
               </label>
+              {showSshTunnel && (
+                <label className="block">
+                  <span className="label text-navy-soft">SSH Port</span>
+                  <input className="field" max={65535} min={1} type="number" value={form.ssh_port} onChange={(event) => setForm({ ...form, ssh_port: Number(event.target.value) || 22 })} />
+                </label>
+              )}
               <label className="block">
                 <span className="label text-navy-soft">Username</span>
                 <input className="field font-mono" placeholder="querymind_user" required value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
@@ -225,6 +255,39 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
                   <option value="REQUIRED">Required — cloud providers</option>
                   <option value="DISABLED">Disabled — local only</option>
                 </select>
+              </label>
+              {showSshTunnel && (
+                <>
+                  <label className="block">
+                    <span className="label text-navy-soft">SSH Username</span>
+                    <input className="field font-mono" placeholder="ec2-user" required={showSshTunnel} value={form.ssh_username ?? ""} onChange={(event) => setForm({ ...form, ssh_username: event.target.value })} />
+                  </label>
+                  <label className="block">
+                    <span className="label text-navy-soft">SSH Password / Private Key</span>
+                    <textarea
+                      className="field min-h-[42px] resize-y font-mono text-[13px]"
+                      placeholder="Paste SSH private key (-----BEGIN...) or password"
+                      required={showSshTunnel}
+                      rows={1}
+                      value={form.ssh_password ?? ""}
+                      onChange={(event) => setForm({ ...form, ssh_password: event.target.value })}
+                    />
+                    <span className="mt-1.5 block text-xs text-navy-soft/70">
+                      A private key is detected automatically when it starts with “-----BEGIN”. Encrypted at rest like your database password.
+                    </span>
+                  </label>
+                </>
+              )}
+              <label className="panel-soft flex items-start gap-3 p-3.5 text-sm sm:col-span-2">
+                <input checked={showSshTunnel} className="mt-0.5 h-4 w-4 accent-teal" id="onboarding-ssh-tunnel-toggle" onChange={(event) => toggleSshTunnel(event.target.checked)} type="checkbox" />
+                <span>
+                  <label className="flex cursor-pointer items-center gap-1.5 font-semibold text-navy" htmlFor="onboarding-ssh-tunnel-toggle">
+                    <ShieldCheck size={15} /> Connect via SSH tunnel
+                  </label>
+                  <span className="mt-0.5 block text-xs text-navy-soft/80">
+                    For private databases only reachable through a bastion/jump host.
+                  </span>
+                </span>
               </label>
               <label className="panel-soft flex items-start gap-3 p-3.5 text-sm sm:col-span-2">
                 <input checked={Boolean(form.test_live)} className="mt-0.5 h-4 w-4 accent-teal" onChange={(event) => setForm({ ...form, test_live: event.target.checked })} type="checkbox" />

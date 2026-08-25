@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, ArrowUpRight, Check, Copy, Database } from "lucide-react";
+import { Activity, ArrowUpRight, Check, Copy, Database, MessageSquare, Sparkles, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { SchemaConstellation } from "../components/SchemaConstellation";
+import { Sparkline } from "../components/Sparkline";
 import { Connection, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "../types/api";
 
 type Props = {
@@ -17,8 +18,13 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
   const primaryConnection = connections[0];
   const primarySchema = primaryConnection ? schemas[primaryConnection.id] : null;
   const primaryInsights = primaryConnection ? insights[primaryConnection.id] : null;
+  const tableCount = Object.keys(primarySchema?.tables ?? {}).length;
+  const columnCount = Object.values(primarySchema?.tables ?? {}).reduce((total, table) => total + table.columns.length, 0);
+  const score = primaryInsights?.score ?? 0;
 
   const activity = dashboard?.recent_activity ?? [];
+  const rowsSeries = [...activity].reverse().map((item) => item.rows_returned ?? 0);
+  const totalRows = rowsSeries.reduce((total, value) => total + value, 0);
 
   // keep relative timestamps fresh
   const [, setTick] = useState(0);
@@ -44,7 +50,18 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
 
   return (
     <section className="space-y-7">
-      <PageHeader eyebrow={dashboard?.organization.name ?? "Workspace"} title="Operational Dashboard" />
+      <PageHeader
+        eyebrow={dashboard?.organization.name ?? "Workspace"}
+        title="Operational Dashboard"
+        description="Track activity from this production console — live schema relationships, AI query traffic, and guarded operations."
+        action={
+          connections.length > 0 ? (
+            <button className="btn-secondary" onClick={onOpenConnections} type="button">
+              <Database size={15} /> Manage connections
+            </button>
+          ) : null
+        }
+      />
 
       {connections.length === 0 && (
         <section className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6 sm:p-8">
@@ -76,6 +93,26 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
           </div>
         </section>
       )}
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <KpiCard
+          caption={activity.length > 0 ? `${totalRows.toLocaleString()} rows returned` : "No queries yet"}
+          footer={rowsSeries.length > 1 ? <Sparkline height={30} values={rowsSeries} /> : undefined}
+          icon={<MessageSquare size={17} />}
+          label="AI queries"
+          value={dashboard?.query_count ?? 0}
+        />
+        <KpiCard caption={`${columnCount.toLocaleString()} columns indexed`} icon={<Table2 size={17} />} label="Discovered tables" value={tableCount} />
+        <KpiCard
+          caption={readinessLabel(score)}
+          footer={<ReadinessRing score={score} />}
+          icon={<Sparkles size={17} />}
+          label="AI readiness"
+          suffix="/100"
+          value={score}
+        />
+      </div>
 
       {/* Schema relationships */}
       <SchemaConstellation insights={primaryInsights} schema={primarySchema} title={`${primaryConnection?.name ?? "Workspace"} · schema relationships`} />
@@ -148,6 +185,101 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
         </div>
       </section>
     </section>
+  );
+}
+
+function useCountUp(target: number, duration = 900): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (target === 0) {
+      setValue(0);
+      return;
+    }
+    let frame: number;
+    const start = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration]);
+  return value;
+}
+
+function readinessLabel(score: number): string {
+  if (score >= 80) return "Excellent foundation";
+  if (score >= 60) return "Solid, minor gaps";
+  if (score >= 40) return "Needs attention";
+  return "High-risk schema gaps";
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+  suffix,
+  caption,
+  footer
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  suffix?: string;
+  caption?: string;
+  footer?: ReactNode;
+}) {
+  const isNumber = typeof value === "number";
+  const shown = useCountUp(isNumber ? (value as number) : 0);
+  return (
+    <div className="card card-hover group relative animate-fade-up overflow-hidden p-5">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal/70 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
+      <div className="flex items-start justify-between gap-2">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-50 text-brand-600">{icon}</span>
+        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+      </div>
+      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+        {isNumber ? shown.toLocaleString() : value}
+        {suffix && <span className="ml-0.5 text-sm font-semibold text-slate-400">{suffix}</span>}
+      </strong>
+      {caption && <p className="mt-1.5 truncate text-[11px] font-medium text-slate-500">{caption}</p>}
+      {footer && <div className="mt-2">{footer}</div>}
+    </div>
+  );
+}
+
+function ReadinessRing({ score }: { score: number }) {
+  const clamped = Math.min(100, Math.max(0, score));
+  const radius = 15.9155;
+  const circumference = 2 * Math.PI * radius;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), 120);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const offset = mounted ? circumference - (clamped / 100) * circumference : circumference;
+  const stroke = clamped >= 70 ? "#34d399" : clamped >= 40 ? "#fbbf24" : "#fb7185";
+  return (
+    <svg height="44" viewBox="0 0 40 40" width="44">
+      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(148,163,184,0.3)" strokeWidth="3.6" />
+      <circle
+        cx="20"
+        cy="20"
+        fill="none"
+        r={radius}
+        stroke={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeWidth="3.6"
+        style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%", transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1), stroke 300ms" }}
+      />
+      <text dominantBaseline="central" fill="#334155" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
+        {clamped}
+      </text>
+    </svg>
   );
 }
 

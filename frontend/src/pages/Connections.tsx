@@ -26,6 +26,7 @@ type Props = {
   insights: Record<number, SchemaInsights>;
   schemas: Record<number, DatabaseSchema>;
   onRefresh: () => void;
+  isAdmin: boolean;
 };
 
 type Feedback = { kind: "success" | "error" | "info"; text: string };
@@ -47,7 +48,7 @@ const EMPTY_FORM = {
   ssh_password: null as string | null
 };
 
-export function Connections({ token, connections, insights, schemas, onRefresh }: Props) {
+export function Connections({ token, connections, insights, schemas, onRefresh, isAdmin }: Props) {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -149,7 +150,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
           onSubmit={submit}
         />
       ) : connections.length === 0 ? (
-        <EmptyState onAdd={startAdd} />
+        <EmptyState isAdmin={isAdmin} onAdd={startAdd} />
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
@@ -157,14 +158,19 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
               {connections.length} database{connections.length === 1 ? "" : "s"} connected
               <span className="ml-2 text-xs text-navy-soft/60">Click a card to view its schema below</span>
             </p>
-            <button className="btn-accent !h-10 shrink-0 !px-4 !font-medium" onClick={startAdd} type="button">
-              <Plus size={15} /> Add database
-            </button>
+            {isAdmin ? (
+              <button className="btn-accent !h-10 shrink-0 !px-4 !font-medium" onClick={startAdd} type="button">
+                <Plus size={15} /> Add database
+              </button>
+            ) : (
+              <span className="shrink-0 text-xs text-navy-soft/60">Only the admin can manage databases</span>
+            )}
           </div>
           <div className="space-y-3">
             {connections.map((connection) => (
               <ConnectionCard
                 connection={connection}
+                isAdmin={isAdmin}
                 isSelected={selectedConnection?.id === connection.id}
                 key={connection.id}
                 isRefreshing={refreshingId === connection.id}
@@ -190,6 +196,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh }
 
 function ConnectionCard({
   connection,
+  isAdmin,
   isSelected,
   isRefreshing,
   onDelete,
@@ -197,6 +204,7 @@ function ConnectionCard({
   onRefreshSchema
 }: {
   connection: Connection;
+  isAdmin: boolean;
   isSelected: boolean;
   isRefreshing: boolean;
   onDelete: (connection: Connection) => Promise<void>;
@@ -278,15 +286,17 @@ function ConnectionCard({
                 {isRefreshing ? <Loader2 className="animate-spin" size={13} /> : <RefreshCw size={13} />}
                 Refresh schema
               </button>
-              <button
-                aria-label={`Delete ${connection.name}`}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-                onClick={() => setConfirmingDelete(true)}
-                title="Delete connection"
-                type="button"
-              >
-                <Trash2 size={14} />
-              </button>
+              {isAdmin && (
+                <button
+                  aria-label={`Delete ${connection.name}`}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  onClick={() => setConfirmingDelete(true)}
+                  title="Delete connection"
+                  type="button"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
             </>
           )}
         </div>
@@ -302,7 +312,7 @@ function ConnectionCard({
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void }) {
   return (
     <div className="card animate-fade-up flex flex-col items-center px-6 py-14 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
@@ -310,11 +320,15 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       </span>
       <h2 className="mt-5 text-lg font-bold tracking-tight text-navy">No databases connected yet</h2>
       <p className="mt-1.5 max-w-md text-sm leading-6 text-navy-soft">
-        Connect as many MySQL databases as your workspace needs — AI chat lets you pick one per conversation.
+        {isAdmin
+          ? "Connect as many MySQL databases as your workspace needs — AI chat lets you pick one per conversation."
+          : "Ask your workspace admin to connect a database. Once it's added, you can start asking questions right away."}
       </p>
-      <button className="btn-accent mt-6" onClick={onAdd} type="button">
-        <Plus size={16} /> Add your first database
-      </button>
+      {isAdmin && (
+        <button className="btn-accent mt-6" onClick={onAdd} type="button">
+          <Plus size={16} /> Add your first database
+        </button>
+      )}
     </div>
   );
 }

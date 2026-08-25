@@ -1,3 +1,17 @@
+export type CurrentUser = {
+  id: number;
+  email: string;
+  organization_id: number;
+  role: string;
+};
+
+export type Member = {
+  id: number;
+  email: string;
+  role: string;
+  created_at?: string | null;
+};
+
 export type Connection = {
   id: number;
   name: string;

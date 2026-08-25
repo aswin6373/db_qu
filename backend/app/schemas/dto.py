@@ -32,6 +32,19 @@ class OrganizationResponse(BaseModel):
     name: str
 
 
+class MemberCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    role: Literal["member"] = "member"
+
+
+class MemberResponse(BaseModel):
+    id: int
+    email: str
+    role: str
+    created_at: datetime | None = None
+
+
 class ConnectionCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     host: str

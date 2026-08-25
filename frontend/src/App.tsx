@@ -7,7 +7,8 @@ import { apiRequest } from "./lib/api";
 import { Chat } from "./pages/Chat";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
-import { Connection, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "./types/api";
+import { Members } from "./pages/Members";
+import { Connection, CurrentUser, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "./types/api";
 
 export function App() {
   const [token, setToken] = useState(() => localStorage.getItem("querymind_token") ?? "");
@@ -15,10 +16,29 @@ export function App() {
   const [booted, setBooted] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [onboardingOrg, setOnboardingOrg] = useState<string | undefined>(undefined);
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [dashboard, setDashboard] = useState<DashboardType | null>(null);
   const [schemas, setSchemas] = useState<Record<number, DatabaseSchema>>({});
   const [insights, setInsights] = useState<Record<number, SchemaInsights>>({});
+
+  const isAdmin = user?.role === "admin";
+
+  useEffect(() => {
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    let cancelled = false;
+    apiRequest<CurrentUser>("/auth/me", {}, token)
+      .then((me) => {
+        if (!cancelled) setUser(me);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -62,6 +82,7 @@ export function App() {
     function handleAuthExpired() {
       localStorage.removeItem("querymind_token");
       setToken("");
+      setUser(null);
       setDashboard(null);
       setConnections([]);
       setSchemas({});
@@ -152,10 +173,18 @@ export function App() {
 
   return (
     <ChatSessionsProvider token={token}>
-      <Shell active={active} connections={connections} onActive={setActive} onLogout={logout} orgName={dashboard?.organization.name}>
+      <Shell
+        active={active}
+        connections={connections}
+        isAdmin={isAdmin}
+        onActive={setActive}
+        onLogout={logout}
+        orgName={dashboard?.organization.name}
+      >
         {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
-        {active === "connections" && <Connections token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
+        {active === "connections" && <Connections isAdmin={isAdmin} token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
         {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
+        {active === "members" && isAdmin && user && <Members currentUserId={user.id} token={token} />}
       </Shell>
     </ChatSessionsProvider>
   );

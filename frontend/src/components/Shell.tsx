@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Trash2, X } from "lucide-react";
+import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
 import { useChatSessions } from "./ChatSessionsContext";
 import type { ChatSession, Connection } from "../types/api";
+
+type NavItem = { id: string; label: string; icon: LucideIcon };
 
 type Props = {
   active: string;
@@ -10,18 +12,20 @@ type Props = {
   onLogout: () => void;
   orgName?: string;
   connections: Connection[];
+  isAdmin: boolean;
   children: React.ReactNode;
 };
 
-const nav = [
-  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-  { id: "connections", label: "Connections", icon: Database }
-];
-
-export function Shell({ active, onActive, onLogout, orgName, connections, children }: Props) {
+export function Shell({ active, onActive, onLogout, orgName, connections, isAdmin, children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { newChat } = useChatSessions();
+
+  const nav: NavItem[] = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "connections", label: "Connections", icon: Database },
+    ...(isAdmin ? [{ id: "members", label: "Members", icon: Users }] : [])
+  ];
   const current = nav.find((item) => item.id === active);
 
   function go(id: string) {
@@ -48,6 +52,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, childr
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy p-5 shadow-sidebar lg:flex">
         <SidebarContent
           active={active}
+          nav={nav}
           orgName={orgName}
           connections={connections}
           onLogout={onLogout}
@@ -69,6 +74,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, childr
             </div>
             <SidebarContent
               active={active}
+              nav={nav}
               orgName={orgName}
               connections={connections}
               onLogout={() => {
@@ -129,6 +135,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, childr
 
 function SidebarContent({
   active,
+  nav,
   orgName,
   connections,
   onLogout,
@@ -136,6 +143,7 @@ function SidebarContent({
   onRequestNewChat
 }: {
   active: string;
+  nav: NavItem[];
   orgName?: string;
   connections: Connection[];
   onLogout: () => void;

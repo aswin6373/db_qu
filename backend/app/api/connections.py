@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, require_admin
 from app.connectors.mysql import MySQLConnector
 from app.db.session import get_db
 from app.models import DBConnection, QueryLog, User
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/connections", tags=["connections"])
 
 
 @router.post("", response_model=ConnectionResponse)
-def create_connection(payload: ConnectionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_connection(payload: ConnectionCreate, user: User = Depends(require_admin), db: Session = Depends(get_db)):
     connector = MySQLConnector(
         payload.host,
         payload.port,
@@ -89,7 +89,7 @@ def refresh_connection(connection_id: int, user: User = Depends(get_current_user
 
 
 @router.delete("/{connection_id}", status_code=204)
-def delete_connection(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_connection(connection_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
     logs = db.scalars(
         select(QueryLog).where(

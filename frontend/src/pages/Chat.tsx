@@ -291,7 +291,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
         <Bot size={15} />
       </span>
       <div
-        className={`min-w-0 flex-1 rounded-2xl rounded-tl-md border px-4 py-3 text-sm leading-6 ${
+        className={`relative min-w-0 flex-1 rounded-2xl rounded-tl-md border px-4 py-3 text-sm leading-6 ${
           isError
             ? "border-rose-200 bg-rose-50 text-rose-700"
             : isClarifying
@@ -304,7 +304,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
             <CircleHelp size={13} /> Quick question
           </p>
         )}
-        {message.content && <p className="whitespace-pre-line">{message.content}</p>}
+        {message.content && <p className={`whitespace-pre-line ${children ? "pr-12" : ""}`}>{message.content}</p>}
         {children}
       </div>
     </div>
@@ -426,9 +426,8 @@ function ResultBlock({
   );
 
   return (
-    <div className="relative mt-3 space-y-3">
-      <div className="flex justify-end sm:hidden">{downloadButton}</div>
-      <div className="absolute right-0 top-[-38px] hidden sm:block">{downloadButton}</div>
+    <div className="mt-3 space-y-3">
+      <div className="absolute right-3 top-2">{downloadButton}</div>
       <div className="group/sql relative">
         <code className="code-block pr-12">{result.sql}</code>
         <button

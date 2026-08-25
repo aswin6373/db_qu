@@ -114,10 +114,12 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     try {
       const sessionId = await ensureSession(Number(selectedConnectionId));
       loadedSessionRef.current = sessionId;
+      // 75s: comfortably above the backend's own query time budget (45s) but
+      // the spinner always resolves into an answer or a clear error.
       const result = await apiRequest<QueryResponse>("/query/generate", {
         method: "POST",
         body: JSON.stringify({ question: nextQuestion, connection_id: Number(selectedConnectionId), session_id: sessionId })
-      }, token);
+      }, token, 75_000);
       // The user may have switched sessions while the request was in flight.
       // Only paint the answer into the transcript it belongs to.
       if (activeIdRef.current !== sessionId || loadedSessionRef.current !== sessionId) {

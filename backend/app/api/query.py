@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 
 import httpx
@@ -182,6 +183,23 @@ def _recent_history(db: Session, user: User, session_id: int | None, limit: int 
     return [{"role": message.role, "content": message.content} for message in reversed(rows)]
 
 
+def _is_followup_answer(chat_session: ChatSession | None, db: Session) -> bool:
+    """True when the previous assistant turn was a clarifying question or a
+    meta answer (both are stored without SQL): the current message is a
+    follow-up. The SQL generator already resolves follow-ups from the
+    conversation, so the extra clarity LLM call is skipped — it only added
+    latency and could ping-pong another clarification forever."""
+    if chat_session is None:
+        return False
+    last = db.scalar(
+        select(Message)
+        .where(Message.session_id == chat_session.id, Message.role == "assistant")
+        .order_by(Message.id.desc())
+        .limit(1)
+    )
+    return last is not None and not last.sql
+
+
 DEMO_SCHEMA = {
     "tables": {
         "customers": {
@@ -197,6 +215,12 @@ DEMO_SCHEMA = {
 
 @router.post("/generate", response_model=QueryGenerateResponse)
 def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    settings = get_settings()
+    # Wall-clock budget for the whole request. Once it is spent, optional LLM
+    # stages are skipped so the answer still ships before serverless limits
+    # (Vercel maxDuration) kill the function and leave the UI spinning.
+    deadline = time.monotonic() + settings.query_time_budget_seconds
+
     chat_session = None
     if payload.session_id is not None:
         chat_session = _org_chat_session(payload.session_id, user, db)
@@ -249,7 +273,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             return connector.execute(sql)
 
         try:
-            result = run_agent(payload.question, schema, execute, history, ai_config)
+            result = run_agent(payload.question, schema, execute, history, ai_config, deadline)
         except (AgentError, httpx.HTTPError, RuntimeError):
             return None
         finally:
@@ -297,12 +321,17 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         if agent_response is not None:
             return agent_response
 
-    try:
-        clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
-    except Exception:
-        clarifying_question = None
-    if clarifying_question:
-        return clarification_response(clarifying_question)
+    # Follow-up answers ("yes", "the biggest one") are resolved by the SQL
+    # generator from the conversation — the clarity pre-check would only add
+    # an LLM round trip (and can ping-pong clarifications). Past the time
+    # budget there is no room for it either.
+    if not _is_followup_answer(chat_session, db) and time.monotonic() < deadline:
+        try:
+            clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
+        except Exception:
+            clarifying_question = None
+        if clarifying_question:
+            return clarification_response(clarifying_question)
 
     try:
         sql = generate_sql(payload.question, schema, history, ai_config)
@@ -310,10 +339,12 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         return direct_answer(exc.text)
     except QueryUnderstandingError as exc:
         # The pipeline couldn't map the question — give the agent one chance to
-        # reason it through (unless it's a policy message like schema changes).
+        # reason it through (unless it's a policy message like schema changes,
+        # or the request has no time budget left for a multi-step loop).
         if (
             agent_eligible
             and not _detect_schema_change_request(payload.question, schema)
+            and time.monotonic() < deadline
         ):
             rescue = run_agent_mode()
             if rescue is not None:
@@ -339,10 +370,19 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         finally:
             connector.close()
 
-    summary = summarize_result(
-        payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type,
-        ai_config=ai_config,
-    )
+    if not validation.requires_confirmation and time.monotonic() >= deadline:
+        # Time budget spent: skip the summary LLM call and ship the
+        # deterministic wording instead of risking a serverless timeout.
+        summary = (
+            f"Found {len(rows)} row(s) for: {payload.question}"
+            if rows
+            else "The query ran successfully, but it did not return any rows."
+        )
+    else:
+        summary = summarize_result(
+            payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type,
+            ai_config=ai_config,
+        )
     if not validation.requires_confirmation and getattr(connector, "last_truncated", False):
         summary += f" (showing the first {len(rows)} rows)"
     log = QueryLog(

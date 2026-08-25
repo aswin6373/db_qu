@@ -73,12 +73,18 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None,
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
             sql = _generate_sql_with_gemini(question, schema, history, eff)
         except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=history, eff=eff)
+            sql = _generate_sql_with_ollama_or_fallback(
+                question, schema, history=history, eff=eff,
+                timeout=get_settings().ollama_fallback_timeout_seconds,
+            )
     elif eff.provider == "openai":
         try:
             sql = _generate_sql_with_openai(question, schema, history, eff)
         except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=history, eff=eff)
+            sql = _generate_sql_with_ollama_or_fallback(
+                question, schema, history=history, eff=eff,
+                timeout=get_settings().ollama_fallback_timeout_seconds,
+            )
     elif eff.provider == "ollama":
         sql = _generate_sql_with_ollama_or_fallback(question, schema, history, eff)
     else:
@@ -129,7 +135,7 @@ visible in the schema. Ask at most one question.
 {_history_block(history)}
 
 Schema:
-{json.dumps(schema, indent=2)}
+{_schema_block(schema)}
 
 Latest user message:
 {question}
@@ -174,6 +180,31 @@ def _history_block(history: list[dict] | None) -> str:
     return f"Recent conversation:\n{turns}\n"
 
 
+def _schema_block(schema: dict) -> str:
+    """Compact one-line-per-table rendering of the schema for prompts.
+
+    Carries everything the models need (column names, types, primary keys,
+    auto-increment, NOT NULL) at a fraction of the tokens the pretty-printed
+    JSON used, so every LLM round trip finishes noticeably faster."""
+    lines: list[str] = []
+    for table, meta in (schema.get("tables") or {}).items():
+        rendered = []
+        for column in meta.get("columns", []):
+            name = str(column.get("name", "")).strip()
+            if not name:
+                continue
+            parts = [f"{name} {column.get('type', '')}".strip()]
+            if str(column.get("key", "")).upper() == "PRI":
+                parts.append("PK")
+            if "auto_increment" in str(column.get("extra", "")).lower():
+                parts.append("AUTO_INCREMENT")
+            if column.get("nullable") is False:
+                parts.append("NOT NULL")
+            rendered.append(" ".join(parts))
+        lines.append(f"{table}: {', '.join(rendered)}" if rendered else f"{table}: (no columns discovered)")
+    return "\n".join(lines)
+
+
 def _validated_sql(sql: str, schema: dict) -> str:
     validation = validate_sql(sql, schema)
     if not validation.ok:
@@ -212,8 +243,15 @@ def summarize_result(
         except (RuntimeError, httpx.HTTPError):
             pass
     if not summary and eff.provider in {"gemini", "openai", "ollama"}:
+        # For gemini/openai this Ollama call is a rescue path — bound it tightly
+        # so a missing local server cannot stretch the request.
+        ollama_timeout = (
+            get_settings().ollama_fallback_timeout_seconds
+            if eff.provider in {"gemini", "openai"}
+            else None
+        )
         try:
-            summary = _summarize_with_ollama(question, columns, rows, eff)
+            summary = _summarize_with_ollama(question, columns, rows, eff, timeout=ollama_timeout)
         except Exception:
             pass
     summary = _sanitize_summary(summary, query_type, len(rows))
@@ -386,7 +424,7 @@ Rules:
 {SQL_RULES}
 {_history_block(history)}
 Schema:
-{json.dumps(schema, indent=2)}
+{_schema_block(schema)}
 
 Latest user request:
 {question}
@@ -417,9 +455,15 @@ def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] |
     return _sql_from_model_response(_ollama_generate(_sql_prompt(question, schema, history), eff))
 
 
-def _generate_sql_with_ollama_or_fallback(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
+def _generate_sql_with_ollama_or_fallback(
+    question: str,
+    schema: dict,
+    history: list[dict] | None = None,
+    eff: _EffectiveAI | None = None,
+    timeout: int | None = None,
+) -> str:
     try:
-        return _generate_sql_with_ollama(question, schema, history, eff)
+        return _ollama_generate(_sql_prompt(question, schema, history), eff, timeout=timeout)
     except (RuntimeError, httpx.HTTPError):
         return _generate_sql_fallback(question, schema)
 
@@ -446,7 +490,13 @@ Result preview: {preview}
     return _openai_generate(prompt, eff).strip()
 
 
-def _summarize_with_ollama(question: str, columns: list[str], rows: list[dict], eff: _EffectiveAI | None = None) -> str:
+def _summarize_with_ollama(
+    question: str,
+    columns: list[str],
+    rows: list[dict],
+    eff: _EffectiveAI | None = None,
+    timeout: int | None = None,
+) -> str:
     preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
     prompt = f"""
 Summarize this database query result in one short, plain-English sentence.
@@ -454,7 +504,7 @@ Summarize this database query result in one short, plain-English sentence.
 Question: {question}
 Result preview: {preview}
 """.strip()
-    return _ollama_generate(prompt, eff).strip()
+    return _ollama_generate(prompt, eff, timeout=timeout).strip()
 
 
 def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
@@ -520,7 +570,7 @@ def _openai_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
     return text
 
 
-def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
+def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None, timeout: int | None = None) -> str:
     settings = get_settings()
     base_url = eff.ollama_url if eff else settings.ollama_base_url
     model = eff.ollama_model if eff else settings.ollama_model
@@ -533,7 +583,7 @@ def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
             "stream": False,
             "options": {"temperature": 0.1},
         },
-        timeout=get_settings().llm_timeout_seconds,
+        timeout=timeout if timeout is not None else settings.llm_timeout_seconds,
     )
     response.raise_for_status()
     data = response.json()

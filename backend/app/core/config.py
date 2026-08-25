@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     mysql_statement_timeout_ms: int = 30000
     max_result_rows: int = 500
     llm_timeout_seconds: int = 20
+    # Wall-clock budget for one /query/generate request. Optional LLM stages
+    # (clarity check, summary, agent rescue) are skipped once it is spent so
+    # the request always answers within serverless limits (Vercel maxDuration).
+    query_time_budget_seconds: int = 45
+    # Ollama is a rescue fallback for cloud providers; if the local server
+    # cannot answer that fast it would not have helped anyway.
+    ollama_fallback_timeout_seconds: int = 8
     forwarded_allow_ips: str = "127.0.0.1"
     confirmation_ttl_minutes: int = 15
 

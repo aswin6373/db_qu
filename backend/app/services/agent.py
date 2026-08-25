@@ -7,6 +7,7 @@ Read-only by design: writes keep flowing through the confirm-gated pipeline.
 
 import json
 import re
+import time
 from dataclasses import dataclass, field
 
 import httpx
@@ -18,6 +19,7 @@ from app.services.ai import (
     _history_block,
     _ollama_generate,
     _openai_generate,
+    _schema_block,
 )
 from app.services.sql_validator import validate_sql
 
@@ -54,9 +56,14 @@ def run_agent(
     execute_sql,
     history: list[dict] | None = None,
     ai_config: AIConfig | None = None,
+    deadline: float | None = None,
 ) -> AgentResult:
     """Run the agent loop. `execute_sql(sql)` must return (columns, rows) and is
-    only ever called with validated SELECT statements."""
+    only ever called with validated SELECT statements.
+
+    `deadline` (a time.monotonic() timestamp) stops the loop once the request's
+    time budget is spent — the user gets an answer from the evidence gathered
+    so far instead of a serverless timeout."""
     eff = _effective_ai(ai_config)
     if eff.provider not in {"gemini", "openai", "ollama"}:
         raise AgentUnavailableError(f"Agent mode is not available for provider '{eff.provider}'")
@@ -67,6 +74,27 @@ def run_agent(
     last_result: tuple | None = None  # (columns, rows, sql)
 
     for _ in range(MAX_STEPS):
+        if deadline is not None and time.monotonic() >= deadline:
+            if last_result is None:
+                # Nothing useful gathered — let the caller fall back to the
+                # one-shot pipeline instead of inventing an empty answer.
+                raise AgentError("The agent ran out of time before gathering any results.")
+            summary = (
+                f"Here is what I found after {queries_run} quer"
+                f"{'y' if queries_run == 1 else 'ies'} (analysis time ran out)."
+            )
+            steps.append({
+                "tool": "finish",
+                "label": "Answered with the time available",
+                "detail": summary[:140],
+            })
+            return AgentResult(
+                summary=summary,
+                sql=last_result[2],
+                columns=last_result[0],
+                rows=last_result[1],
+                steps=steps,
+            )
         prompt = _agent_prompt(question, schema, observations, history, queries_run)
         raw = _agent_generate(prompt, eff)
         action = _parse_action(raw)
@@ -259,7 +287,7 @@ RULES:
 {_history_block(history)}
 
 Schema:
-{json.dumps(schema, indent=2)}
+{_schema_block(schema)}
 
 User question: {question}
 

@@ -3,12 +3,16 @@ const API_URL = import.meta.env.VITE_API_URL ?? "";
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
-  token?: string
+  token?: string,
+  timeoutMs?: number
 ): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...options,
+      // Without a client-side timeout a stalled/killed backend would leave a
+      // spinner on screen forever with no way to recover.
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : options.signal,
       headers: {
         // Only declare a JSON body when there is one — forcing the header
         // onto GET/DELETE turns every simple request into a CORS preflight.
@@ -17,7 +21,10 @@ export async function apiRequest<T>(
         ...options.headers
       }
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("This question took too long to answer. Please try rephrasing it or try again.");
+    }
     throw new Error("Cannot reach QueryMind API. Please make sure the backend server is running.");
   }
 

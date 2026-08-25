@@ -446,6 +446,11 @@ line starting with "META:" followed by a short friendly answer based ONLY on
 the schema below. Example: "META: Your database has 2 tables: customers (3 columns)
 and orders (3 columns). Ask me for rows anytime."
 
+If the latest message is not a data request at all — a greeting, thanks, small
+talk, or plain conversation — do NOT write SQL either. Reply with "META:" and
+one short, warm conversational sentence (e.g. "META: You're welcome! Ask me
+anything else about your data.").
+
 Otherwise generate exactly one valid {dialect} query for the user's latest request.
 Use {dialect} syntax and quoting rules. Return only SQL. Do not use markdown. Do not explain.
 
@@ -461,15 +466,27 @@ Latest user request:
 
 
 def _sql_from_model_response(raw: str) -> str:
-    """Raise SchemaAnswer when the model replied conversationally (META: ...),
-    otherwise extract the SQL statement."""
-    text = re.sub(r"```(?:[a-zA-Z]+)?", "", raw).strip("` \n")
+    """Raise SchemaAnswer when the model replied conversationally (META: ... or
+    any non-SQL text), otherwise extract the SQL statement.
+
+    A conversational reply ("You're welcome!", a greeting, a clarifying
+    sentence) must reach the user as the AI's own words — converting it to an
+    error made the pipeline fall through to the canned table-listing message
+    even though the AI had answered perfectly well."""
+    text = re.sub(r"<think>.*?</think>", "", raw, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"```(?:[a-zA-Z]+)?", "", text).strip("` \n")
     match = re.match(r"META\s*:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
     if match:
         answer = match.group(1).strip()
         if answer:
             raise SchemaAnswer(answer)
-    return _extract_sql(raw)
+    try:
+        return _extract_sql(text)
+    except RuntimeError:
+        conversational = text.strip()
+        if conversational and len(conversational) <= 600:
+            raise SchemaAnswer(conversational) from None
+        raise
 
 
 def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None, db_type: str = "mysql") -> str:

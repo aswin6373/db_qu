@@ -20,6 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    existing = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("db_connections")}
+    if "db_type" in existing:
+        return
     with op.batch_alter_table("db_connections") as batch_op:
         batch_op.add_column(
             sa.Column(

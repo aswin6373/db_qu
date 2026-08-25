@@ -21,12 +21,25 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _existing_columns(table: str) -> set[str]:
+    """Databases provisioned out-of-band (supabase/schema.sql) or by a
+    partially-applied concurrent deploy can hold columns the version table
+    does not know about. Re-running such an ADD COLUMN crashed the container
+    at boot (DuplicateColumn); guarding makes every step idempotent."""
+    return {column["name"] for column in sa.inspect(op.get_bind()).get_columns(table)}
+
+
 def upgrade() -> None:
-    with op.batch_alter_table("chat_sessions") as batch_op:
-        batch_op.add_column(sa.Column("updated_at", sa.DateTime(), nullable=True))
-    with op.batch_alter_table("messages") as batch_op:
-        batch_op.add_column(sa.Column("query_id", sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column("result_json", sa.Text(), nullable=True))
+    if "updated_at" not in _existing_columns("chat_sessions"):
+        with op.batch_alter_table("chat_sessions") as batch_op:
+            batch_op.add_column(sa.Column("updated_at", sa.DateTime(), nullable=True))
+    message_columns = _existing_columns("messages")
+    if {"query_id", "result_json"} - message_columns:
+        with op.batch_alter_table("messages") as batch_op:
+            if "query_id" not in message_columns:
+                batch_op.add_column(sa.Column("query_id", sa.Integer(), nullable=True))
+            if "result_json" not in message_columns:
+                batch_op.add_column(sa.Column("result_json", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:

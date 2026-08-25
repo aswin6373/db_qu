@@ -427,11 +427,12 @@ function ResultBlock({
 
   return (
     <div className="mt-3 space-y-3">
-      <div className="relative">
+      <div className="flex justify-end">{downloadButton}</div>
+      <div className="group/sql relative">
         <code className="code-block pr-12">{result.sql}</code>
         <button
           aria-label={copied ? "Copied" : "Copy SQL"}
-          className="absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-md bg-white/10 text-teal-soft transition hover:bg-white/20"
+          className="absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-md bg-white/10 text-teal-soft opacity-100 transition hover:bg-white/20 sm:opacity-0 sm:group-focus-within/sql:opacity-100 sm:group-hover/sql:opacity-100"
           onClick={copySql}
           title="Copy SQL"
           type="button"
@@ -489,7 +490,6 @@ function ResultBlock({
               ))}
             </div>
           )}
-          {downloadButton}
         </div>
       </div>
 

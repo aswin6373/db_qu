@@ -350,14 +350,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="mt-4 space-y-3 border-t border-white/10 pt-4">
-        <div className="flex items-center gap-2 rounded-lg bg-teal/15 px-3 py-2 text-xs font-medium text-teal-soft">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-teal" />
-          </span>
-          Workspace active
-        </div>
+      <div className="mt-4 border-t border-white/10 pt-3">
         {confirmingLogout ? (
           <div className="flex items-center gap-2">
             <button

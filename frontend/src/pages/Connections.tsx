@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   Database,
   Eye,
   EyeOff,
@@ -244,46 +245,42 @@ function ConnectionForm({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form className="card animate-fade-up p-6 sm:p-7" onSubmit={onSubmit}>
-      <div className="mb-6 flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700">
-          <Database size={17} />
+    <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
+      <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+          <Database size={20} />
         </span>
-        <div>
-          <h2 className="text-base font-bold tracking-tight text-slate-900">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">
             {hasConnection ? "Connect a new database" : "New connection"}
           </h2>
           <p className="text-xs text-slate-500">Credentials are encrypted before they touch the platform database.</p>
         </div>
       </div>
 
-      {hasConnection && previousName && (
-        <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <ShieldCheck size={16} />
-          <p className="leading-6">
-            Saving will permanently replace <strong>{previousName}</strong> as your workspace database. Your query history is kept.
-          </p>
-        </div>
-      )}
+      <div className="space-y-6 p-6 sm:p-7">
+        {hasConnection && previousName && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <ShieldCheck className="mt-0.5 shrink-0" size={16} />
+            <p className="leading-6">
+              Saving will permanently replace <strong>{previousName}</strong> as your workspace database. Your query history is kept.
+            </p>
+          </div>
+        )}
 
-      <div className="space-y-5">
         <section>
-          <h3 className="eyebrow mb-3 text-slate-400">Identity</h3>
-          <label className="block">
-            <span className="label">Display name</span>
-            <input
-              className="field"
-              placeholder="Production MySQL"
-              required
-              value={form.name}
-              onChange={(event) => onFieldChange("name", event.target.value)}
-            />
-          </label>
-        </section>
-
-        <section className="border-t border-slate-100 pt-5">
-          <h3 className="eyebrow mb-3 text-slate-400">Server</h3>
+          <h3 className="eyebrow mb-3 text-slate-400">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-[2fr_1fr]">
+            <label className="block md:col-span-2">
+              <span className="label">Display name</span>
+              <input
+                className="field"
+                placeholder="Production MySQL"
+                required
+                value={form.name}
+                onChange={(event) => onFieldChange("name", event.target.value)}
+              />
+            </label>
             <label className="block">
               <span className="label">Host</span>
               <input
@@ -300,6 +297,7 @@ function ConnectionForm({
                 className="field"
                 max={65535}
                 min={1}
+                placeholder="3306"
                 type="number"
                 value={form.port}
                 onChange={(event) => onFieldChange("port", Number(event.target.value) || 3306)}
@@ -361,15 +359,18 @@ function ConnectionForm({
             </label>
             <label className="block">
               <span className="label">Encryption (SSL)</span>
-              <select
-                className="field"
-                value={form.ssl_mode}
-                onChange={(event) => onFieldChange("ssl_mode", event.target.value as SslMode)}
-              >
-                <option value="PREFERRED">Auto — use SSL if available</option>
-                <option value="REQUIRED">Required — cloud providers</option>
-                <option value="DISABLED">Disabled — local only</option>
-              </select>
+              <span className="relative block">
+                <select
+                  className="field cursor-pointer appearance-none pr-10"
+                  value={form.ssl_mode}
+                  onChange={(event) => onFieldChange("ssl_mode", event.target.value as SslMode)}
+                >
+                  <option value="PREFERRED">Auto — use SSL if available</option>
+                  <option value="REQUIRED">Required — cloud providers</option>
+                  <option value="DISABLED">Disabled — local only</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              </span>
               <span className="mt-1.5 block text-xs text-slate-400">
                 Aiven, PlanetScale, RDS, and TiDB usually require SSL.
               </span>
@@ -377,7 +378,7 @@ function ConnectionForm({
           </div>
         </section>
 
-        <label className="panel-soft flex items-start gap-3 p-3.5 text-sm">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm transition hover:border-slate-300">
           <input
             checked={Boolean(form.test_live)}
             className="mt-0.5 h-4 w-4 accent-brand-600"
@@ -395,14 +396,14 @@ function ConnectionForm({
         </label>
       </div>
 
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:justify-end">
         {hasConnection && (
           <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
             Cancel
           </button>
         )}
-        <button className="btn-accent w-full sm:w-auto" disabled={isSaving} type="submit">
-          {isSaving ? <Loader2 className="animate-spin" size={17} /> : <PlugZap size={16} />}
+        <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
+          {isSaving ? <Loader2 className="animate-spin" size={15} /> : <PlugZap size={15} />}
           {isSaving ? "Testing & discovering…" : hasConnection ? "Replace database" : "Save connection"}
         </button>
       </div>

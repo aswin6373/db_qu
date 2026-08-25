@@ -7,11 +7,30 @@ from dataclasses import dataclass
 
 BLOCKED_KEYWORDS = {"DROP", "ALTER", "TRUNCATE", "GRANT", "REVOKE", "CREATE"}
 # Dangerous server-side functions: denylist blocks time-based attacks (SLEEP,
-# BENCHMARK), privileged file reads (LOAD_FILE), and lock tampering even when
-# the statement otherwise looks like a plain SELECT.
-BLOCKED_FUNCTIONS = {"SLEEP", "BENCHMARK", "LOAD_FILE", "GET_LOCK", "RELEASE_LOCK"}
+# BENCHMARK, PG_SLEEP), privileged file reads (LOAD_FILE, PG_READ_FILE), remote
+# execution surfaces (DBLINK), and extension loading — even when the statement
+# otherwise looks like a plain SELECT.
+BLOCKED_FUNCTIONS = {
+    "SLEEP",
+    "BENCHMARK",
+    "LOAD_FILE",
+    "GET_LOCK",
+    "RELEASE_LOCK",
+    "PG_SLEEP",
+    "PG_READ_FILE",
+    "PG_LS_DIR",
+    "DBLINK",
+    "LOAD_EXTENSION",
+}
 WRITE_TYPES = {"INSERT", "UPDATE", "DELETE"}
-SYSTEM_TABLES = {"information_schema", "performance_schema", "mysql", "sys"}
+SYSTEM_TABLES = {
+    "information_schema",
+    "performance_schema",
+    "mysql",
+    "sys",
+    "pg_catalog",
+    "pg_toast",
+}
 # MySQL executes the contents of version-comment directives (/*! ... */) and
 # optimizer hints (/*+ ... */). Regular comments are inert, but they can hide
 # keywords from a naive token scan, so validation always runs on a
@@ -84,8 +103,9 @@ def validate_sql(sql: str, schema: dict) -> ValidationResult:
 
 def _blocked_function(sql_text: str) -> str | None:
     """Detect denylisted function calls even when written as `sleep`(5) or
-    SLEEP(5). Runs against the raw statement text so grouping cannot hide it."""
-    for match in re.finditer(r"`?\b([a-zA-Z_]\w*)\b`?\s*\(", sql_text):
+    SLEEP(5). Runs against the raw statement text so grouping cannot hide it.
+    Accepts MySQL backtick and PostgreSQL double-quote identifier quoting."""
+    for match in re.finditer(r'[`"\']?\b([a-zA-Z_]\w*)\b[`"\']?\s*\(', sql_text):
         name = match.group(1).upper()
         if name in BLOCKED_FUNCTIONS:
             return name
@@ -132,11 +152,12 @@ def _identifier_names(token) -> set[str]:
 
 
 def _clean_identifier_name(value: str) -> str:
-    name = value.split("(", 1)[0].strip("` ")
+    name = value.split("(", 1)[0].strip("`\" ")
     # Qualifiers like otherdb.customers are rejected via the unknown-table
     # check; keep only the trailing identifier part so the comparison is
-    # deliberate instead of accidental.
-    return name.rsplit(".", 1)[-1].split("(", 1)[0].strip("` ") if "." in name else name
+    # deliberate instead of accidental. Strips both MySQL backticks and
+    # PostgreSQL double quotes.
+    return name.rsplit(".", 1)[-1].split("(", 1)[0].strip("`\" ") if "." in name else name
 
 
 def _collect_function_names(statement) -> set[str]:
@@ -182,7 +203,7 @@ def _find_missing_columns(statement, schema: dict, table_names: set[str]) -> set
 
     missing: set[str] = set()
     for token in statement.flatten():
-        value = token.value.strip("`")
+        value = token.value.strip("`\"")
         if token.ttype in Keyword or not value.isidentifier():
             continue
         if (

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     mysql_connect_timeout: int = 5
     mysql_statement_timeout_ms: int = 30000
+    postgres_connect_timeout: int = 5
+    postgres_statement_timeout_ms: int = 30000
     max_result_rows: int = 500
     llm_timeout_seconds: int = 20
     # Wall-clock budget for one /query/generate request. Optional LLM stages

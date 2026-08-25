@@ -63,6 +63,7 @@ class IntegrationResponse(BaseModel):
 
 class ConnectionCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
+    db_type: Literal["mysql", "postgres"] = "mysql"
     host: str
     port: int = 3306
     username: str
@@ -79,6 +80,7 @@ class ConnectionCreate(BaseModel):
 class ConnectionResponse(BaseModel):
     id: int
     name: str
+    db_type: str = "mysql"
     host: str
     port: int
     username: str

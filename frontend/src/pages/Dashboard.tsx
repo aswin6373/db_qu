@@ -69,12 +69,12 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             <div className="max-w-md">
               <h2 className="text-lg font-bold text-slate-900">Connect your first database</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                QueryMind needs a live MySQL connection before the console comes alive.
+                QueryMind needs a live MySQL or PostgreSQL connection before the console comes alive.
               </p>
             </div>
             <ol className="flex flex-1 flex-wrap gap-3">
               {[
-                { step: "01", label: "Connect", detail: "Add MySQL credentials" },
+                { step: "01", label: "Connect", detail: "Add database credentials" },
                 { step: "02", label: "Discover", detail: "Schema auto-mapped" },
                 { step: "03", label: "Ask", detail: "Chat in plain English" }
               ].map((item) => (

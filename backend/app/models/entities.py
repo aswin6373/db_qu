@@ -39,6 +39,7 @@ class DBConnection(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    db_type: Mapped[str] = mapped_column(String(20), default="mysql", server_default="mysql", nullable=False)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     port: Mapped[int] = mapped_column(Integer, default=3306, nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -7,7 +7,9 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_admin
+from app.connectors.base import DBConnector
 from app.connectors.mysql import MySQLConnector
+from app.connectors.postgres import PostgresConnector
 from app.db.session import get_db
 from app.models import DBConnection, QueryLog, User
 from app.schemas.dto import ConnectionCreate, ConnectionResponse, SchemaInsightsResponse
@@ -31,9 +33,51 @@ def _safe_json(value: str | None) -> dict:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _build_connector_for(
+    db_type: str,
+    host: str,
+    port: int,
+    username: str,
+    password: str,
+    database_name: str,
+    ssl_mode: str = "PREFERRED",
+    ssh_host: str | None = None,
+    ssh_port: int = 22,
+    ssh_username: str | None = None,
+    ssh_password: str | None = None,
+) -> DBConnector:
+    """Instantiate the right connector for a connection type."""
+    if db_type == "postgres":
+        return PostgresConnector(
+            host,
+            port,
+            username,
+            password,
+            database_name,
+            ssl_mode=ssl_mode,
+            ssh_host=ssh_host,
+            ssh_port=ssh_port,
+            ssh_username=ssh_username,
+            ssh_password=ssh_password,
+        )
+    return MySQLConnector(
+        host,
+        port,
+        username,
+        password,
+        database_name,
+        ssl_mode=ssl_mode,
+        ssh_host=ssh_host,
+        ssh_port=ssh_port,
+        ssh_username=ssh_username,
+        ssh_password=ssh_password,
+    )
+
+
 @router.post("", response_model=ConnectionResponse)
 def create_connection(payload: ConnectionCreate, user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    connector = MySQLConnector(
+    connector = _build_connector_for(
+        payload.db_type,
         payload.host,
         payload.port,
         payload.username,
@@ -60,13 +104,14 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(require_ad
             )
             raise HTTPException(
                 status_code=400,
-                detail="Could not reach MySQL with these credentials and settings. Check the host, port, SSL mode, tunnel details, and password.",
+                detail="Could not reach the database with these credentials and settings. Check the host, port, SSL mode, tunnel details, and password.",
             ) from exc
         finally:
             connector.close()
     connection = DBConnection(
         organization_id=user.organization_id,
         name=payload.name,
+        db_type=payload.db_type,
         host=payload.host,
         port=payload.port,
         username=payload.username,
@@ -150,7 +195,7 @@ def build_connector(
     ssh_port: int = 22,
     ssh_username: str | None = None,
     ssh_password: str | None = None,
-) -> MySQLConnector:
+) -> DBConnector:
     try:
         password = decrypt_secret(connection.encrypted_password)
     except InvalidToken as exc:
@@ -179,7 +224,8 @@ def build_connector(
                     ),
                 ) from exc
 
-    return MySQLConnector(
+    return _build_connector_for(
+        connection.db_type or "mysql",
         connection.host,
         connection.port,
         connection.username,

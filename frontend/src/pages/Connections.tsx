@@ -19,7 +19,7 @@ import { PageHeader } from "../components/PageHeader";
 import { NumberField } from "../components/NumberField";
 import { SchemaGraph } from "../components/SchemaGraph";
 import { apiRequest } from "../lib/api";
-import { Connection, DatabaseSchema, SslMode, SchemaInsights } from "../types/api";
+import { Connection, DatabaseSchema, DbType, SslMode, SchemaInsights } from "../types/api";
 
 type Props = {
   token: string;
@@ -34,8 +34,13 @@ type Feedback = { kind: "success" | "error" | "info"; text: string };
 
 type Mode = "view" | "add";
 
+const DEFAULT_PORTS: Record<DbType, number> = { mysql: 3306, postgres: 5432 };
+const DB_LABELS: Record<DbType, string> = { mysql: "MySQL", postgres: "PostgreSQL" };
+const URI_SCHEMES: Record<DbType, string> = { mysql: "mysql", postgres: "postgresql" };
+
 const EMPTY_FORM = {
   name: "",
+  db_type: "mysql" as DbType,
   host: "",
   port: 3306,
   username: "",
@@ -132,7 +137,7 @@ export function Connections({ token, connections, insights, schemas, onRefresh, 
       <PageHeader
         eyebrow="Data sources"
         title="Database connections"
-        description={`Connect every MySQL database your workspace uses — production, analytics, staging — and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
+        description={`Connect every MySQL or PostgreSQL database your workspace uses — production, analytics, staging — and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
       />
 
       {feedback && (
@@ -255,7 +260,7 @@ function ConnectionCard({
               )}
             </div>
             <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
-              mysql://{connection.username}@{connection.host}:{connection.port}/{connection.database_name}
+              {URI_SCHEMES[(connection.db_type as DbType) ?? "mysql"] ?? "mysql"}://{connection.username}@{connection.host}:{connection.port}/{connection.database_name}
             </p>
           </div>
         </div>
@@ -322,7 +327,7 @@ function EmptyState({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void })
       <h2 className="mt-5 text-lg font-bold tracking-tight text-navy">No databases connected yet</h2>
       <p className="mt-1.5 max-w-md text-sm leading-6 text-navy-soft">
         {isAdmin
-          ? "Connect as many MySQL databases as your workspace needs — AI chat lets you pick one per conversation."
+          ? "Connect as many MySQL or PostgreSQL databases as your workspace needs — AI chat lets you pick one per conversation."
           : "Ask your workspace admin to connect a database. Once it's added, you can start asking questions right away."}
       </p>
       {isAdmin && (
@@ -383,24 +388,39 @@ function ConnectionForm({
               <span className="label">Display name</span>
               <input
                 className="field"
-                placeholder="Production MySQL"
+                placeholder="Production database"
                 required
                 value={form.name}
                 onChange={(event) => onFieldChange("name", event.target.value)}
               />
             </label>
             <label className="block">
+              <span className="label">Database type</span>
+              <select
+                className="field cursor-pointer appearance-none pr-10"
+                value={form.db_type}
+                onChange={(event) => {
+                  const db_type = event.target.value as DbType;
+                  onFieldChange("db_type", db_type);
+                  onFieldChange("port", DEFAULT_PORTS[db_type]);
+                }}
+              >
+                <option value="mysql">MySQL / MariaDB</option>
+                <option value="postgres">PostgreSQL</option>
+              </select>
+            </label>
+            <label className="block">
               <span className="label">Host</span>
               <input
                 className="field font-mono"
-                placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : "mysql.example.com"}
+                placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : `${URI_SCHEMES[form.db_type]}.example.com`}
                 required
                 value={form.host}
                 onChange={(event) => onFieldChange("host", event.target.value)}
               />
               {showSshTunnel && (
                 <span className="mt-1.5 block text-xs text-slate-400">
-                  Database address as seen from the SSH server — use 127.0.0.1 if MySQL runs on the bastion itself.
+                  Database address as seen from the SSH server — use 127.0.0.1 if the database runs on the bastion itself.
                 </span>
               )}
             </label>
@@ -408,7 +428,7 @@ function ConnectionForm({
               <span className="label">Port</span>
               <NumberField
                 className="field"
-                fallback={3306}
+                fallback={DEFAULT_PORTS[form.db_type]}
                 max={65535}
                 min={1}
                 onCommit={(port) => onFieldChange("port", port)}
@@ -484,7 +504,7 @@ function ConnectionForm({
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               </span>
               <span className="mt-1.5 block text-xs text-slate-400">
-                Aiven, PlanetScale, RDS, and TiDB usually require SSL.
+                Aiven, PlanetScale, Supabase, Neon, RDS, and TiDB usually require SSL.
               </span>
             </label>
           </div>

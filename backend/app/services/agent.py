@@ -14,6 +14,7 @@ import httpx
 
 from app.services.ai import (
     AIConfig,
+    _dialect_label,
     _effective_ai,
     _gemini_generate,
     _history_block,
@@ -57,6 +58,7 @@ def run_agent(
     history: list[dict] | None = None,
     ai_config: AIConfig | None = None,
     deadline: float | None = None,
+    db_type: str = "mysql",
 ) -> AgentResult:
     """Run the agent loop. `execute_sql(sql)` must return (columns, rows) and is
     only ever called with validated SELECT statements.
@@ -95,7 +97,7 @@ def run_agent(
                 rows=last_result[1],
                 steps=steps,
             )
-        prompt = _agent_prompt(question, schema, observations, history, queries_run)
+        prompt = _agent_prompt(question, schema, observations, history, queries_run, db_type)
         raw = _agent_generate(prompt, eff)
         action = _parse_action(raw)
         if action is None:
@@ -263,10 +265,13 @@ def _agent_prompt(
     observations: list[str],
     history: list[dict] | None,
     queries_run: int,
+    db_type: str = "mysql",
 ) -> str:
+    dialect = _dialect_label(db_type)
     obs = "\n\n".join(observations) if observations else "(none yet — this is your first step)"
     return f"""
-You are QueryMind's data-analysis agent working with a MySQL database.
+You are QueryMind's data-analysis agent working with a {dialect} database.
+Write SQL using {dialect} syntax and quoting rules.
 
 Answer the user's question step by step. You can only act through tools, and each
 reply must be EXACTLY ONE JSON object with no other text:

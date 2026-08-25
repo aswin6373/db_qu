@@ -20,9 +20,12 @@ export type AIIntegration = {
   base_url: string | null;
 };
 
+export type DbType = "mysql" | "postgres";
+
 export type Connection = {
   id: number;
   name: string;
+  db_type?: string;
   host: string;
   port: number;
   username: string;

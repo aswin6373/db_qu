@@ -59,9 +59,22 @@ def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     )
 
 
-def generate_sql(question: str, schema: dict, history: list[dict] | None = None, ai_config: AIConfig | None = None) -> str:
+DIALECT_LABELS = {"mysql": "MySQL", "postgres": "PostgreSQL"}
+
+
+def _dialect_label(db_type: str | None) -> str:
+    return DIALECT_LABELS.get((db_type or "mysql").lower(), "MySQL")
+
+
+def generate_sql(
+    question: str,
+    schema: dict,
+    history: list[dict] | None = None,
+    ai_config: AIConfig | None = None,
+    db_type: str = "mysql",
+) -> str:
     eff = _effective_ai(ai_config)
-    schema_change = _detect_schema_change_request(question, schema)
+    schema_change = _detect_schema_change_request(question, schema, db_type=db_type)
     if schema_change:
         raise QueryUnderstandingError(schema_change)
     if not (schema.get("tables") or {}):
@@ -71,29 +84,35 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None,
     if eff.provider == "gemini":
         try:
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
-            sql = _generate_sql_with_gemini(question, schema, history, eff)
+            sql = _generate_sql_with_gemini(question, schema, history, eff, db_type)
         except (RuntimeError, httpx.HTTPError):
             sql = _generate_sql_with_ollama_or_fallback(
                 question, schema, history=history, eff=eff,
                 timeout=get_settings().ollama_fallback_timeout_seconds,
+                db_type=db_type,
             )
     elif eff.provider == "openai":
         try:
-            sql = _generate_sql_with_openai(question, schema, history, eff)
+            sql = _generate_sql_with_openai(question, schema, history, eff, db_type)
         except (RuntimeError, httpx.HTTPError):
             sql = _generate_sql_with_ollama_or_fallback(
                 question, schema, history=history, eff=eff,
                 timeout=get_settings().ollama_fallback_timeout_seconds,
+                db_type=db_type,
             )
     elif eff.provider == "ollama":
-        sql = _generate_sql_with_ollama_or_fallback(question, schema, history, eff)
+        sql = _generate_sql_with_ollama_or_fallback(
+            question, schema, history, eff,
+            timeout=get_settings().ollama_fallback_timeout_seconds,
+            db_type=db_type,
+        )
     else:
         # Deterministic fallback can only target one table.
         table = _ensure_question_can_target_schema(question, schema)
         _ensure_insert_has_enough_details(question, schema, table)
         sql = _generate_sql_fallback(question, schema)
-    # MySQL system tables are off-limits — schema questions are answered directly.
-    if re.search(r"\b(?:information_schema|performance_schema)\b|\bmysql\.", sql, re.IGNORECASE):
+    # System tables are off-limits — schema questions are answered directly.
+    if re.search(r"\b(?:information_schema|performance_schema|pg_catalog|sqlite_master)\b|\bmysql\.", sql, re.IGNORECASE):
         raise QueryUnderstandingError(
             "I can't query MySQL's internal system tables. I already know your schema — "
             'just ask "what tables do I have" or "what columns does products have" and I\'ll answer directly.'
@@ -102,16 +121,23 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None,
     return _validated_sql(sql, schema)
 
 
-def evaluate_clarity(question: str, schema: dict, history: list[dict] | None = None, ai_config: AIConfig | None = None) -> str | None:
+def evaluate_clarity(
+    question: str,
+    schema: dict,
+    history: list[dict] | None = None,
+    ai_config: AIConfig | None = None,
+    db_type: str = "mysql",
+) -> str | None:
     """Return a short clarifying question when the request cannot be confidently
     mapped to the schema; return None when QueryMind should go ahead and run."""
     eff = _effective_ai(ai_config)
     if eff.provider not in {"gemini", "openai", "ollama"} or not (schema.get("tables") or {}):
         return None
+    dialect = _dialect_label(db_type)
     prompt = f"""
-You are QueryMind's intent checker for a MySQL assistant.
+You are QueryMind's intent checker for a {dialect} assistant.
 
-Decide whether you could write ONE correct MySQL query that fully satisfies the
+Decide whether you could write ONE correct {dialect} query that fully satisfies the
 user's latest message using ONLY the schema below and the conversation context.
 
 Respond with exactly one JSON object and nothing else:
@@ -287,8 +313,10 @@ DDL_NOUN_RE = re.compile(r"\b(?:colou?mn|coll?umn|feild|field|attribute|table|in
 COLUMN_NOUN_RE = r"\b(?:colou?mn|coll?umn|feild|field)\b"
 
 
-def _detect_schema_change_request(question: str, schema: dict) -> str | None:
+def _detect_schema_change_request(question: str, schema: dict, db_type: str = "mysql") -> str | None:
     lowered = question.lower()
+    # MySQL quotes identifiers with backticks; PostgreSQL uses double quotes.
+    quote = "`" if (db_type or "mysql").lower() == "mysql" else '"'
     if not DDL_NOUN_RE.search(lowered):
         return None
     if not DDL_VERB_RE.search(lowered):
@@ -336,15 +364,15 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
             if table:
                 return (
                     "I couldn't tell which column to add. For example: \"add column phone in customers\". "
-                    f"To add it yourself, run: ALTER TABLE `{table}` ADD COLUMN `column_name` VARCHAR(255) NULL;"
+                    f"To add it yourself, run: ALTER TABLE {quote}{table}{quote} ADD COLUMN {quote}column_name{quote} VARCHAR(255) NULL;"
                 )
             return _schema_change_needs_table(schema, "add a column")
         column_type = _normalize_column_type(raw_type)
         if table:
             return (
                 f"Schema changes like adding columns are blocked in QueryMind for safety. "
-                f"To add `{column_name}` yourself, run this in your MySQL client:\n"
-                f"ALTER TABLE `{table}` ADD COLUMN `{column_name}` {column_type} NULL;"
+                f"To add {quote}{column_name}{quote} yourself, run this in your database client:\n"
+                f"ALTER TABLE {quote}{table}{quote} ADD COLUMN {quote}{column_name}{quote} {column_type} NULL;"
             )
         return _schema_change_needs_table(schema, "add a column")
     if drop_column:
@@ -357,14 +385,14 @@ def _detect_schema_change_request(question: str, schema: dict) -> str | None:
             if table:
                 return (
                     "I couldn't tell which column to drop. For example: \"drop the column phone from customers\". "
-                    f"To drop it yourself, run: ALTER TABLE `{table}` DROP COLUMN `column_name`;"
+                    f"To drop it yourself, run: ALTER TABLE {quote}{table}{quote} DROP COLUMN {quote}column_name{quote};"
                 )
             return _schema_change_needs_table(schema, "drop a column")
         if table:
             return (
                 f"Schema changes like dropping columns are blocked in QueryMind for safety. "
-                f"To remove `{column_name}` yourself, run this in your MySQL client:\n"
-                f"ALTER TABLE `{table}` DROP COLUMN `{column_name}`;"
+                f"To remove {quote}{column_name}{quote} yourself, run this in your database client:\n"
+                f"ALTER TABLE {quote}{table}{quote} DROP COLUMN {quote}{column_name}{quote};"
             )
         return _schema_change_needs_table(schema, "drop a column")
 
@@ -400,31 +428,32 @@ SQL_RULES = """
 - Support SELECT, INSERT, UPDATE, and DELETE.
 - Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
 - Do not generate multiple statements.
-- Never query information_schema, performance_schema, or other system tables — answer those questions with a META: line instead.
+- Never query system tables (information_schema, performance_schema, pg_catalog, sqlite_master) — answer those questions with a META: line instead.
 - For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
 - Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
 - Use the recent conversation to resolve short follow-up answers like "yes" or "the customers one".
 """
 
 
-def _sql_prompt(question: str, schema: dict, history: list[dict] | None) -> str:
+def _sql_prompt(question: str, schema: dict, history: list[dict] | None = None, db_type: str = "mysql") -> str:
+    dialect = _dialect_label(db_type)
     return f"""
 You are QueryMind's SQL generator.
 
 If the latest request is about the database itself — what tables exist, what
 columns a table has, a table's structure — do NOT write SQL. Reply with a single
-line starting with "META:" followed by a short friendly answer based ONLY on the
-schema below. Example: "META: Your database has 2 tables: customers (3 columns)
+line starting with "META:" followed by a short friendly answer based ONLY on
+the schema below. Example: "META: Your database has 2 tables: customers (3 columns)
 and orders (3 columns). Ask me for rows anytime."
 
-Otherwise generate exactly one MySQL query for the user's latest request.
-Return only SQL. Do not use markdown. Do not explain.
+Otherwise generate exactly one valid {dialect} query for the user's latest request.
+Use {dialect} syntax and quoting rules. Return only SQL. Do not use markdown. Do not explain.
 
 Rules:
 {SQL_RULES}
 {_history_block(history)}
 Schema:
-{_schema_block(schema)}
+{json.dumps(schema, indent=2)}
 
 Latest user request:
 {question}
@@ -443,16 +472,16 @@ def _sql_from_model_response(raw: str) -> str:
     return _extract_sql(raw)
 
 
-def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _sql_from_model_response(_gemini_generate(_sql_prompt(question, schema, history), eff))
+def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None, db_type: str = "mysql") -> str:
+    return _sql_from_model_response(_gemini_generate(_sql_prompt(question, schema, history, db_type), eff))
 
 
-def _generate_sql_with_openai(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _sql_from_model_response(_openai_generate(_sql_prompt(question, schema, history), eff))
+def _generate_sql_with_openai(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None, db_type: str = "mysql") -> str:
+    return _sql_from_model_response(_openai_generate(_sql_prompt(question, schema, history, db_type), eff))
 
 
-def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _sql_from_model_response(_ollama_generate(_sql_prompt(question, schema, history), eff))
+def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None, db_type: str = "mysql") -> str:
+    return _sql_from_model_response(_ollama_generate(_sql_prompt(question, schema, history, db_type), eff))
 
 
 def _generate_sql_with_ollama_or_fallback(
@@ -461,9 +490,10 @@ def _generate_sql_with_ollama_or_fallback(
     history: list[dict] | None = None,
     eff: _EffectiveAI | None = None,
     timeout: int | None = None,
+    db_type: str = "mysql",
 ) -> str:
     try:
-        return _ollama_generate(_sql_prompt(question, schema, history), eff, timeout=timeout)
+        return _ollama_generate(_sql_prompt(question, schema, history, db_type), eff, timeout=timeout)
     except (RuntimeError, httpx.HTTPError):
         return _generate_sql_fallback(question, schema)
 

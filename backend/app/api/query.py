@@ -273,7 +273,15 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             return connector.execute(sql)
 
         try:
-            result = run_agent(payload.question, schema, execute, history, ai_config, deadline)
+            result = run_agent(
+                payload.question,
+                schema,
+                execute,
+                history,
+                ai_config,
+                deadline,
+                db_type=connection.db_type or "mysql",
+            )
         except (AgentError, httpx.HTTPError, RuntimeError):
             return None
         finally:
@@ -327,14 +335,14 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     # budget there is no room for it either.
     if not _is_followup_answer(chat_session, db) and time.monotonic() < deadline:
         try:
-            clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
+            clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql")
         except Exception:
             clarifying_question = None
         if clarifying_question:
             return clarification_response(clarifying_question)
 
     try:
-        sql = generate_sql(payload.question, schema, history, ai_config)
+        sql = generate_sql(payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql")
     except SchemaAnswer as exc:
         return direct_answer(exc.text)
     except QueryUnderstandingError as exc:
@@ -343,7 +351,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         # or the request has no time budget left for a multi-step loop).
         if (
             agent_eligible
-            and not _detect_schema_change_request(payload.question, schema)
+            and not _detect_schema_change_request(payload.question, schema, db_type=connection.db_type or "mysql")
             and time.monotonic() < deadline
         ):
             rescue = run_agent_mode()
@@ -466,7 +474,7 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
             sql=log.generated_sql,
             query_type=log.query_type,
             requires_confirmation=False,
-            summary="Demo write query confirmed. Add a real connection to execute against MySQL.",
+            summary="Demo write query confirmed. Add a real connection to execute against your database.",
         )
         _finalize_confirmed_message(db, user, query_id, response)
         return response

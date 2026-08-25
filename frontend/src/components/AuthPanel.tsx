@@ -111,7 +111,7 @@ export function AuthPanel({ onToken }: Props) {
                 Works with the databases you already run
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 lg:justify-start">
-                {["MySQL", "MariaDB", "TiDB", "PlanetScale", "Aiven", "Amazon RDS"].map((name) => (
+                {["MySQL", "PostgreSQL", "MariaDB", "TiDB", "PlanetScale", "Amazon RDS"].map((name) => (
                   <span className="text-[15px] font-bold tracking-tight text-navy/35 transition hover:text-navy/60" key={name}>
                     {name}
                   </span>
@@ -213,7 +213,7 @@ export function AuthPanel({ onToken }: Props) {
             </p>
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               {[
-                { step: "01", title: "Connect", text: "Add your MySQL host and credentials. We test the connection and map your full schema." },
+                { step: "01", title: "Connect", text: "Add your MySQL or PostgreSQL host and credentials. We test the connection and map your full schema." },
                 { step: "02", title: "Ask", text: "Type what you want to know. The AI writes one precise SQL statement for your schema." },
                 { step: "03", title: "Review & run", text: "Reads execute instantly. Writes pause for your confirmation — always." }
               ].map((item) => (

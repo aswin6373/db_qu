@@ -25,6 +25,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
   const [workspace, setWorkspace] = useState(organizationName ?? "");
   const [form, setForm] = useState({
     name: "",
+    db_type: "mysql" as "mysql" | "postgres",
     host: "",
     port: 3306,
     username: "",
@@ -37,6 +38,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
     ssh_username: null as string | null,
     ssh_password: null as string | null
   });
+  const defaultPort = form.db_type === "postgres" ? 5432 : 3306;
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [saving, setSaving] = useState(false);
   const [connectedName, setConnectedName] = useState("");
@@ -192,27 +194,47 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
             <p className="eyebrow text-teal">Almost there</p>
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-navy">Connect your database</h1>
             <p className="mt-1.5 text-sm leading-6 text-navy-soft">
-              QueryMind needs a live MySQL connection before the workspace unlocks. Your password is encrypted before
-              it is stored.
+              QueryMind needs a live MySQL or PostgreSQL connection before the workspace unlocks. Your password is
+              encrypted before it is stored.
             </p>
 
             <div className="mt-6 grid gap-x-5 gap-y-4 sm:grid-cols-2">
               <label className="block">
                 <span className="label text-navy-soft">Display name</span>
-                <input className="field" placeholder="Production MySQL" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+                <input className="field" placeholder="Production database" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+              </label>
+              <label className="block">
+                <span className="label text-navy-soft">Database type</span>
+                <select
+                  className="field"
+                  value={form.db_type}
+                  onChange={(event) => {
+                    const db_type = event.target.value as "mysql" | "postgres";
+                    setForm({ ...form, db_type, port: db_type === "postgres" ? 5432 : 3306 });
+                  }}
+                >
+                  <option value="mysql">MySQL / MariaDB</option>
+                  <option value="postgres">PostgreSQL</option>
+                </select>
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Host</span>
-                <input className="field font-mono" placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : "mysql.example.com"} required value={form.host} onChange={(event) => setForm({ ...form, host: event.target.value })} />
+                <input
+                  className="field font-mono"
+                  placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : `${form.db_type === "postgres" ? "postgresql" : "mysql"}.example.com`}
+                  required
+                  value={form.host}
+                  onChange={(event) => setForm({ ...form, host: event.target.value })}
+                />
                 {showSshTunnel && (
                   <span className="mt-1.5 block text-xs text-navy-soft/70">
-                    Database address as seen from the SSH server — use 127.0.0.1 if MySQL runs on the bastion itself.
+                    Database address as seen from the SSH server — use 127.0.0.1 if the database runs on the bastion itself.
                   </span>
                 )}
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Port</span>
-                <NumberField className="field" fallback={3306} max={65535} min={1} onCommit={(port) => setForm({ ...form, port })} value={form.port} />
+                <NumberField className="field" fallback={defaultPort} max={65535} min={1} onCommit={(port) => setForm({ ...form, port })} value={form.port} />
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Username</span>

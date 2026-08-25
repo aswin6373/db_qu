@@ -54,7 +54,7 @@ export function SchemaGraph({ schema, insights }: Props) {
 
       {tables.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center text-sm text-slate-500">
-          No schema discovered yet. Save a live MySQL connection to load tables and columns.
+          No schema discovered yet. Save a live database connection to load tables and columns.
         </div>
       ) : (
         <div className="panel-soft overflow-x-auto p-4">

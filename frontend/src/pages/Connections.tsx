@@ -248,6 +248,7 @@ function ConnectionForm({
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showSshPassword, setShowSshPassword] = useState(false);
+  const [showSshTunnel, setShowSshTunnel] = useState(false);
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
@@ -273,6 +274,26 @@ function ConnectionForm({
           </div>
         )}
 
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            checked={Boolean(form.ssh_host)}
+            onChange={(event) => setShowSshTunnel(event.target.checked)}
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-brand-600"
+            id="ssh-tunnel-toggle"
+          />
+          <label htmlFor="ssh-tunnel-toggle" className="text-sm text-slate-600 cursor-pointer">
+            <span className="font-medium">SSH Tunnel</span>
+            <span className="ml-1 text-xs text-slate-400">Connect via bastion host</span>
+          </label>
+        </div>
+
+        {showSshTunnel && (
+          <section>
+            <h3 className="eyebrow mb-3 text-slate-400">SSH Tunnel</h3>
+          </section>
+        )}
+
         <section>
           <h3 className="eyebrow mb-3 text-slate-400">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-[2fr_1fr]">
@@ -296,15 +317,17 @@ function ConnectionForm({
                 onChange={(event) => onFieldChange("host", event.target.value)}
               />
             </label>
-            <label className="block">
-              <span className="label">SSH Host</span>
-              <input
-                className="field font-mono"
-                placeholder="bastion.mycompany.com"
-                value={form.ssh_host ?? ""}
-                onChange={(event) => onFieldChange("ssh_host", event.target.value)}
-              />
-            </label>
+            {showSshTunnel && (
+              <label className="block">
+                <span className="label">SSH Host</span>
+                <input
+                  className="field font-mono"
+                  placeholder="bastion.mycompany.com"
+                  value={form.ssh_host ?? ""}
+                  onChange={(event) => onFieldChange("ssh_host", event.target.value)}
+                />
+              </label>
+            )}
             <label className="block">
               <span className="label">Port</span>
               <input
@@ -317,18 +340,20 @@ function ConnectionForm({
                 onChange={(event) => onFieldChange("port", Number(event.target.value) || 3306)}
               />
             </label>
-            <label className="block">
-              <span className="label">SSH Port</span>
-              <input
-                className="field"
-                placeholder="22"
-                type="number"
-                min={1}
-                max={65535}
-                value={form.ssh_port}
-                onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
-              />
-            </label>
+            {showSshTunnel && (
+              <label className="block">
+                <span className="label">SSH Port</span>
+                <input
+                  className="field"
+                  placeholder="22"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={form.ssh_port}
+                  onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
+                />
+              </label>
+            )}
           </div>
         </section>
 

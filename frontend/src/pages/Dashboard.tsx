@@ -44,18 +44,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
 
   return (
     <section className="space-y-7">
-      <PageHeader
-        eyebrow={dashboard?.organization.name ?? "Workspace"}
-        title="Operational Dashboard"
-        description="Track activity from this production console — live schema relationships, AI query traffic, and guarded operations."
-        action={
-          connections.length > 0 ? (
-            <button className="btn-secondary" onClick={onOpenConnections} type="button">
-              <Database size={15} /> Manage connections
-            </button>
-          ) : null
-        }
-      />
+      <PageHeader eyebrow={dashboard?.organization.name ?? "Workspace"} title="Operational Dashboard" />
 
       {connections.length === 0 && (
         <section className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6 sm:p-8">

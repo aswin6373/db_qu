@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Database, Loader2, X } from "lucide-react";
 import { useChatSessions } from "./ChatSessionsContext";
+import { useDialog } from "../lib/useDialog";
 import type { Connection } from "../types/api";
 
 type Props = {
@@ -13,6 +14,7 @@ export function NewChatDialog({ connections, onClose, onSuccess }: Props) {
   const { ensureSession, openSession } = useChatSessions();
   const [creatingId, setCreatingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useDialog(onClose);
 
   async function pick(connection: Connection) {
     if (creatingId !== null) return;
@@ -30,7 +32,7 @@ export function NewChatDialog({ connections, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Choose a database for the new chat" ref={dialogRef}>
       <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={onClose} />
       <div className="card animate-fade-up relative w-full max-w-md overflow-hidden p-0">
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream px-6 py-5">

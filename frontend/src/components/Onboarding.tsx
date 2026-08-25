@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, Eye, EyeOff, Loader2, PartyPopper, PlugZap, ShieldCheck, UserRound } from "lucide-react";
+import { NumberField } from "./NumberField";
 import { apiRequest } from "../lib/api";
 
 type Props = {
@@ -92,7 +93,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
             <span className="text-lg font-extrabold tracking-tight text-navy">QueryMind</span>
           </div>
           <p className="text-sm font-medium text-navy-soft">
-            Step {Math.min(step, 2)} of 2
+            {step > 2 ? "All set" : `Step ${step} of 2`}
           </p>
         </div>
 
@@ -211,7 +212,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Port</span>
-                <input className="field" max={65535} min={1} type="number" value={form.port} onChange={(event) => setForm({ ...form, port: Number(event.target.value) || 3306 })} />
+                <NumberField className="field" fallback={3306} max={65535} min={1} onCommit={(port) => setForm({ ...form, port })} value={form.port} />
               </label>
               <label className="block">
                 <span className="label text-navy-soft">Username</span>
@@ -255,7 +256,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
                     </label>
                     <label className="block">
                       <span className="label text-navy-soft">SSH Port</span>
-                      <input className="field" max={65535} min={1} type="number" value={form.ssh_port} onChange={(event) => setForm({ ...form, ssh_port: Number(event.target.value) || 22 })} />
+                      <NumberField className="field" fallback={22} max={65535} min={1} onCommit={(ssh_port) => setForm({ ...form, ssh_port })} value={form.ssh_port} />
                     </label>
                     <label className="block">
                       <span className="label text-navy-soft">SSH Username</span>
@@ -287,7 +288,6 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
                           aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
                           className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                           onClick={() => setShowSshPassword((visible) => !visible)}
-                          tabIndex={-1}
                           type="button"
                         >
                           {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}

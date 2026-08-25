@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     mysql_connect_timeout: int = 5
     mysql_statement_timeout_ms: int = 30000
+    max_result_rows: int = 500
+    llm_timeout_seconds: int = 20
+    forwarded_allow_ips: str = "127.0.0.1"
+    confirmation_ttl_minutes: int = 15
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

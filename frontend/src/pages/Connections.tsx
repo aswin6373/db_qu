@@ -16,6 +16,7 @@ import {
   XCircle
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
+import { NumberField } from "../components/NumberField";
 import { SchemaGraph } from "../components/SchemaGraph";
 import { apiRequest } from "../lib/api";
 import { Connection, DatabaseSchema, SslMode, SchemaInsights } from "../types/api";
@@ -405,14 +406,13 @@ function ConnectionForm({
             </label>
             <label className="block">
               <span className="label">Port</span>
-              <input
+              <NumberField
                 className="field"
+                fallback={3306}
                 max={65535}
                 min={1}
-                placeholder="3306"
-                type="number"
+                onCommit={(port) => onFieldChange("port", port)}
                 value={form.port}
-                onChange={(event) => onFieldChange("port", Number(event.target.value) || 3306)}
               />
             </label>
           </div>
@@ -435,6 +435,7 @@ function ConnectionForm({
               <span className="label">Password</span>
               <span className="relative block">
                 <input
+                  autoComplete="new-password"
                   className="field pr-11"
                   placeholder="••••••••"
                   required
@@ -446,7 +447,6 @@ function ConnectionForm({
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                   onClick={() => setShowPassword((visible) => !visible)}
-                  tabIndex={-1}
                   type="button"
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -526,14 +526,13 @@ function ConnectionForm({
               </label>
               <label className="block">
                 <span className="label">SSH Port</span>
-                <input
+                <NumberField
                   className="field"
-                  placeholder="22"
-                  type="number"
-                  min={1}
+                  fallback={22}
                   max={65535}
+                  min={1}
+                  onCommit={(ssh_port) => onFieldChange("ssh_port", ssh_port)}
                   value={form.ssh_port}
-                  onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
                 />
               </label>
               <label className="block">
@@ -572,8 +571,7 @@ function ConnectionForm({
                     aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
                     className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                     onClick={() => setShowSshPassword((visible) => !visible)}
-                    tabIndex={-1}
-                    type="button"
+                      type="button"
                   >
                     {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>

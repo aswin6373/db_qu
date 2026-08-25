@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { apiRequest } from "../lib/api";
 import type { ChatSession } from "../types/api";
@@ -21,6 +21,7 @@ export function ChatSessionsProvider({ token, children }: { token: string; child
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeId, setActiveId] = useState<number | null>(null);
+  const refreshGenerationRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,8 +40,12 @@ export function ChatSessionsProvider({ token, children }: { token: string; child
   }, [token]);
 
   const refresh = useCallback(() => {
+    // Out-of-order responses must not revert a newer list to an older one.
+    const generation = ++refreshGenerationRef.current;
     apiRequest<ChatSession[]>("/chat/sessions", {}, token)
-      .then((items) => setSessions(items))
+      .then((items) => {
+        if (refreshGenerationRef.current === generation) setSessions(items);
+      })
       .catch(() => undefined);
   }, [token]);
 

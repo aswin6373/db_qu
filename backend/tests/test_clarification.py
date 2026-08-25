@@ -73,6 +73,9 @@ class FakeConnector:
     def execute(self, sql: str):
         return ["id"], [{"id": 1}]
 
+    def close(self):
+        pass
+
 
 def test_clear_question_still_executes(client, monkeypatch):
     from app.api import query as query_api

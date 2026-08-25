@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.connections import _get_org_connection, build_connector
 from app.api.dependencies import get_current_user
 from app.api.organizations import ai_config_for_org
+from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import ChatSession, Message, Organization, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
@@ -54,6 +55,16 @@ def serialize_result_preview(columns: list[str], rows: list[dict]) -> str:
     return json.dumps({"columns": columns, "rows": rows[:5]}, default=str)
 
 
+def _safe_schema_cache(connection) -> dict:
+    """A corrupted schema cache degrades to empty instead of 500-ing."""
+    try:
+        parsed = json.loads(connection.schema_cache or "{}")
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("corrupt_schema_cache connection=%s", connection.id)
+        parsed = {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
 def _result_payload(
     query_id: int,
     sql: str,
@@ -77,10 +88,13 @@ def _result_payload(
 
 
 def _org_chat_session(session_id: int, user: User, db: Session) -> ChatSession:
+    # Chats are personal: organization membership alone must not grant access
+    # to another member's conversation history.
     session = db.scalar(
         select(ChatSession).where(
             ChatSession.id == session_id,
             ChatSession.organization_id == user.organization_id,
+            ChatSession.user_id == user.id,
         )
     )
     if session is None:
@@ -208,7 +222,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         raise HTTPException(status_code=400, detail="Connect a database before asking AI questions.")
 
     connection = _get_org_connection(connection_id, user, db)
-    schema = json.loads(connection.schema_cache or "{}")
+    schema = _safe_schema_cache(connection)
     history = _recent_history(db, user, payload.session_id)
     ai_config = ai_config_for_org(db.get(Organization, user.organization_id))
 
@@ -238,6 +252,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             result = run_agent(payload.question, schema, execute, history, ai_config)
         except (AgentError, httpx.HTTPError, RuntimeError):
             return None
+        finally:
+            connector.close()
+
+        if getattr(connector, "last_truncated", False):
+            result.summary += f" (showing the first {len(result.rows)} rows)"
 
         log = QueryLog(
             organization_id=user.organization_id,
@@ -309,18 +328,23 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     status = "pending_confirmation" if validation.requires_confirmation else "executed"
 
     if not validation.requires_confirmation:
+        connector = build_connector(connection)
         try:
-            columns, rows = build_connector(connection).execute(sql)
+            columns, rows = connector.execute(sql)
         except HTTPException:
             raise
         except Exception as exc:
             logger.error("query_execution_failed error=%s", exc, exc_info=True)
             raise HTTPException(status_code=400, detail="The database rejected this query. Rephrase the question and try again.") from exc
+        finally:
+            connector.close()
 
     summary = summarize_result(
         payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type,
         ai_config=ai_config,
     )
+    if not validation.requires_confirmation and getattr(connector, "last_truncated", False):
+        summary += f" (showing the first {len(rows)} rows)"
     log = QueryLog(
         organization_id=user.organization_id,
         user_id=user.id,
@@ -351,6 +375,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
 
 @router.post("/{query_id}/confirm", response_model=QueryGenerateResponse)
 def confirm(query_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    settings = get_settings()
     log = db.scalar(
         select(QueryLog).where(
         QueryLog.id == query_id,
@@ -361,15 +386,38 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     if log is None:
         raise HTTPException(status_code=404, detail="Query not found")
     if log.status != "pending_confirmation":
+        # Already executed (or expired/claimed by a concurrent request): report
+        # state WITHOUT appending another chat message — repeated POSTs must
+        # never spam the transcript.
+        expired = log.status == "confirmation_expired"
         response = QueryGenerateResponse(
             query_id=log.id,
             sql=log.generated_sql,
             query_type=log.query_type,
             requires_confirmation=False,
-            summary="This write query was already confirmed.",
+            summary=(
+                "This confirmation window has expired. Ask again to regenerate the query."
+                if expired
+                else "This write query was already confirmed."
+            ),
         )
-        _finalize_confirmed_message(db, user, query_id, response)
         return response
+
+    # Expire stale confirmations: SQL confirmed long after it was generated
+    # may no longer match the data its preview described.
+    created_at = log.created_at
+    if (
+        settings.confirmation_ttl_minutes > 0
+        and created_at is not None
+        and (_utcnow() - created_at).total_seconds() > settings.confirmation_ttl_minutes * 60
+    ):
+        log.status = "confirmation_expired"
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="This confirmation window has expired. Ask again to regenerate the query.",
+        )
+
     if log.connection_id is None:
         log.status = "executed"
         db.commit()
@@ -383,17 +431,42 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
         _finalize_confirmed_message(db, user, query_id, response)
         return response
 
+    # Claim-then-execute: flip pending → executing in a guarded UPDATE and
+    # only proceed when THIS request won the claim. Two concurrent confirms
+    # (double-click, retried XHR) can never both run the write.
+    claimed = db.execute(
+        update(QueryLog)
+        .where(QueryLog.id == log.id, QueryLog.status == "pending_confirmation")
+        .values(status="executing")
+    ).rowcount
+    db.commit()
+    if not claimed:
+        response = QueryGenerateResponse(
+            query_id=log.id,
+            sql=log.generated_sql,
+            query_type=log.query_type,
+            requires_confirmation=False,
+            summary="This write query was already confirmed.",
+        )
+        return response
+
     connection = _get_org_connection(log.connection_id, user, db)
+    connector = build_connector(connection)
     try:
-        columns, rows = build_connector(connection).execute(log.generated_sql)
+        columns, rows = connector.execute(log.generated_sql)
     except HTTPException:
+        _release_claim(db, log.id)
         raise
     except Exception as exc:
         logger.error("confirm_execution_failed query=%s error=%s", query_id, exc, exc_info=True)
+        # Give the row back so the user can retry the same confirmation.
+        _release_claim(db, log.id)
         raise HTTPException(
             status_code=400,
             detail="The database rejected this query. Check the connection and try again.",
         ) from exc
+    finally:
+        connector.close()
     log.status = "executed"
     log.result_preview = serialize_result_preview(columns, rows)
     db.commit()
@@ -408,3 +481,13 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     )
     _finalize_confirmed_message(db, user, query_id, response)
     return response
+
+
+def _release_claim(db: Session, query_id: int) -> None:
+    """Return a claimed ('executing') log to pending after a failed execution."""
+    db.execute(
+        update(QueryLog)
+        .where(QueryLog.id == query_id, QueryLog.status == "executing")
+        .values(status="pending_confirmation")
+    )
+    db.commit()

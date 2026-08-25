@@ -242,7 +242,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
               const slotW = groupW / shownEntries.length;
               const barW = Math.min(26, slotW * 0.62);
               return (
-                <g className="transition-opacity hover:opacity-75" key={`group-${label}`}>
+                <g className="transition-opacity hover:opacity-75" key={`group-${groupIndex}-${label}`}>
                   {shownEntries.map(({ entry, index }) => {
                     const value = entry.values[groupIndex];
                     const valueY = yScale(value);

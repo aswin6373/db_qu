@@ -3,7 +3,7 @@ import logging
 
 from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_admin
@@ -16,6 +16,19 @@ from app.services.schema_insights import build_schema_insights
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 logger = logging.getLogger("querymind")
+
+
+def _safe_json(value: str | None) -> dict:
+    """Parse a cached JSON blob; a corrupted cache degrades to empty instead
+    of turning every request into a 500."""
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("corrupt_json_cache_discarded length=%s", len(value))
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 @router.post("", response_model=ConnectionResponse)
@@ -49,6 +62,8 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(require_ad
                 status_code=400,
                 detail="Could not reach MySQL with these credentials and settings. Check the host, port, SSL mode, tunnel details, and password.",
             ) from exc
+        finally:
+            connector.close()
     connection = DBConnection(
         organization_id=user.organization_id,
         name=payload.name,
@@ -80,13 +95,13 @@ def list_connections(user: User = Depends(get_current_user), db: Session = Depen
 @router.get("/{connection_id}/schema")
 def get_schema(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
-    return json.loads(connection.schema_cache or "{}")
+    return _safe_json(connection.schema_cache)
 
 
 @router.get("/{connection_id}/insights", response_model=SchemaInsightsResponse)
 def get_insights(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
-    return build_schema_insights(json.loads(connection.schema_cache or "{}"))
+    return build_schema_insights(_safe_json(connection.schema_cache))
 
 
 @router.post("/{connection_id}/refresh", response_model=ConnectionResponse)
@@ -104,6 +119,8 @@ def refresh_connection(connection_id: int, user: User = Depends(get_current_user
             status_code=400,
             detail="Could not refresh the schema — the database is unreachable with the saved credentials.",
         ) from exc
+    finally:
+        connector.close()
     db.commit()
     db.refresh(connection)
     return connection
@@ -112,14 +129,16 @@ def refresh_connection(connection_id: int, user: User = Depends(get_current_user
 @router.delete("/{connection_id}", status_code=204)
 def delete_connection(connection_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
-    logs = db.scalars(
-        select(QueryLog).where(
+    # Bulk UPDATE instead of loading every log row into ORM objects —
+    # this endpoint must stay O(1) in result-set size.
+    db.execute(
+        update(QueryLog)
+        .where(
             QueryLog.organization_id == user.organization_id,
             QueryLog.connection_id == connection.id,
         )
-    ).all()
-    for log in logs:
-        log.connection_id = None
+        .values(connection_id=None)
+    )
     db.delete(connection)
     db.commit()
     return Response(status_code=204)

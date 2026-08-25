@@ -72,6 +72,9 @@ def test_write_confirm_is_limited_to_the_requesting_user(client, monkeypatch):
         def execute(self, sql):
             return [], []
 
+        def close(self):
+            pass
+
     monkeypatch.setattr(query_api, "build_connector", lambda connection: FakeConnector())
 
     admin_token = register_and_token(client, "confirm-owner@example.com", "Confirm Owner Org")

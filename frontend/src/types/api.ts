@@ -31,7 +31,8 @@ export type Connection = {
   ssh_host?: string | null;
   ssh_port?: number;
   ssh_username?: string | null;
-  ssh_password?: string | null;
+  // Deliberately no ssh_password here: the API never returns secrets, and
+  // pretending it does invites accidental rendering/logging.
 };
 
 export type SslMode = "PREFERRED" | "REQUIRED" | "DISABLED";

@@ -16,6 +16,16 @@ type Props = {
 
 type UiMessage = ChatMessage & { isError?: boolean };
 
+// Typing indicator lives far outside the temp-id range (-1, -2, …) so its key
+// can never collide with a real message row.
+const TYPING_ID = -999_999;
+
+// Confirm/cancel decisions survive Chat remounts (navigating away mid-review
+// must not resurrect a cancelled write prompt). Module scope = SPA lifetime;
+// mutations bump a nonce so React re-renders.
+const confirmedWrites = new Set<number>();
+const dismissedWrites = new Set<number>();
+
 const SUGGESTIONS = [
   "Show the 10 most recent rows from my biggest table",
   "Count how many rows each table has",
@@ -31,11 +41,12 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   const [isSending, setIsSending] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
-  const [confirmedQueryIds, setConfirmedQueryIds] = useState<Set<number>>(new Set());
-  const [dismissedQueryIds, setDismissedQueryIds] = useState<Set<number>>(new Set());
+  // Nonce bumped whenever the module-level decision sets change.
+  const [decisionNonce, setDecisionNonce] = useState(0);
 
   const tempIdRef = useRef(-1);
   const loadedSessionRef = useRef<number | null>(null);
+  const activeIdRef = useRef<number | null>(activeId);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -52,20 +63,22 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     connections.find((connection) => connection.id === Number(selectedConnectionId))?.name ?? "";
 
   useEffect(() => {
-    if (isSending) return;
+    activeIdRef.current = activeId;
+  }, [activeId]);
+
+  // NOTE: deliberately NOT gated on isSending. Skipping the reload while a
+  // question is in flight used to let the answer land inside whichever
+  // transcript was on screen — the wrong conversation.
+  useEffect(() => {
     if (activeId === null) {
       loadedSessionRef.current = null;
       setMessages([]);
-      setConfirmedQueryIds(new Set());
-      setDismissedQueryIds(new Set());
       return;
     }
     if (loadedSessionRef.current === activeId) return;
     let cancelled = false;
     loadedSessionRef.current = activeId;
     setMessages([]);
-    setConfirmedQueryIds(new Set());
-    setDismissedQueryIds(new Set());
     setMessagesLoading(true);
     apiRequest<ChatMessage[]>(`/chat/sessions/${activeId}`, {}, token)
       .then((history) => {
@@ -80,7 +93,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     return () => {
       cancelled = true;
     };
-  }, [activeId, isSending, token]);
+  }, [activeId, token]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -105,6 +118,13 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
         method: "POST",
         body: JSON.stringify({ question: nextQuestion, connection_id: Number(selectedConnectionId), session_id: sessionId })
       }, token);
+      // The user may have switched sessions while the request was in flight.
+      // Only paint the answer into the transcript it belongs to.
+      if (activeIdRef.current !== sessionId || loadedSessionRef.current !== sessionId) {
+        refresh();
+        onActivity();
+        return;
+      }
       const assistantMessage: UiMessage = { id: tempIdRef.current--, role: "assistant", content: result.summary };
       // Schema answers and clarifying questions are plain text — no result block.
       if (!result.needs_clarification && !result.meta_answer) {
@@ -127,6 +147,9 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // IME composition (Japanese/Chinese/…): Enter commits the candidate text,
+    // it must not send a half-composed question.
+    if (event.nativeEvent.isComposing) return;
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void send();
@@ -134,11 +157,12 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }
 
   async function confirmWrite(queryId: number) {
-    if (confirmedQueryIds.has(queryId) || confirmingQueryId === queryId) return;
+    if (confirmedWrites.has(queryId) || confirmingQueryId === queryId) return;
     setConfirmingQueryId(queryId);
     try {
       const result = await apiRequest<QueryResponse>(`/query/${queryId}/confirm`, { method: "POST" }, token);
-      setConfirmedQueryIds((items) => new Set(items).add(queryId));
+      confirmedWrites.add(queryId);
+      setDecisionNonce((nonce) => nonce + 1);
       setMessages((items) => items.map((item) => (
         item.result?.query_id === queryId ? { ...item, result: { ...item.result!, requires_confirmation: false } } : item
       )));
@@ -154,7 +178,8 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }
 
   function cancelWrite(queryId: number) {
-    setDismissedQueryIds((items) => new Set(items).add(queryId));
+    dismissedWrites.add(queryId);
+    setDecisionNonce((nonce) => nonce + 1);
   }
 
   return (
@@ -163,7 +188,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-900">{activeSession?.title ?? "New chat"}</p>
           {activeSession && (
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500">
               {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}
             </p>
           )}
@@ -175,7 +200,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
           >
             <Database size={14} className="shrink-0 text-brand-600" />
             <span className="max-w-36 truncate text-xs font-semibold text-slate-700">
-              {activeSession.connection_id ? selectedConnectionName : "No database"}
+              {selectedConnectionName || "No database"}
             </span>
           </span>
         )}
@@ -196,8 +221,9 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                     <ResultBlock
                       confirmingQueryId={confirmingQueryId}
                       connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
-                      dismissedQueryIds={dismissedQueryIds}
-                      isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
+                      dismissedQueryIds={dismissedWrites}
+                      decisionNonce={decisionNonce}
+                      isConfirmed={confirmedWrites.has(message.result.query_id) || !message.result.requires_confirmation}
                       onCancel={cancelWrite}
                       onConfirm={confirmWrite}
                       result={message.result}
@@ -207,7 +233,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               ))}
 
               {isSending && (
-                <MessageRow message={{ id: -2, role: "assistant", content: "" }}>
+                <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
                   <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
                     Working through your question
                     <span className="flex gap-1">
@@ -250,6 +276,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
           )}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-lift focus-within:border-brand-300">
             <textarea
+              aria-label="Ask your database a question"
               className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
               disabled={isSending || !hasConnection || !activeSession}
               onChange={(event) => {
@@ -397,6 +424,7 @@ function ResultBlock({
   confirmingQueryId,
   connectionName,
   dismissedQueryIds,
+  decisionNonce,
   isConfirmed,
   onConfirm,
   onCancel,
@@ -405,17 +433,20 @@ function ResultBlock({
   confirmingQueryId: number | null;
   connectionName?: string;
   dismissedQueryIds: Set<number>;
+  decisionNonce: number;
   isConfirmed: boolean;
   result: QueryResponse;
   onCancel: (id: number) => void;
   onConfirm: (id: number) => void;
 }) {
+  void decisionNonce; // decision sets are mutated in place — nonce drives the re-render
   const isConfirming = confirmingQueryId === result.query_id;
   const isCancelled = dismissedQueryIds.has(result.query_id);
   const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
   const [view, setView] = useState<"chart" | "table">("table");
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
   async function copySql() {
@@ -431,6 +462,7 @@ function ResultBlock({
   async function exportPdf() {
     if (isExporting) return;
     setIsExporting(true);
+    setExportError(null);
     try {
       // Lazy-loaded: keeps jsPDF and its canvas dependencies out of the
       // initial bundle; they are only fetched when a report is exported.
@@ -443,6 +475,8 @@ function ResultBlock({
         sql: result.sql,
         summary: result.summary
       });
+    } catch {
+      setExportError("Could not generate the PDF. Check your connection and try again.");
     } finally {
       setIsExporting(false);
     }
@@ -451,7 +485,7 @@ function ResultBlock({
   const downloadButton = (
     <button
       aria-label="Download PDF report"
-      className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+      className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
       disabled={isExporting}
       onClick={exportPdf}
       title="Download PDF report"
@@ -484,9 +518,9 @@ function ResultBlock({
               <div className="min-w-0 flex-1">
                 <p className={`truncate text-xs font-medium ${step.error ? "text-rose-600" : "text-slate-600"}`}>{step.label}</p>
                 {step.sql ? (
-                  <code className="block truncate font-mono text-[10px] text-slate-400">{step.sql}</code>
+                  <code className="block truncate font-mono text-[10px] text-slate-500">{step.sql}</code>
                 ) : step.detail ? (
-                  <p className="truncate text-[10px] text-slate-400">{step.detail}</p>
+                  <p className="truncate text-[10px] text-slate-500">{step.detail}</p>
                 ) : null}
               </div>
             </div>
@@ -498,7 +532,7 @@ function ResultBlock({
         <code className="code-block pr-12">{result.sql}</code>
         <button
           aria-label={copied ? "Copied" : "Copy SQL"}
-          className="absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-md bg-white/10 text-teal-soft opacity-100 transition hover:bg-white/20 sm:opacity-0 sm:group-focus-within/sql:opacity-100 sm:group-hover/sql:opacity-100"
+          className="absolute right-2.5 top-2 grid h-8 w-8 place-items-center rounded-md bg-white/10 text-teal-soft opacity-100 transition hover:bg-white/20 sm:opacity-0 sm:group-focus-within/sql:opacity-100 sm:group-hover/sql:opacity-100"
           onClick={copySql}
           title="Copy SQL"
           type="button"
@@ -508,11 +542,11 @@ function ResultBlock({
       </div>
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
           <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-amber-800">
             This query modifies data. Run it only if the SQL above looks right.
           </p>
-          <span className="flex shrink-0 items-center gap-2">
+          <span className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
             <button className="btn-primary h-9 min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
               {isConfirming ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
               {isConfirming ? "Running" : "Confirm & run"}
@@ -530,12 +564,16 @@ function ResultBlock({
         </span>
       )}
 
+      {exportError && (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700" role="alert">{exportError}</p>
+      )}
+
       {isConfirmed && result.query_type !== "SELECT" && (
         <span className="status-pill pill-success"><Check size={13} /> Confirmed</span>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
           {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
         </span>
         <div className="flex items-center gap-1">
@@ -570,16 +608,16 @@ function ResultBlock({
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-                  {result.columns.map((column) => (
-                    <th className="px-3.5 py-2.5 font-semibold" key={column}>{column}</th>
+                  {result.columns.map((column, columnIndex) => (
+                    <th className="px-3.5 py-2.5 font-semibold" key={`${column}-${columnIndex}`}>{column}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {result.rows.map((row, index) => (
                   <tr className="transition-colors hover:bg-brand-50/40" key={index}>
-                    {result.columns.map((column) => (
-                      <td className="px-3.5 py-2.5 text-slate-700" key={column}>{String(row[column] ?? "")}</td>
+                    {result.columns.map((column, columnIndex) => (
+                      <td className="px-3.5 py-2.5 text-slate-700" key={`${column}-${columnIndex}`}>{String(row[column] ?? "")}</td>
                     ))}
                   </tr>
                 ))}

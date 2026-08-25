@@ -15,14 +15,17 @@ CREATE TABLE IF NOT EXISTS organizations (
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   organization_id INTEGER NOT NULL REFERENCES organizations(id),
-  email VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) NOT NULL,
   hashed_password VARCHAR(255) NOT NULL,
   role VARCHAR(40) NOT NULL DEFAULT 'admin',
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- A single unique index on email, mirroring the Alembic-managed shape
+-- (ix_users_email). The inline UNIQUE that used to live here created a
+-- second, redundant unique constraint under a server-generated name.
+CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS ix_users_id ON users(id);
-CREATE INDEX IF NOT EXISTS ix_users_email ON users(email);
 
 CREATE TABLE IF NOT EXISTS db_connections (
   id SERIAL PRIMARY KEY,
@@ -86,3 +89,15 @@ CREATE TABLE IF NOT EXISTS query_logs (
 
 CREATE INDEX IF NOT EXISTS ix_query_logs_id ON query_logs(id);
 CREATE INDEX IF NOT EXISTS ix_query_logs_organization_id ON query_logs(organization_id);
+
+-- Row Level Security: the application connects with the (privileged) Postgres
+-- role, which bypasses RLS, but Supabase's Data API (anon/authenticated keys)
+-- would otherwise expose users.hashed_password and encrypted credentials to
+-- anyone holding those keys. Enabling RLS with no policies blocks all
+-- Data API access — the platform's only data path is the backend.
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE db_connections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE query_logs ENABLE ROW LEVEL SECURITY;

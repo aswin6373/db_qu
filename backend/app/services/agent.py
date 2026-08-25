@@ -118,7 +118,9 @@ def run_agent(
                 detail = f"Only {MAX_QUERIES} queries are allowed per question — call finish with what you have."
                 steps.append({"tool": tool, "label": "Query limit reached", "detail": detail, "error": True})
                 observations.append(f"run_sql -> BLOCKED: {detail}")
-                continue
+                # Don't burn the remaining (potentially slow) steps on blocked
+                # calls: finish with whatever evidence exists.
+                return _forced_finish(question, schema, observations, history, queries_run, eff, steps, last_result)
 
             sql = tool_input
             validation = validate_sql(sql, schema)
@@ -150,6 +152,43 @@ def run_agent(
             observations.append(f"unknown tool '{tool}' — use list_tables, get_columns, run_sql, or finish")
 
     raise AgentError("The agent used all its steps without reaching a final answer.")
+
+
+def _forced_finish(
+    question: str,
+    schema: dict,
+    observations: list[str],
+    history: list[dict] | None,
+    queries_run: int,
+    eff,
+    steps: list,
+    last_result: tuple | None,
+) -> AgentResult:
+    """Query budget exhausted: one final LLM call asks for the answer based on
+    evidence so far; if that fails, return the raw last result."""
+    try:
+        prompt = (
+            "You have used your full query budget. Based ONLY on the observations "
+            f"below, answer the user's question in 1-3 clear sentences.\n\n"
+            f"User question: {question}\n\nObservations:\n"
+            + "\n".join(observations[-6:])
+        )
+        summary = _agent_generate(prompt, eff).strip() or f"Gathered results from {queries_run} quer{'y' if queries_run == 1 else 'ies'}."
+    except (RuntimeError, httpx.HTTPError):
+        summary = f"Gathered results from {queries_run} queries before hitting the query limit."
+    columns, rows = (last_result[0], last_result[1]) if last_result else ([], [])
+    steps.append({
+        "tool": "finish",
+        "label": "Wrote the final answer (query limit reached)",
+        "detail": summary[:140],
+    })
+    return AgentResult(
+        summary=summary,
+        sql=(last_result[2] if last_result else ""),
+        columns=columns,
+        rows=rows,
+        steps=steps,
+    )
 
 
 def _agent_generate(prompt: str, eff) -> str:

@@ -68,9 +68,6 @@ select {
   .btn-secondary {
     @apply focus-ring inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-danger {
-    @apply focus-ring inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent bg-rose-600 px-3.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50;
-  }
   .btn-ghost {
     @apply focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50;
   }
@@ -136,10 +133,45 @@ select {
   background-size: 26px 26px;
 }
 
-/* 3D schema constellation */
-.scene-viewport {
-  perspective: 1400px;
+/* Full-height chat frame. dvh tracks the mobile browser UI so the composer
+   never hides behind the iOS/Android URL bar; vh is the fallback. */
+.app-frame {
+  height: calc(100vh - 3.5rem);
 }
+@supports (height: 100dvh) {
+  .app-frame {
+    height: calc(100dvh - 3.5rem);
+  }
+}
+
+/* Hover-revealed actions must stay reachable on touch devices, where there
+   is no hover and focus-within only helps after an extra tap. */
+.reveal-touch {
+  opacity: 0.65;
+}
+@media (hover: hover) {
+  .reveal-touch {
+    opacity: 0;
+  }
+  .group:hover .reveal-touch,
+  .group:focus-within .reveal-touch {
+    opacity: 1;
+  }
+}
+
+/* Respect users who opt out of motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 3D schema constellation */
 .floor-grid {
   background-image: linear-gradient(rgba(47, 158, 151, 0.14) 1px, transparent 1px),
     linear-gradient(90deg, rgba(47, 158, 151, 0.14) 1px, transparent 1px);
@@ -176,13 +208,4 @@ select {
 }
 .glow-pulse {
   animation: glow-pulse 4.5s ease-in-out infinite;
-}
-
-/* Skeleton shimmer */
-.skeleton {
-  @apply relative overflow-hidden rounded-lg bg-slate-200/60;
-}
-.skeleton::after {
-  content: "";
-  @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/60 to-transparent;
 }

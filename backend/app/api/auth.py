@@ -3,6 +3,7 @@ from collections import defaultdict, deque
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -59,7 +60,13 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         role="admin",
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two concurrent signups with the same email: the SELECT above can
+        # race — the unique constraint is the real referee.
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Email already registered") from None
     db.refresh(user)
     return TokenResponse(access_token=create_access_token(str(user.id)))
 

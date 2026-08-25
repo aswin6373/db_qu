@@ -92,16 +92,17 @@ export function Integrations({ token }: Props) {
     try {
       const body: Record<string, string> = {
         provider: form.provider,
-        model: form.model,
-        base_url: form.base_url
+        model: form.model
       };
       if (form.api_key.trim()) body.api_key = form.api_key.trim();
+      if (form.provider === "ollama" && form.base_url.trim()) body.base_url = form.base_url.trim();
       const updated = await apiRequest<AIIntegration>("/organizations/integrations", {
         method: "PUT",
         body: JSON.stringify(body)
       }, token);
       setCurrent(updated);
-      setForm({ ...EMPTY_FORM });
+      // Keep the provider the user just connected; clear only the secrets.
+      setForm({ ...EMPTY_FORM, provider: (updated.provider as Provider) ?? form.provider });
       setShowKey(false);
       setFeedback({ kind: "success", text: `AI provider connected. Chats in this workspace now use your own ${updated.provider} key.` });
     } catch (err) {
@@ -240,7 +241,16 @@ export function Integrations({ token }: Props) {
                     : "border-slate-200 bg-white hover:border-teal/40"
                 }`}
                 key={provider.id}
-                onClick={() => setForm((currentForm) => ({ ...currentForm, provider: provider.id }))}
+                onClick={() =>
+                  setForm((currentForm) => ({
+                    // Switching providers must not carry over the previous
+                    // provider's key, model, or server URL.
+                    provider: provider.id,
+                    api_key: "",
+                    model: "",
+                    base_url: ""
+                  }))
+                }
                 type="button"
               >
                 <span className="block text-sm font-bold text-slate-800">{provider.name}</span>
@@ -266,7 +276,6 @@ export function Integrations({ token }: Props) {
                   aria-label={showKey ? "Hide key" : "Show key"}
                   className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                   onClick={() => setShowKey((visible) => !visible)}
-                  tabIndex={-1}
                   type="button"
                 >
                   {showKey ? <EyeOff size={15} /> : <Eye size={15} />}

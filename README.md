@@ -25,6 +25,8 @@ frontend/  React TypeScript application
 
 ## Backend Quick Start
 
+Requires Python **3.10+** (3.12 recommended).
+
 ```bash
 cd backend
 python3 -m venv .venv
@@ -42,11 +44,15 @@ For Supabase setup, see `SUPABASE_SETUP.md`.
 
 ## Frontend Quick Start
 
+The frontend is managed with pnpm.
+
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
+
+Open the local URL shown by Vite.
 
 Open the local URL shown by Vite.
 
@@ -67,18 +73,22 @@ alembic upgrade head
 Required production environment values:
 
 ```text
+ENVIRONMENT=production
 DATABASE_URL=
+DATABASE_SSL=true
 JWT_SECRET_KEY=
 FERNET_KEY=
+CORS_ORIGINS=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.5-flash-lite
 LLM_PROVIDER=gemini
 ```
 
 Do not leave `FERNET_KEY` empty in production. It is required to decrypt saved database credentials after restarts.
+`ENVIRONMENT=production` enables the startup validation that refuses weak secrets.
 
 ## Deployment
 
-- Frontend: Vercel
-- Backend API: Render (auto-deploys on every push to `main`)
+- Frontend: Vercel (see `VERCEL_DEPLOYMENT.md`)
+- Backend API: Vercel (serverless) or Docker Compose (`docker-compose.yml`)
 - Platform database: Supabase PostgreSQL

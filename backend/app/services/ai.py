@@ -73,12 +73,12 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None,
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
             sql = _generate_sql_with_gemini(question, schema, history, eff)
         except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=None, eff=eff)
+            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=history, eff=eff)
     elif eff.provider == "openai":
         try:
             sql = _generate_sql_with_openai(question, schema, history, eff)
         except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=None, eff=eff)
+            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=history, eff=eff)
     elif eff.provider == "ollama":
         sql = _generate_sql_with_ollama_or_fallback(question, schema, history, eff)
     else:
@@ -182,7 +182,9 @@ def _validated_sql(sql: str, schema: dict) -> str:
 
 
 MUTATION_CLAIM_RE = re.compile(
-    r"\b(dropped|deleted|removed|updated|added|created|inserted|modified|changed)\b",
+    # "changed"/"modified" are excluded on purpose: summaries like
+    # "the top customer changed their plan" describe the DATA, not a mutation.
+    r"\b(dropped|deleted|removed|inserted|updated|added|created)\b",
     re.IGNORECASE,
 )
 
@@ -477,7 +479,7 @@ def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
                 "candidateCount": 1,
             },
         },
-        timeout=60,
+        timeout=get_settings().llm_timeout_seconds,
     )
     response.raise_for_status()
     data = response.json()
@@ -505,7 +507,7 @@ def _openai_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
         },
-        timeout=60,
+        timeout=get_settings().llm_timeout_seconds,
     )
     response.raise_for_status()
     data = response.json()
@@ -531,7 +533,7 @@ def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
             "stream": False,
             "options": {"temperature": 0.1},
         },
-        timeout=60,
+        timeout=get_settings().llm_timeout_seconds,
     )
     response.raise_for_status()
     data = response.json()

@@ -185,7 +185,6 @@ function AddMemberCard({
               aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
               onClick={() => onShowPassword(!showPassword)}
-              tabIndex={-1}
               type="button"
             >
               {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}

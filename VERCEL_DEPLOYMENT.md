@@ -21,7 +21,8 @@ Framework Preset: Other
 Add these environment variables in Vercel:
 
 ```text
-DATABASE_URL=postgresql+psycopg://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
+ENVIRONMENT=production
+DATABASE_URL=postgresql+psycopg://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
 DATABASE_SSL=true
 JWT_SECRET_KEY=<strong-random-secret>
 FERNET_KEY=<permanent-fernet-key>
@@ -30,7 +31,15 @@ LLM_PROVIDER=gemini
 GEMINI_API_KEY=<your-gemini-key>
 GEMINI_MODEL=gemini-3.5-flash-lite
 MYSQL_CONNECT_TIMEOUT=5
+FORWARDED_ALLOW_IPS=<vercel-ingress-range-or-leave-default>
 ```
+
+> `ENVIRONMENT=production` is REQUIRED: it activates the startup guard that
+> refuses weak/default secrets. Without it the guard never runs.
+
+> Use Supabase's **connection pooler** host (Session mode, port 5432) — the
+> direct `db.<ref>.supabase.co` endpoint is IPv6-only and serverless functions
+> frequently cannot reach it. Do NOT use the transaction pooler on port 6543.
 
 Generate `FERNET_KEY` locally:
 
@@ -57,7 +66,7 @@ https://your-api.vercel.app/health/readiness
 It should return:
 
 ```json
-{"ready": true}
+{"ready": true, "checks": {"database": "ok"}}
 ```
 
 ## 2. Deploy Frontend

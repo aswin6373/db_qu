@@ -6,7 +6,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    # bcrypt silently truncates input beyond 72 bytes — reject up front.
+    password: str = Field(min_length=8, max_length=72)
     organization_name: str = Field(min_length=2, max_length=120)
 
 
@@ -34,7 +35,7 @@ class OrganizationResponse(BaseModel):
 
 class MemberCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
     role: Literal["member"] = "member"
 
 

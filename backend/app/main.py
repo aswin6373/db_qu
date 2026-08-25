@@ -44,9 +44,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     PRUNE_EVERY_REQUESTS = 256
     HEALTH_PATHS = {"/health", "/health/readiness"}
 
-    def __init__(self, app, limit_per_minute: int):
+    def __init__(self, app, limit_per_minute: int, trusted_proxies: str = "127.0.0.1"):
         super().__init__(app)
         self.limit_per_minute = limit_per_minute
+        self._trusted_proxies = {
+            part.strip() for part in trusted_proxies.split(",") if part.strip()
+        }
         self._hits: dict[str, deque[float]] = defaultdict(deque)
         self._requests_since_prune = 0
 
@@ -70,6 +73,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             logger.exception("unhandled_error path=%s", request.url.path)
             return JSONResponse({"detail": "Internal server error"}, status_code=500)
 
+    def _client_ip(self, request: Request) -> str:
+        """Resolve the real client IP. Only trust X-Forwarded-For when the
+        direct peer is a configured trusted proxy — otherwise any client
+        could spoof the header and rotate buckets to dodge the limit.
+        Behind proxies this also prevents every user from sharing ONE bucket
+        (the proxy's IP), which would 429 the whole installation at once."""
+        direct = request.client.host if request.client else "unknown"
+        if direct not in self._trusted_proxies:
+            return direct
+        forwarded_for = request.headers.get("x-forwarded-for", "")
+        candidates = [part.strip() for part in forwarded_for.split(",") if part.strip()]
+        for candidate in reversed(candidates):
+            candidate_host = candidate.rsplit(":", 1)[0] if candidate.count(":") == 1 else candidate
+            if candidate_host not in self._trusted_proxies:
+                return candidate_host
+        return direct
+
     async def _handle(self, request: Request, call_next):
         if (
             self.limit_per_minute <= 0
@@ -77,7 +97,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             or request.method == "OPTIONS"
         ):
             return await call_next(request)
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = self._client_ip(request)
         now = time.monotonic()
         self._requests_since_prune += 1
         if (
@@ -95,7 +115,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app.add_middleware(RateLimitMiddleware, limit_per_minute=settings.rate_limit_per_minute)
+app.add_middleware(
+    RateLimitMiddleware,
+    limit_per_minute=settings.rate_limit_per_minute,
+    trusted_proxies=settings.forwarded_allow_ips,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_cors_origins,

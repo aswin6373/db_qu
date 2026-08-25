@@ -56,6 +56,9 @@ class RecordingConnector:
         RecordingConnector.calls.append(sql)
         return ["customer_id", "spent"], [{"customer_id": 1, "spent": 500}]
 
+    def close(self):
+        pass
+
 
 def patch_agent_llm(monkeypatch, script: list[str]):
     from app.services import agent as agent_service

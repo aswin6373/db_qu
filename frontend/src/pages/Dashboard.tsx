@@ -147,7 +147,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-medium text-slate-800">{item.question}</p>
                   {item.created_at && (
-                    <span className="shrink-0 font-mono text-[11px] text-slate-400">{timeAgo(item.created_at)}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-slate-500">{timeAgo(item.created_at)}</span>
                   )}
                 </div>
                 <code className="mt-1 block max-w-xl truncate rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">
@@ -163,10 +163,10 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                 <StatusPill status={item.status} />
                 <button
                   aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
-                  className={`grid h-7 w-7 place-items-center rounded-md border transition ${
+                  className={`reveal-touch grid h-8 w-8 place-items-center rounded-md border transition ${
                     copiedId === item.id
                       ? "border-brand-200 bg-brand-50 text-brand-700"
-                      : "border-transparent text-slate-400 opacity-0 hover:border-slate-200 hover:text-slate-600 group-hover:opacity-100"
+                      : "border-transparent text-slate-500 hover:border-slate-200 hover:text-slate-600 group-hover:opacity-100"
                   }`}
                   onClick={() => copySql(item.id, item.sql)}
                   title="Copy SQL"
@@ -310,17 +310,10 @@ export function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
     executed: "pill-success",
     pending_confirmation: "pill-warn",
+    executing: "pill-info",
+    confirmation_expired: "pill-warn",
     failed: "bg-rose-50 text-rose-700 border-rose-200"
   };
   const label = status.replace(/_/g, " ");
   return <span className={`status-pill shrink-0 capitalize ${map[status] ?? ""}`}>{label}</span>;
-}
-
-export function EmptyState({ icon, text }: { icon: ReactNode; text: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-12 text-center">
-      <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full bg-white text-slate-300 shadow-sm">{icon}</span>
-      <p className="mx-auto max-w-sm text-sm leading-6 text-slate-500">{text}</p>
-    </div>
-  );
 }

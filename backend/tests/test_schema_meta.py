@@ -73,6 +73,7 @@ def use_gemini(monkeypatch, reply: str) -> None:
             gemini_model="test",
             ollama_base_url="http://localhost",
             ollama_model="test",
+            llm_timeout_seconds=5,
         ),
     )
 
@@ -116,6 +117,9 @@ def test_columns_for_one_table(client, monkeypatch):
 class FakeConnector:
     def execute(self, sql: str):
         return ["id"], [{"id": 1}]
+
+    def close(self):
+        pass
 
 
 def test_real_data_question_still_generates_sql(client, monkeypatch):

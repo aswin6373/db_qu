@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
 import { useChatSessions } from "./ChatSessionsContext";
+import { useDialog } from "../lib/useDialog";
 import type { ChatSession, Connection } from "../types/api";
 
 type NavItem = { id: string; label: string; icon: LucideIcon };
@@ -20,6 +21,16 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { newChat } = useChatSessions();
+  const drawerRef = useDialog(() => setDrawerOpen(false));
+
+  // Close the drawer if the viewport grows past the mobile breakpoint.
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => media.matches && setDrawerOpen(false);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [drawerOpen]);
 
   const nav: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -68,7 +79,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
 
       {/* Mobile drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu" ref={drawerRef}>
           <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-navy p-5 shadow-lift">
             <div className="mb-4 flex items-center justify-between">
@@ -118,7 +129,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
           </div>
         </div>
         {active === "chat" ? (
-          <div className="h-[calc(100vh-3.5rem)]">{children}</div>
+          <div className="app-frame">{children}</div>
         ) : (
           <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">{children}</div>
         )}
@@ -159,6 +170,7 @@ function SidebarContent({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [busySessionId, setBusySessionId] = useState<number | null>(null);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   function startNewChat() {
@@ -166,28 +178,36 @@ function SidebarContent({
   }
 
   function selectSession(session: ChatSession) {
-    if (renamingId !== null || deletingId !== null) return;
+    if (renamingId !== null || deletingId !== null || busySessionId !== null) return;
     openSession(session.id);
     onNavigate("chat");
   }
 
   async function saveRename(session: ChatSession) {
+    if (busySessionId !== null) return;
     const title = renameDraft.trim();
     setRenamingId(null);
     if (!title || title === session.title) return;
+    setBusySessionId(session.id);
     try {
       await renameSession(session, title);
     } catch {
       return;
+    } finally {
+      setBusySessionId(null);
     }
   }
 
   async function removeSession(session: ChatSession) {
+    if (busySessionId !== null) return;
     setDeletingId(null);
+    setBusySessionId(session.id);
     try {
       await deleteSession(session);
     } catch {
       return;
+    } finally {
+      setBusySessionId(null);
     }
   }
 
@@ -283,15 +303,17 @@ function SidebarContent({
                     <span className="flex items-center gap-1 pr-2">
                       <button
                         aria-label="Confirm delete"
-                        className="grid h-7 w-7 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                        disabled={busySessionId !== null}
                         onClick={() => removeSession(session)}
                         type="button"
                       >
-                        <Check size={13} />
+                        {busySessionId === session.id ? <Loader2 className="animate-spin" size={13} /> : <Check size={13} />}
                       </button>
                       <button
                         aria-label="Keep chat"
-                        className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                        disabled={busySessionId !== null}
                         onClick={() => setDeletingId(null)}
                         type="button"
                       >
@@ -299,10 +321,10 @@ function SidebarContent({
                       </button>
                     </span>
                   ) : (
-                    <span className="flex items-center gap-0.5 pr-1.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <span className="reveal-touch flex items-center gap-0.5 pr-1.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                       <button
                         aria-label={`Rename ${session.title}`}
-                        className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
                         onClick={() => {
                           setRenamingId(session.id);
                           setRenameDraft(session.title);
@@ -313,7 +335,7 @@ function SidebarContent({
                       </button>
                       <button
                         aria-label={`Delete ${session.title}`}
-                        className="grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-rose-400"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-rose-400"
                         onClick={() => setDeletingId(session.id)}
                         type="button"
                       >
@@ -334,7 +356,7 @@ function SidebarContent({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-teal" />
           </span>
-          All systems operational
+          Workspace active
         </div>
         {confirmingLogout ? (
           <div className="flex items-center gap-2">

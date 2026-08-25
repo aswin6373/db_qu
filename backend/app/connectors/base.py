@@ -14,3 +14,7 @@ class DBConnector(ABC):
     @abstractmethod
     def execute(self, sql: str) -> tuple[list[str], list[dict[str, Any]]]:
         raise NotImplementedError
+
+    def close(self) -> None:
+        """Release held resources (e.g. SSH tunnels). Default: nothing to release."""
+        return None

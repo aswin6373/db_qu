@@ -46,6 +46,8 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   const [pinned, setPinned] = useState<string | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
+  // Mirror of zoom for wheel math; kept in sync with every setter below.
+  const zoomRef = useRef(1);
 
 
   useEffect(() => {
@@ -60,15 +62,19 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
   }, []);
 
 
-  /* Wheel zoom: scrolling over the scene zooms in/out. Perspective tightens
-     as you zoom in (and the tilt eases slightly) so the floor's depth feels
-     genuinely 3D instead of a flat scale-up. */
+  /* Wheel zoom: scrolling over the scene zooms in/out — but only while the
+     zoom can actually change. At either limit the event is left alone so the
+     page keeps scrolling instead of feeling stuck over this card. */
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
     const onWheel = (event: WheelEvent) => {
+      const current = zoomRef.current;
+      const next = Math.max(0.6, Math.min(1.6, current - event.deltaY * 0.0012));
+      if (next === current) return;
       event.preventDefault();
-      setZoom((current) => Math.max(0.6, Math.min(1.6, current - event.deltaY * 0.0012)));
+      zoomRef.current = next;
+      setZoom(next);
     };
     frame.addEventListener("wheel", onWheel, { passive: false });
     return () => frame.removeEventListener("wheel", onWheel);
@@ -177,7 +183,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
         ref={frameRef}
         className="relative min-h-[420px] flex-1 sm:min-h-[500px]"
         onClick={() => setPinned(null)}
-        onDoubleClick={() => setZoom(1)}
+        onDoubleClick={() => { zoomRef.current = 1; setZoom(1); }}
         onMouseLeave={() => { setTilt({ x: 0, y: 0 }); setHovered(null); }}
         onMouseMove={handleMove}
       >

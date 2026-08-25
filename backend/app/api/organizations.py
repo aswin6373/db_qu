@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timezone
 
 from cryptography.fernet import InvalidToken
@@ -22,6 +23,7 @@ from app.services.ai import AIConfig
 from app.services.crypto import decrypt_secret, encrypt_secret
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+logger = logging.getLogger("querymind")
 
 
 def ai_config_for_org(organization: Organization | None) -> AIConfig | None:
@@ -33,6 +35,14 @@ def ai_config_for_org(organization: Organization | None) -> AIConfig | None:
         try:
             api_key = decrypt_secret(organization.encrypted_ai_key)
         except InvalidToken:
+            # The stored key can no longer be decrypted (e.g. FERNET_KEY was
+            # rotated). Degrade to the server-side provider instead of
+            # silently pretending the workspace still has its own key.
+            logger.warning(
+                "workspace_ai_key_undecryptable organization=%s provider=%s",
+                organization.id,
+                organization.ai_provider,
+            )
             return None
     return AIConfig(
         provider=organization.ai_provider,
@@ -194,6 +204,14 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         .order_by(QueryLog.created_at.desc())
         .limit(5)
     ).all()
+
+    def _preview(log: QueryLog) -> dict:
+        try:
+            parsed = json.loads(log.result_preview or "{}")
+        except (json.JSONDecodeError, TypeError):
+            parsed = {}
+        return parsed if isinstance(parsed, dict) else {}
+
     return {
         "organization": organization,
         "connection_count": connection_count,
@@ -205,8 +223,8 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 "sql": log.generated_sql,
                 "status": log.status,
                 "created_at": _iso_utc(log.created_at),
-                "rows_returned": len((json.loads(log.result_preview or "{}") or {}).get("rows", [])),
-                "preview": json.loads(log.result_preview or "{}"),
+                "rows_returned": len(_preview(log).get("rows", [])),
+                "preview": _preview(log),
             }
             for log in logs
         ],

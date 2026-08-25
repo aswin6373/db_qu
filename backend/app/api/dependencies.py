@@ -13,7 +13,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     subject = decode_access_token(token)
     if subject is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    user = db.get(User, int(subject))
+    try:
+        user_id = int(subject)
+    except (TypeError, ValueError):
+        # A validly-signed token with a malformed sub is still unauthenticated.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from None
+    user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user

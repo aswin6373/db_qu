@@ -17,7 +17,9 @@ export function AuthPanel({ onToken }: Props) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
-    if (password.length < 8) {
+    // The 8-character rule is a registration policy — legacy accounts with
+    // shorter passwords must still be able to sign in.
+    if (mode === "register" && password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
@@ -160,6 +162,7 @@ export function AuthPanel({ onToken }: Props) {
                 <label className="block">
                   <span className="label text-navy-soft">Email</span>
                   <input
+                    autoComplete="email"
                     className="field border-navy/15 focus-visible:ring-teal/30"
                     placeholder="you@company.com"
                     required
@@ -171,8 +174,11 @@ export function AuthPanel({ onToken }: Props) {
                 <label className="block">
                   <span className="label text-navy-soft">Password</span>
                   <input
+                    aria-describedby={error ? "auth-error" : undefined}
+                    aria-invalid={Boolean(error) || undefined}
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
                     className="field border-navy/15 focus-visible:ring-teal/30"
-                    minLength={8}
+                    minLength={mode === "register" ? 8 : undefined}
                     placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
                     required
                     type="password"
@@ -181,7 +187,7 @@ export function AuthPanel({ onToken }: Props) {
                   />
                 </label>
                 {error && (
-                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">{error}</p>
+                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
                 )}
                 <button className="btn-landing-primary w-full" disabled={busy} type="submit">
                   {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}

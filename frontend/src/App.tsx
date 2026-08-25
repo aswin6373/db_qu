@@ -25,6 +25,11 @@ export function App() {
 
   const isAdmin = user?.role === "admin";
 
+  // Bumped on every identity change (login/logout/401). In-flight refreshes
+  // from a previous session discard their results instead of writing another
+  // workspace's data over the current one.
+  const authGenerationRef = useRef(0);
+
   useEffect(() => {
     if (!token) {
       setUser(null);
@@ -46,7 +51,12 @@ export function App() {
       setBooted(true);
       return;
     }
-    localStorage.setItem("querymind_token", token);
+    try {
+      localStorage.setItem("querymind_token", token);
+    } catch {
+      // Storage can throw in private/Lockdown modes; the app still works,
+      // sessions just won't survive a reload.
+    }
     if (!onboarding) {
       refreshAll();
     } else {
@@ -80,7 +90,7 @@ export function App() {
   }, [token, onboarding, active]);
 
   useEffect(() => {
-    function handleAuthExpired() {
+    function resetState() {
       localStorage.removeItem("querymind_token");
       setToken("");
       setUser(null);
@@ -91,25 +101,47 @@ export function App() {
       setActive("dashboard");
     }
 
+    function handleAuthExpired() {
+      authGenerationRef.current += 1;
+      resetState();
+    }
+
+    // Another tab logged out — drop the stale session here too.
+    function handleStorage(event: StorageEvent) {
+      if (event.key === "querymind_token" && event.newValue === null) {
+        handleAuthExpired();
+      }
+    }
+
     window.addEventListener("querymind:auth-expired", handleAuthExpired);
-    return () => window.removeEventListener("querymind:auth-expired", handleAuthExpired);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("querymind:auth-expired", handleAuthExpired);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   async function refreshDashboard() {
-    if (!token) return;
-    const dashboardData = await apiRequest<DashboardType>("/organizations/dashboard", {}, token).catch(() => null);
+    const generation = authGenerationRef.current;
+    const currentToken = token;
+    if (!currentToken) return;
+    const dashboardData = await apiRequest<DashboardType>("/organizations/dashboard", {}, currentToken).catch(() => null);
+    if (authGenerationRef.current !== generation) return;
     if (dashboardData) {
       setDashboard(dashboardData);
     }
   }
 
   async function refreshAll() {
-    if (!token) return;
+    const generation = authGenerationRef.current;
+    const currentToken = token;
+    if (!currentToken) return;
     try {
       const [connectionData] = await Promise.all([
-        apiRequest<Connection[]>("/connections", {}, token).catch(() => []),
+        apiRequest<Connection[]>("/connections", {}, currentToken).catch(() => []),
         refreshDashboard()
       ]);
+      if (authGenerationRef.current !== generation) return;
       setConnections(connectionData);
       if (connectionData.length === 0) {
         setSchemas({});
@@ -118,16 +150,17 @@ export function App() {
       }
       const schemaEntries = await Promise.all(
         connectionData.map(async (connection) => {
-          const schema = await apiRequest<DatabaseSchema>(`/connections/${connection.id}/schema`, {}, token).catch(() => null);
+          const schema = await apiRequest<DatabaseSchema>(`/connections/${connection.id}/schema`, {}, currentToken).catch(() => null);
           return [connection.id, schema] as const;
         })
       );
       const insightEntries = await Promise.all(
         connectionData.map(async (connection) => {
-          const insight = await apiRequest<SchemaInsights>(`/connections/${connection.id}/insights`, {}, token).catch(() => null);
+          const insight = await apiRequest<SchemaInsights>(`/connections/${connection.id}/insights`, {}, currentToken).catch(() => null);
           return [connection.id, insight] as const;
         })
       );
+      if (authGenerationRef.current !== generation) return;
       setSchemas(Object.fromEntries(schemaEntries.filter(([, schema]) => schema !== null)) as Record<number, DatabaseSchema>);
       setInsights(Object.fromEntries(insightEntries.filter(([, insight]) => insight !== null)) as Record<number, SchemaInsights>);
     } finally {
@@ -136,11 +169,13 @@ export function App() {
   }
 
   function logout() {
+    authGenerationRef.current += 1;
     localStorage.removeItem("querymind_token");
     setToken("");
   }
 
   function handleAuth(newToken: string, options?: { onboard?: boolean; organizationName?: string }) {
+    authGenerationRef.current += 1;
     setBooted(false);
     setOnboarding(Boolean(options?.onboard));
     setOnboardingOrg(options?.organizationName);

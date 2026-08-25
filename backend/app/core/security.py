@@ -1,20 +1,24 @@
-from typing import Optional
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt only hashes the first 72 bytes; longer inputs are rejected by the
+# request schemas so silent truncation can never weaken a stored hash.
 
 
 def hash_password(password: str) -> str:
-    return password_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    return password_context.verify(password, hashed_password)
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except ValueError:
+        # Malformed/stored-hash garbage must read as a failed login, not a 500.
+        return False
 
 
 def create_access_token(subject: str) -> str:
@@ -26,7 +30,7 @@ def create_access_token(subject: str) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> str | None:
     settings = get_settings()
     try:
         payload = jwt.decode(

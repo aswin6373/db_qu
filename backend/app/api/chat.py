@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -16,12 +16,17 @@ from app.schemas.dto import (
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+MAX_PAGE_SIZE = 200
+
 
 def _org_session(session_id: int, user: User, db: Session) -> ChatSession:
+    # Chats are personal: org membership alone must not allow reading,
+    # renaming, or deleting another member's conversation.
     session = db.scalar(
         select(ChatSession).where(
             ChatSession.id == session_id,
             ChatSession.organization_id == user.organization_id,
+            ChatSession.user_id == user.id,
         )
     )
     if session is None:
@@ -80,26 +85,41 @@ def create_session(payload: ChatSessionCreate, user: User = Depends(get_current_
 
 
 @router.get("/sessions", response_model=list[ChatSessionResponse])
-def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_sessions(
+    limit: int = Query(default=50, ge=1, le=MAX_PAGE_SIZE),
+    offset: int = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     rows = db.execute(
         select(ChatSession, func.count(Message.id), DBConnection.name)
         .outerjoin(Message, Message.session_id == ChatSession.id)
         .outerjoin(DBConnection, DBConnection.id == ChatSession.connection_id)
-        .where(ChatSession.organization_id == user.organization_id)
+        .where(ChatSession.organization_id == user.organization_id, ChatSession.user_id == user.id)
         .group_by(ChatSession.id, DBConnection.name)
         .order_by(
             func.coalesce(ChatSession.updated_at, ChatSession.created_at).desc(),
             ChatSession.id.desc(),
         )
+        .limit(limit)
+        .offset(offset)
     ).all()
     return [_session_response(session, count, name) for session, count, name in rows]
 
 
 @router.get("/sessions/{session_id}", response_model=list[ChatMessageResponse])
-def session_messages(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def session_messages(
+    session_id: int,
+    limit: int = Query(default=200, ge=1, le=MAX_PAGE_SIZE),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     session = _org_session(session_id, user, db)
     messages = db.scalars(
-        select(Message).where(Message.session_id == session.id).order_by(Message.created_at, Message.id)
+        select(Message)
+        .where(Message.session_id == session.id)
+        .order_by(Message.created_at, Message.id)
+        .limit(limit)
     ).all()
     return [
         ChatMessageResponse(

@@ -10,7 +10,9 @@ export async function apiRequest<T>(
     response = await fetch(`${API_URL}${path}`, {
       ...options,
       headers: {
-        "Content-Type": "application/json",
+        // Only declare a JSON body when there is one — forcing the header
+        // onto GET/DELETE turns every simple request into a CORS preflight.
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
       }
@@ -37,5 +39,8 @@ export async function apiRequest<T>(
   if (response.status === 204) {
     return undefined as T;
   }
-  return response.json();
+  const parsed = await response.json().catch(() => {
+    throw new Error("The API returned an unreadable response.");
+  });
+  return parsed as T;
 }

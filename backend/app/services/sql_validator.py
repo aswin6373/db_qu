@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+import re
 
 import sqlparse
-from sqlparse.sql import Function, Identifier, IdentifierList
+from sqlparse.sql import Function, Identifier, IdentifierList, Parenthesis
 from sqlparse.tokens import DML, Keyword
+from dataclasses import dataclass
 
 BLOCKED_KEYWORDS = {"DROP", "ALTER", "TRUNCATE", "GRANT", "REVOKE", "CREATE"}
 # Dangerous server-side functions: denylist blocks time-based attacks (SLEEP,
@@ -10,6 +11,12 @@ BLOCKED_KEYWORDS = {"DROP", "ALTER", "TRUNCATE", "GRANT", "REVOKE", "CREATE"}
 # the statement otherwise looks like a plain SELECT.
 BLOCKED_FUNCTIONS = {"SLEEP", "BENCHMARK", "LOAD_FILE", "GET_LOCK", "RELEASE_LOCK"}
 WRITE_TYPES = {"INSERT", "UPDATE", "DELETE"}
+SYSTEM_TABLES = {"information_schema", "performance_schema", "mysql", "sys"}
+# MySQL executes the contents of version-comment directives (/*! ... */) and
+# optimizer hints (/*+ ... */). Regular comments are inert, but they can hide
+# keywords from a naive token scan, so validation always runs on a
+# comment-stripped copy while executable comments are rejected outright.
+EXECUTABLE_COMMENT_RE = re.compile(r"/\*[*!+]")
 
 
 @dataclass
@@ -21,7 +28,15 @@ class ValidationResult:
 
 
 def validate_sql(sql: str, schema: dict) -> ValidationResult:
-    statements = [statement for statement in sqlparse.parse(sql) if str(statement).strip()]
+    if EXECUTABLE_COMMENT_RE.search(sql):
+        return ValidationResult(False, error="Comment directives are not allowed.")
+
+    # Validate the statement as MySQL will actually parse it — with every
+    # inert comment removed so payloads cannot hide inside comment tokens.
+    cleaned = sqlparse.format(sql, strip_comments=True).strip()
+    if not cleaned:
+        return ValidationResult(False, error="The statement is empty.")
+    statements = [statement for statement in sqlparse.parse(cleaned) if str(statement).strip()]
     if len(statements) != 1:
         return ValidationResult(False, error="Only one SQL statement is allowed.")
 
@@ -33,20 +48,23 @@ def validate_sql(sql: str, schema: dict) -> ValidationResult:
     keyword_values = [token.value.upper() for token in tokens if token.ttype in Keyword]
     if any(value in BLOCKED_KEYWORDS for value in keyword_values):
         return ValidationResult(False, error="Schema and administration operations are not allowed.")
-    blocked_function = _blocked_function(tokens)
+    blocked_function = _blocked_function(cleaned)
     if blocked_function:
         return ValidationResult(False, error=f"Function {blocked_function} is not allowed.")
 
     first_dml = next((token.value.upper() for token in tokens if token.ttype is DML), "")
     if first_dml not in {"SELECT", "INSERT", "UPDATE", "DELETE"}:
         return ValidationResult(False, error="Only SELECT, INSERT, UPDATE, and DELETE are supported.")
-    if first_dml in {"UPDATE", "DELETE"} and not _has_where_clause(keyword_values):
+    if first_dml in {"UPDATE", "DELETE"} and not _has_outer_where(statement):
         return ValidationResult(
             False,
             error="UPDATE and DELETE need a WHERE clause that limits which rows change.",
         )
 
     table_names = _extract_table_names(statement, first_dml)
+    system = sorted(table_names & SYSTEM_TABLES)
+    if system:
+        return ValidationResult(False, error="System tables are not accessible.")
     known_tables = set((schema.get("tables") or {}).keys())
     missing_tables = sorted(table_names - known_tables)
     if missing_tables:
@@ -64,18 +82,30 @@ def validate_sql(sql: str, schema: dict) -> ValidationResult:
     )
 
 
-def _blocked_function(tokens) -> str | None:
-    for index, token in enumerate(tokens):
-        upper = token.value.upper()
-        if upper in BLOCKED_FUNCTIONS:
-            following = tokens[index + 1] if index + 1 < len(tokens) else None
-            if following is not None and str(following.value).startswith("("):
-                return upper
+def _blocked_function(sql_text: str) -> str | None:
+    """Detect denylisted function calls even when written as `sleep`(5) or
+    SLEEP(5). Runs against the raw statement text so grouping cannot hide it."""
+    for match in re.finditer(r"`?\b([a-zA-Z_]\w*)\b`?\s*\(", sql_text):
+        name = match.group(1).upper()
+        if name in BLOCKED_FUNCTIONS:
+            return name
     return None
 
 
-def _has_where_clause(keyword_values: list[str]) -> bool:
-    return "WHERE" in keyword_values
+def _has_outer_where(statement) -> bool:
+    """True only when WHERE appears at the statement's top level. A WHERE
+    buried inside a subquery must not satisfy an UPDATE/DELETE row guard."""
+    def walk(node) -> bool:
+        for child in getattr(node, "tokens", []):
+            if isinstance(child, Parenthesis):
+                continue
+            if child.ttype in Keyword and child.value.upper() == "WHERE":
+                return True
+            if hasattr(child, "tokens") and walk(child):
+                return True
+        return False
+
+    return walk(statement)
 
 
 def _extract_table_names(statement, dml: str) -> set[str]:
@@ -102,7 +132,11 @@ def _identifier_names(token) -> set[str]:
 
 
 def _clean_identifier_name(value: str) -> str:
-    return value.split("(", 1)[0].strip("` ")
+    name = value.split("(", 1)[0].strip("` ")
+    # Qualifiers like otherdb.customers are rejected via the unknown-table
+    # check; keep only the trailing identifier part so the comparison is
+    # deliberate instead of accidental.
+    return name.rsplit(".", 1)[-1].split("(", 1)[0].strip("` ") if "." in name else name
 
 
 def _collect_function_names(statement) -> set[str]:

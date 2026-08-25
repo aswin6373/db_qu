@@ -473,14 +473,25 @@ function ConnectionForm({
               <label className="block">
                 <span className="label">SSH Password / Private Key</span>
                 <span className="relative block">
-                  <textarea
-                    className="field min-h-[42px] resize-y pr-11 font-mono text-[13px]"
-                    placeholder="Paste SSH private key (-----BEGIN...) or password"
-                    required={showSshTunnel}
-                    rows={1}
-                    value={form.ssh_password ?? ""}
-                    onChange={(event) => onFieldChange("ssh_password", event.target.value)}
-                  />
+                  {(showSshPassword || (form.ssh_password ?? "").startsWith("-----")) ? (
+                    <textarea
+                      className="field h-auto min-h-[44px] resize-y py-3 pr-11 font-mono text-[13px] leading-5"
+                      placeholder="Paste SSH private key (-----BEGIN...) or password"
+                      required={showSshTunnel}
+                      rows={1}
+                      value={form.ssh_password ?? ""}
+                      onChange={(event) => onFieldChange("ssh_password", event.target.value)}
+                    />
+                  ) : (
+                    <input
+                      className="field pr-11"
+                      placeholder="Password, or paste a private key"
+                      required={showSshTunnel}
+                      type="password"
+                      value={form.ssh_password ?? ""}
+                      onChange={(event) => onFieldChange("ssh_password", event.target.value)}
+                    />
+                  )}
                   <button
                     aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
                     className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
@@ -488,11 +499,11 @@ function ConnectionForm({
                     tabIndex={-1}
                     type="button"
                   >
-                    {showSshPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </span>
                 <span className="mt-1.5 block text-xs text-slate-400">
-                  A private key is detected automatically when it starts with “-----BEGIN”. Encrypted at rest like your database password.
+                  Password stays hidden; a private key (-----BEGIN…) opens a larger box and is detected automatically. Encrypted at rest like your database password.
                 </span>
               </label>
             </div>

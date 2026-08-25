@@ -104,16 +104,26 @@ export async function downloadQueryReport(payload: ReportPayload): Promise<void>
   doc.text(summaryLines, MARGIN, y + 4);
   y += summaryLines.length * 15 + 16;
 
-  /* sql block */
+  /* sql block — same navy/teal theme as the chat code block */
   sectionTitle("SQL query");
   doc.setFont("courier", "normal");
   doc.setFontSize(9.5);
   const sqlLines = doc.splitTextToSize(payload.sql || "—", CONTENT_W - 28) as string[];
-  const blockH = sqlLines.length * 13.5 + 22;
+  const chipH = 14;
+  const blockH = chipH + 16 + sqlLines.length * 13.5 + 14;
   doc.setFillColor(...NAVY);
-  doc.roundedRect(MARGIN, y - 6, CONTENT_W, blockH, 6, 6, "F");
+  doc.setDrawColor(58, 92, 122);
+  doc.roundedRect(MARGIN, y - 6, CONTENT_W, blockH, 6, 6, "FD");
+  doc.setFillColor(...TEAL);
+  doc.roundedRect(MARGIN + 12, y + 2, 32, chipH, 3.5, 3.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("SQL", MARGIN + 28, y + 11, { align: "center" });
+  doc.setFont("courier", "normal");
+  doc.setFontSize(9.5);
   doc.setTextColor(...TEAL_SOFT);
-  doc.text(sqlLines, MARGIN + 14, y + 8);
+  doc.text(sqlLines, MARGIN + 14, y + 2 + chipH + 14);
   y += blockH + 20;
 
   /* results table */

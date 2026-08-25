@@ -372,9 +372,6 @@ function EmptyConversation({
   );
 }
 
-const ACTION_BTN =
-  "flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50";
-
 function ResultBlock({
   confirmingQueryId,
   connectionName,
@@ -429,7 +426,28 @@ function ResultBlock({
 
   return (
     <div className="mt-3 space-y-3">
-      <code className="code-block">{result.sql}</code>
+      <div className="relative">
+        <code className="code-block pr-32">{result.sql}</code>
+        <div className="absolute right-2.5 top-2 flex gap-1.5">
+          <button
+            className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-teal-soft transition hover:bg-white/20"
+            onClick={copySql}
+            title="Copy SQL"
+            type="button"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-teal-soft transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isExporting}
+            onClick={exportPdf}
+            title="Download PDF report"
+            type="button"
+          >
+            {isExporting ? <Loader2 className="animate-spin" size={12} /> : <FileDown size={12} />} PDF
+          </button>
+        </div>
+      </div>
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -462,15 +480,8 @@ function ResultBlock({
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
         </span>
-        <div className="flex items-center gap-1.5">
-          <button className={ACTION_BTN} onClick={copySql} title="Copy SQL" type="button">
-            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
-          </button>
-          <button className={ACTION_BTN} disabled={isExporting} onClick={exportPdf} title="Download PDF report" type="button">
-            {isExporting ? <Loader2 className="animate-spin" size={12} /> : <FileDown size={12} />} PDF
-          </button>
-          {chartSpec && (
-            <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+        {chartSpec && (
+          <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
               {(["table", "chart"] as const).map((option) => (
                 <button
                   className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
@@ -486,7 +497,6 @@ function ResultBlock({
               ))}
             </div>
           )}
-        </div>
       </div>
 
       {chartSpec && (

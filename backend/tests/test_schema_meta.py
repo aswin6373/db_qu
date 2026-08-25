@@ -142,7 +142,8 @@ def test_recent_rows_request_goes_to_sql_pipeline(client, monkeypatch):
     token = register_and_token(client, "meta-recent@example.com", "Meta Recent")
     connection_id = create_connection_with_schema(client, token)
 
-    result = ask(client, token, connection_id, "Show the 10 most recent rows from my biggest table")
+    # No analytical wording: a plain recent-rows request stays on the fast path.
+    result = ask(client, token, connection_id, "Show the 10 most recent rows from the orders table")
     assert result["meta_answer"] is False
     assert result["needs_clarification"] is False
     assert result["sql"] != ""

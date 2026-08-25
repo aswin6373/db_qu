@@ -226,6 +226,39 @@ def test_agent_steps_survive_session_reload(client, monkeypatch):
     assert [step["tool"] for step in assistant["result"]["steps"]] == ["get_columns", "run_sql", "finish"]
 
 
+def test_superlative_questions_route_to_agent(client, monkeypatch):
+    """'Biggest table' needs discovery first (sizes are unknown until queried),
+    so superlative questions must reach the agent, not the one-shot pipeline."""
+    from app.api import query as query_api
+
+    enable_agent(monkeypatch)
+
+    RecordingConnector.calls = []
+    monkeypatch.setattr(query_api, "build_connector", lambda connection: RecordingConnector())
+    patch_agent_llm(
+        monkeypatch,
+        [
+            action("run_sql", "SELECT customer_id, SUM(total) AS spent FROM orders GROUP BY customer_id"),
+            action("finish", sql="SELECT * FROM orders ORDER BY id DESC LIMIT 10", summary="Your biggest table is orders; here are its 10 most recent rows."),
+        ],
+    )
+
+    token = register_and_token(client, "agent-biggest@example.com", "Agent Biggest")
+    connection_id = create_connection_with_schema(client, token)
+    response = client.post(
+        "/query/generate",
+        json={"question": "Show the 10 most recent rows from my biggest table", "connection_id": connection_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+
+    # The agent ran: query -> finish (no canned clarification, no fallback text)
+    assert [step["tool"] for step in body["steps"]] == ["run_sql", "finish"]
+    assert "biggest table is orders" in body["summary"]
+    assert body["rows"] == [{"customer_id": 1, "spent": 500}]
+
+
 def test_simple_questions_stay_on_fast_pipeline(client, monkeypatch):
     from app.api import query as query_api
 

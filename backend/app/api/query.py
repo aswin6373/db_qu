@@ -36,10 +36,15 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # Questions that benefit from multi-step reasoning get the agent; everything
-# else stays on the fast one-shot pipeline.
+# else stays on the fast one-shot pipeline. Superlatives like "biggest table"
+# belong here: answering them requires discovering sizes first, which a single
+# generated query cannot do.
 _AGENT_HINT_RE = re.compile(
     r"\b(?:why|how come|compare|comparison|versus|trend|over time|growth|drop|dropped|decline|"
-    r"increase|decrease|correlat\w*|relationship|break\s?down|insight)\b"
+    r"increase|decrease|correlat\w*|relationship|break\s?down|insight|"
+    r"biggest|largest|smallest|busiest|"
+    r"rank|ranking|ranked|distribution|outliers?|anomal\w*|unusual|forecast)\b"
+    r"|\bmost\s+(?:active|popular|common|frequent|valuable|profitable)\b"
     r"|\bper\s+(?:month|week|day|quarter|year)\b"
     r"|\bby\s+(?:month|week|quarter|year|category|region|status)\b"
     r"|\bwhich\s+[\w ]{0,30}?\b(?:most|least|best|worst|highest|lowest)\b"

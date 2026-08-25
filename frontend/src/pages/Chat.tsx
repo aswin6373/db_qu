@@ -38,7 +38,8 @@ const SUGGESTIONS = [
 // agent get the deeper "agent at work" indicator instead of the plain one.
 const AGENT_HINT_RE = new RegExp(
   [
-    "\\b(?:why|how come|compare|comparison|versus|trend|over time|growth|drop|dropped|decline|increase|decrease|correlat\\w*|relationship|break\\s?down|insight)\\b",
+    "\\b(?:why|how come|compare|comparison|versus|trend|over time|growth|drop|dropped|decline|increase|decrease|correlat\\w*|relationship|break\\s?down|insight|biggest|largest|smallest|busiest|rank|ranking|ranked|distribution|outliers?|anomal\\w*|unusual|forecast)\\b",
+    "\\bmost\\s+(?:active|popular|common|frequent|valuable|profitable)\\b",
     "\\bper\\s+(?:month|week|day|quarter|year)\\b",
     "\\bby\\s+(?:month|week|quarter|year|category|region|status)\\b",
     "\\bwhich\\s+[\\w ]{0,30}?\\b(?:most|least|best|worst|highest|lowest)\\b",

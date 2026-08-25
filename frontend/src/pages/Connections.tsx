@@ -299,27 +299,9 @@ function ConnectionForm({
           </div>
         )}
 
-        <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-          <input
-            checked={showSshTunnel}
-            onChange={(event) => toggleSshTunnel(event.target.checked)}
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 accent-brand-600"
-            id="ssh-tunnel-toggle"
-          />
-          <label htmlFor="ssh-tunnel-toggle" className="cursor-pointer text-sm text-slate-600">
-            <span className="flex items-center gap-1.5 font-semibold text-slate-800">
-              <ShieldCheck size={15} /> SSH Tunnel
-            </span>
-            <span className="mt-0.5 block text-xs text-slate-500">
-              Connect through a bastion/jump host when your database is not publicly reachable.
-            </span>
-          </label>
-        </div>
-
         <section>
           <h3 className="eyebrow mb-3 text-slate-400">Connection details</h3>
-          <div className="grid gap-x-5 gap-y-4 md:grid-cols-[2fr_1fr]">
+          <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
             <label className="block md:col-span-2">
               <span className="label">Display name</span>
               <input
@@ -345,18 +327,6 @@ function ConnectionForm({
                 </span>
               )}
             </label>
-            {showSshTunnel && (
-              <label className="block">
-                <span className="label">SSH Host</span>
-                <input
-                  className="field font-mono"
-                  placeholder="bastion.mycompany.com"
-                  required={showSshTunnel}
-                  value={form.ssh_host ?? ""}
-                  onChange={(event) => onFieldChange("ssh_host", event.target.value)}
-                />
-              </label>
-            )}
             <label className="block">
               <span className="label">Port</span>
               <input
@@ -369,20 +339,6 @@ function ConnectionForm({
                 onChange={(event) => onFieldChange("port", Number(event.target.value) || 3306)}
               />
             </label>
-            {showSshTunnel && (
-              <label className="block">
-                <span className="label">SSH Port</span>
-                <input
-                  className="field"
-                  placeholder="22"
-                  type="number"
-                  min={1}
-                  max={65535}
-                  value={form.ssh_port}
-                  onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
-                />
-              </label>
-            )}
           </div>
         </section>
 
@@ -424,49 +380,6 @@ function ConnectionForm({
           </div>
         </section>
 
-        {showSshTunnel && (
-          <section className="border-t border-slate-100 pt-5">
-            <h3 className="eyebrow mb-3 text-slate-400">SSH tunnel credentials</h3>
-            <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
-              <label className="block">
-                <span className="label">SSH Username</span>
-                <input
-                  className="field font-mono"
-                  placeholder="ec2-user"
-                  required={showSshTunnel}
-                  value={form.ssh_username ?? ""}
-                  onChange={(event) => onFieldChange("ssh_username", event.target.value)}
-                />
-              </label>
-              <label className="block">
-                <span className="label">SSH Password / Private Key</span>
-                <span className="relative block">
-                  <textarea
-                    className="field min-h-[42px] resize-y pr-11 font-mono text-[13px]"
-                    placeholder="Paste SSH private key (-----BEGIN...) or password"
-                    required={showSshTunnel}
-                    rows={1}
-                    value={form.ssh_password ?? ""}
-                    onChange={(event) => onFieldChange("ssh_password", event.target.value)}
-                  />
-                  <button
-                    aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
-                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                    onClick={() => setShowSshPassword((visible) => !visible)}
-                    tabIndex={-1}
-                    type="button"
-                  >
-                    {showSshPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </span>
-                <span className="mt-1.5 block text-xs text-slate-400">
-                  A private key is used automatically when it starts with “-----BEGIN”. Encrypted at rest like your database password.
-                </span>
-              </label>
-            </div>
-          </section>
-        )}
-
         <section className="border-t border-slate-100 pt-5">
           <h3 className="eyebrow mb-3 text-slate-400">Database &amp; security</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
@@ -499,6 +412,91 @@ function ConnectionForm({
               </span>
             </label>
           </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-slate-50/70">
+          <label
+            htmlFor="ssh-tunnel-toggle"
+            className="flex cursor-pointer items-start gap-3 px-4 py-3.5 text-sm"
+          >
+            <input
+              checked={showSshTunnel}
+              onChange={(event) => toggleSshTunnel(event.target.checked)}
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-brand-600"
+              id="ssh-tunnel-toggle"
+            />
+            <span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+                <ShieldCheck size={15} /> SSH Tunnel
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Connect through a bastion/jump host when your database is not publicly reachable.
+              </span>
+            </span>
+          </label>
+
+          {showSshTunnel && (
+            <div className="grid gap-x-5 gap-y-4 border-t border-slate-200 px-4 pb-4 pt-4 md:grid-cols-2">
+              <label className="block">
+                <span className="label">SSH Host</span>
+                <input
+                  className="field font-mono"
+                  placeholder="bastion.mycompany.com"
+                  required={showSshTunnel}
+                  value={form.ssh_host ?? ""}
+                  onChange={(event) => onFieldChange("ssh_host", event.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="label">SSH Port</span>
+                <input
+                  className="field"
+                  placeholder="22"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={form.ssh_port}
+                  onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
+                />
+              </label>
+              <label className="block">
+                <span className="label">SSH Username</span>
+                <input
+                  className="field font-mono"
+                  placeholder="ec2-user"
+                  required={showSshTunnel}
+                  value={form.ssh_username ?? ""}
+                  onChange={(event) => onFieldChange("ssh_username", event.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="label">SSH Password / Private Key</span>
+                <span className="relative block">
+                  <textarea
+                    className="field min-h-[42px] resize-y pr-11 font-mono text-[13px]"
+                    placeholder="Paste SSH private key (-----BEGIN...) or password"
+                    required={showSshTunnel}
+                    rows={1}
+                    value={form.ssh_password ?? ""}
+                    onChange={(event) => onFieldChange("ssh_password", event.target.value)}
+                  />
+                  <button
+                    aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
+                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() => setShowSshPassword((visible) => !visible)}
+                    tabIndex={-1}
+                    type="button"
+                  >
+                    {showSshPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </span>
+                <span className="mt-1.5 block text-xs text-slate-400">
+                  A private key is detected automatically when it starts with “-----BEGIN”. Encrypted at rest like your database password.
+                </span>
+              </label>
+            </div>
+          )}
         </section>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm transition hover:border-slate-300">

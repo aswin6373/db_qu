@@ -6,14 +6,14 @@ export type ReportPayload = {
   sql: string;
   columns: string[];
   rows: Record<string, unknown>[];
-  connectionName?: string;
   chartSvg?: SVGSVGElement | null;
 };
 
-/* App theme colors */
+/* App theme colors (matches tailwind config) */
 const NAVY: [number, number, number] = [22, 50, 79];
+const NAVY_SOFT: [number, number, number] = [65, 88, 110];
 const TEAL: [number, number, number] = [47, 158, 151];
-const TEAL_SOFT: [number, number, number] = [124, 228, 216];
+const TEAL_SOFT: [number, number, number] = [227, 242, 240];
 const INK: [number, number, number] = [51, 65, 85];
 const MUTED: [number, number, number] = [148, 163, 184];
 const LINE: [number, number, number] = [226, 232, 240];
@@ -75,8 +75,7 @@ export async function downloadQueryReport(payload: ReportPayload): Promise<void>
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(168, 200, 212);
-  const stamp = new Date().toLocaleString();
-  doc.text(payload.connectionName ? `${payload.connectionName}  ·  ${stamp}` : stamp, MARGIN, 60);
+  doc.text(new Date().toLocaleString(), MARGIN, 60);
 
   let y = 122;
   const sectionTitle = (label: string) => {
@@ -104,26 +103,18 @@ export async function downloadQueryReport(payload: ReportPayload): Promise<void>
   doc.text(summaryLines, MARGIN, y + 4);
   y += summaryLines.length * 15 + 16;
 
-  /* sql block — same navy/teal theme as the chat code block */
+  /* sql block — same navy panel with light mint mono text as the chat code block */
   sectionTitle("SQL query");
   doc.setFont("courier", "normal");
-  doc.setFontSize(9.5);
-  const sqlLines = doc.splitTextToSize(payload.sql || "—", CONTENT_W - 28) as string[];
-  const chipH = 14;
-  const blockH = chipH + 16 + sqlLines.length * 13.5 + 14;
+  doc.setFontSize(10);
+  const sqlLines = doc.splitTextToSize(payload.sql || "—", CONTENT_W - 32) as string[];
+  const blockH = sqlLines.length * 15 + 26;
   doc.setFillColor(...NAVY);
-  doc.setDrawColor(58, 92, 122);
-  doc.roundedRect(MARGIN, y - 6, CONTENT_W, blockH, 6, 6, "FD");
-  doc.setFillColor(...TEAL);
-  doc.roundedRect(MARGIN + 12, y + 2, 32, chipH, 3.5, 3.5, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text("SQL", MARGIN + 28, y + 11, { align: "center" });
-  doc.setFont("courier", "normal");
-  doc.setFontSize(9.5);
+  doc.setDrawColor(...NAVY_SOFT);
+  doc.setLineWidth(1);
+  doc.roundedRect(MARGIN, y - 6, CONTENT_W, blockH, 8, 8, "FD");
   doc.setTextColor(...TEAL_SOFT);
-  doc.text(sqlLines, MARGIN + 14, y + 2 + chipH + 14);
+  doc.text(sqlLines, MARGIN + 16, y + 14);
   y += blockH + 20;
 
   /* results table */

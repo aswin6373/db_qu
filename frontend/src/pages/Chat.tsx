@@ -160,18 +160,6 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
             </p>
           )}
         </div>
-        <select
-          aria-label="Database connection"
-          className="field h-9 hidden max-w-52 text-xs sm:block"
-          disabled={isSending}
-          value={connectionId}
-          onChange={(event) => setConnectionId(event.target.value ? Number(event.target.value) : "")}
-        >
-          {connections.length === 0 && <option value="">No database connected</option>}
-          {connections.map((connection) => (
-            <option key={connection.id} value={connection.id}>{connection.name}</option>
-          ))}
-        </select>
       </header>
 
       {/* Messages */}
@@ -188,7 +176,6 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                   {message.result && !message.result.needs_clarification && (
                     <ResultBlock
                       confirmingQueryId={confirmingQueryId}
-                      connectionName={connections.find((connection) => connection.id === connectionId)?.name}
                       dismissedQueryIds={dismissedQueryIds}
                       isConfirmed={confirmedQueryIds.has(message.result.query_id) || !message.result.requires_confirmation}
                       onCancel={cancelWrite}
@@ -374,7 +361,6 @@ function EmptyConversation({
 
 function ResultBlock({
   confirmingQueryId,
-  connectionName,
   dismissedQueryIds,
   isConfirmed,
   onConfirm,
@@ -382,7 +368,6 @@ function ResultBlock({
   result
 }: {
   confirmingQueryId: number | null;
-  connectionName?: string;
   dismissedQueryIds: Set<number>;
   isConfirmed: boolean;
   result: QueryResponse;
@@ -414,7 +399,6 @@ function ResultBlock({
       await downloadQueryReport({
         chartSvg: chartRef.current?.querySelector("svg") ?? null,
         columns: result.columns,
-        connectionName,
         rows: result.rows,
         sql: result.sql,
         summary: result.summary
@@ -427,26 +411,16 @@ function ResultBlock({
   return (
     <div className="mt-3 space-y-3">
       <div className="relative">
-        <code className="code-block pr-32">{result.sql}</code>
-        <div className="absolute right-2.5 top-2 flex gap-1.5">
-          <button
-            className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-teal-soft transition hover:bg-white/20"
-            onClick={copySql}
-            title="Copy SQL"
-            type="button"
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
-          </button>
-          <button
-            className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[11px] font-semibold text-teal-soft transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isExporting}
-            onClick={exportPdf}
-            title="Download PDF report"
-            type="button"
-          >
-            {isExporting ? <Loader2 className="animate-spin" size={12} /> : <FileDown size={12} />} PDF
-          </button>
-        </div>
+        <code className="code-block pr-12">{result.sql}</code>
+        <button
+          aria-label={copied ? "Copied" : "Copy SQL"}
+          className="absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-md bg-white/10 text-teal-soft transition hover:bg-white/20"
+          onClick={copySql}
+          title="Copy SQL"
+          type="button"
+        >
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+        </button>
       </div>
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && (
@@ -480,8 +454,9 @@ function ResultBlock({
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
         </span>
-        {chartSpec && (
-          <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+        <div className="flex items-center gap-1.5">
+          {chartSpec && (
+            <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
               {(["table", "chart"] as const).map((option) => (
                 <button
                   className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
@@ -497,6 +472,17 @@ function ResultBlock({
               ))}
             </div>
           )}
+          <button
+            aria-label="Download PDF report"
+            className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 transition hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isExporting}
+            onClick={exportPdf}
+            title="Download PDF report"
+            type="button"
+          >
+            {isExporting ? <Loader2 className="animate-spin" size={13} /> : <FileDown size={13} />}
+          </button>
+        </div>
       </div>
 
       {chartSpec && (

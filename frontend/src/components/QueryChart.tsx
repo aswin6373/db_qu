@@ -167,11 +167,12 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
 
   function toggleSeries(index: number) {
     const current = visible ?? spec.defaultVisible;
-    if (current.includes(index)) {
-      if (current.length === 1) return;
-      setVisible(current.filter((item) => item !== index));
+    if (current.length === 1 && current[0] === index) {
+      /* clicking the only active chip brings every series back */
+      setVisible(spec.series.map((_, item) => item));
     } else {
-      setVisible([...current, index].sort((a, b) => a - b));
+      /* selecting one chip shows only that series */
+      setVisible([index]);
     }
   }
 
@@ -326,7 +327,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
                 }`}
                 key={entry.name}
                 onClick={() => toggleSeries(index)}
-                title={active ? `Hide ${entry.name}` : `Show ${entry.name}`}
+                title={active && shown.length === 1 ? "Show all" : `Show ${entry.name}`}
                 type="button"
               >
                 <span

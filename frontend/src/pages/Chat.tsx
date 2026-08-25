@@ -426,8 +426,9 @@ function ResultBlock({
   );
 
   return (
-    <div className="mt-3 space-y-3">
-      <div className="flex justify-end">{downloadButton}</div>
+    <div className="relative mt-3 space-y-3">
+      <div className="flex justify-end sm:hidden">{downloadButton}</div>
+      <div className="absolute right-0 top-[-38px] hidden sm:block">{downloadButton}</div>
       <div className="group/sql relative">
         <code className="code-block pr-12">{result.sql}</code>
         <button

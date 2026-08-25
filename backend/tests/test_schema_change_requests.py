@@ -82,3 +82,11 @@ def test_misspelled_add_column_still_detected():
     with pytest.raises(QueryUnderstandingError) as exc:
         generate_sql("add a new collumn phone in customers", SCHEMA)
     assert "ADD COLUMN `phone`" in str(exc.value)
+
+
+def test_casual_read_with_table_word_is_not_a_schema_change():
+    """Regression: 'i want the top biggest table ... 10 rows' is a read, but the
+    weak verb 'want' + the noun 'table' used to trip the generic DDL block."""
+    with pytest.raises(QueryUnderstandingError) as exc:
+        generate_sql("i mean i want the top biggest table in the database 10 rows", SCHEMA)
+    assert "Schema changes" not in str(exc.value)

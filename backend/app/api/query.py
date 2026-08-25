@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.api.connections import _get_org_connection, build_connector
 from app.api.dependencies import get_current_user
+from app.api.organizations import ai_config_for_org
 from app.db.session import get_db
-from app.models import ChatSession, Message, QueryLog, User
+from app.models import ChatSession, Message, Organization, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
 from app.services.ai import QueryUnderstandingError, evaluate_clarity, generate_sql, summarize_result
 from app.services.sql_validator import validate_sql
@@ -173,6 +174,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     connection = _get_org_connection(connection_id, user, db)
     schema = json.loads(connection.schema_cache or "{}")
     history = _recent_history(db, user, payload.session_id)
+    ai_config = ai_config_for_org(db.get(Organization, user.organization_id))
 
     def clarification_response(text: str) -> QueryGenerateResponse:
         response = QueryGenerateResponse(summary=text, needs_clarification=True)
@@ -182,14 +184,14 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         return response
 
     try:
-        clarifying_question = evaluate_clarity(payload.question, schema, history)
+        clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
     except Exception:
         clarifying_question = None
     if clarifying_question:
         return clarification_response(clarifying_question)
 
     try:
-        sql = generate_sql(payload.question, schema, history)
+        sql = generate_sql(payload.question, schema, history, ai_config)
     except QueryUnderstandingError as exc:
         return clarification_response(str(exc))
     validation = validate_sql(sql, schema)
@@ -209,7 +211,8 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
 
     summary = summarize_result(
-        payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type
+        payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type,
+        ai_config=ai_config,
     )
     log = QueryLog(
         organization_id=user.organization_id,

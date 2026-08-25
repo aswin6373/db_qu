@@ -12,6 +12,14 @@ export type Member = {
   created_at?: string | null;
 };
 
+export type AIIntegration = {
+  provider: string | null;
+  has_key: boolean;
+  key_hint: string | null;
+  model: string | null;
+  base_url: string | null;
+};
+
 export type Connection = {
   id: number;
   name: string;

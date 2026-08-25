@@ -96,7 +96,7 @@ def test_clear_question_still_executes(client, monkeypatch):
 def _with_gemini(monkeypatch, response_text: str):
     settings = get_settings()
     monkeypatch.setattr(settings, "llm_provider", "gemini")
-    monkeypatch.setattr("app.services.ai._gemini_generate", lambda prompt: response_text)
+    monkeypatch.setattr("app.services.ai._gemini_generate", lambda prompt, eff=None: response_text)
 
 
 def test_evaluate_clarity_asks_when_llm_says_unclear(client, monkeypatch):

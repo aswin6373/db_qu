@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 
+from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -9,9 +10,35 @@ from app.api.dependencies import get_current_user, require_admin
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models import ChatSession, DBConnection, Message, Organization, QueryLog, User
-from app.schemas.dto import DashboardResponse, MemberCreate, MemberResponse
+from app.schemas.dto import (
+    DashboardResponse,
+    IntegrationResponse,
+    IntegrationUpdate,
+    MemberCreate,
+    MemberResponse,
+)
+from app.services.ai import AIConfig
+from app.services.crypto import decrypt_secret, encrypt_secret
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+
+
+def ai_config_for_org(organization: Organization | None) -> AIConfig | None:
+    """Workspace's own AI key (bring your own key); None falls back to server settings."""
+    if organization is None or not organization.ai_provider:
+        return None
+    api_key = None
+    if organization.encrypted_ai_key:
+        try:
+            api_key = decrypt_secret(organization.encrypted_ai_key)
+        except InvalidToken:
+            return None
+    return AIConfig(
+        provider=organization.ai_provider,
+        api_key=api_key,
+        model=organization.ai_model,
+        base_url=organization.ai_base_url,
+    )
 
 
 def _iso_utc(value: datetime | None) -> str | None:
@@ -25,6 +52,58 @@ def _iso_utc(value: datetime | None) -> str | None:
 @router.get("/me")
 def my_organization(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.get(Organization, user.organization_id)
+
+
+def _integration_response(organization: Organization) -> IntegrationResponse:
+    key_hint = None
+    if organization.encrypted_ai_key:
+        try:
+            key_hint = f"••••{decrypt_secret(organization.encrypted_ai_key)[-4:]}"
+        except InvalidToken:
+            key_hint = "••••"
+    return IntegrationResponse(
+        provider=organization.ai_provider,
+        has_key=bool(organization.encrypted_ai_key),
+        key_hint=key_hint,
+        model=organization.ai_model,
+        base_url=organization.ai_base_url,
+    )
+
+
+@router.get("/integrations", response_model=IntegrationResponse)
+def get_integration(user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    organization = db.get(Organization, user.organization_id)
+    return _integration_response(organization)
+
+
+@router.put("/integrations", response_model=IntegrationResponse)
+def update_integration(payload: IntegrationUpdate, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    organization = db.get(Organization, user.organization_id)
+    needs_key = payload.provider in {"gemini", "openai"}
+    if needs_key and not payload.api_key and not organization.encrypted_ai_key:
+        raise HTTPException(status_code=400, detail="An API key is required for this provider")
+    if payload.api_key:
+        organization.encrypted_ai_key = encrypt_secret(payload.api_key.strip())
+    organization.ai_provider = payload.provider
+    organization.ai_model = (payload.model or "").strip() or None
+    organization.ai_base_url = (payload.base_url or "").strip() or None
+    if payload.provider == "ollama" and not organization.ai_base_url:
+        raise HTTPException(status_code=400, detail="Ollama needs a base URL (e.g. http://your-server:11434)")
+    db.commit()
+    db.refresh(organization)
+    return _integration_response(organization)
+
+
+@router.delete("/integrations", response_model=IntegrationResponse)
+def disconnect_integration(user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    organization = db.get(Organization, user.organization_id)
+    organization.ai_provider = None
+    organization.encrypted_ai_key = None
+    organization.ai_model = None
+    organization.ai_base_url = None
+    db.commit()
+    db.refresh(organization)
+    return _integration_response(organization)
 
 
 def _member_response(member: User) -> MemberResponse:

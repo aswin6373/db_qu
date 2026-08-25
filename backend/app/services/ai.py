@@ -1,5 +1,6 @@
 import json
 import re
+from dataclasses import dataclass
 
 import httpx
 
@@ -11,8 +12,47 @@ class QueryUnderstandingError(ValueError):
     pass
 
 
-def generate_sql(question: str, schema: dict, history: list[dict] | None = None) -> str:
+@dataclass
+class AIConfig:
+    """Per-workspace AI override (bring your own key). Values win over server settings."""
+
+    provider: str  # "gemini" | "openai" | "ollama"
+    api_key: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+
+
+@dataclass
+class _EffectiveAI:
+    provider: str
+    gemini_key: str
+    gemini_model: str
+    openai_key: str
+    openai_model: str
+    ollama_url: str
+    ollama_model: str
+
+
+def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     settings = get_settings()
+    provider = (config.provider if config else None) or settings.llm_provider
+    org_key = config.api_key if config else None
+    org_model = config.model if config else None
+    org_base_url = config.base_url if config else None
+    org_provider = config.provider if config else None
+    return _EffectiveAI(
+        provider=provider,
+        gemini_key=org_key if org_provider == "gemini" else getattr(settings, "gemini_api_key", ""),
+        gemini_model=org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", ""),
+        openai_key=org_key if org_provider == "openai" else getattr(settings, "openai_api_key", ""),
+        openai_model=org_model if (org_provider == "openai" and org_model) else "gpt-4o-mini",
+        ollama_url=org_base_url if (org_provider == "ollama" and org_base_url) else getattr(settings, "ollama_base_url", ""),
+        ollama_model=org_model if (org_provider == "ollama" and org_model) else getattr(settings, "ollama_model", ""),
+    )
+
+
+def generate_sql(question: str, schema: dict, history: list[dict] | None = None, ai_config: AIConfig | None = None) -> str:
+    eff = _effective_ai(ai_config)
     schema_change = _detect_schema_change_request(question, schema)
     if schema_change:
         raise QueryUnderstandingError(schema_change)
@@ -20,14 +60,19 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None)
         raise QueryUnderstandingError(
             "I could not find any discovered tables for this connection. Re-test the database connection so QueryMind can read the schema."
         )
-    if settings.llm_provider == "gemini":
+    if eff.provider == "gemini":
         try:
             # The LLM can handle JOINs across multiple tables — no single-table restriction.
-            sql = _generate_sql_with_gemini(question, schema, history)
+            sql = _generate_sql_with_gemini(question, schema, history, eff)
         except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(question, schema)
-    elif settings.llm_provider == "ollama":
-        sql = _generate_sql_with_ollama_or_fallback(question, schema, history)
+            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=None, eff=eff)
+    elif eff.provider == "openai":
+        try:
+            sql = _generate_sql_with_openai(question, schema, history, eff)
+        except (RuntimeError, httpx.HTTPError):
+            sql = _generate_sql_with_ollama_or_fallback(question, schema, history=None, eff=eff)
+    elif eff.provider == "ollama":
+        sql = _generate_sql_with_ollama_or_fallback(question, schema, history, eff)
     else:
         # Deterministic fallback can only target one table.
         table = _ensure_question_can_target_schema(question, schema)
@@ -37,11 +82,11 @@ def generate_sql(question: str, schema: dict, history: list[dict] | None = None)
     return _validated_sql(sql, schema)
 
 
-def evaluate_clarity(question: str, schema: dict, history: list[dict] | None = None) -> str | None:
+def evaluate_clarity(question: str, schema: dict, history: list[dict] | None = None, ai_config: AIConfig | None = None) -> str | None:
     """Return a short clarifying question when the request cannot be confidently
     mapped to the schema; return None when QueryMind should go ahead and run."""
-    settings = get_settings()
-    if settings.llm_provider not in {"gemini", "ollama"} or not (schema.get("tables") or {}):
+    eff = _effective_ai(ai_config)
+    if eff.provider not in {"gemini", "openai", "ollama"} or not (schema.get("tables") or {}):
         return None
     prompt = f"""
 You are QueryMind's intent checker for a MySQL assistant.
@@ -73,10 +118,12 @@ Latest user message:
 {question}
 """.strip()
     try:
-        if settings.llm_provider == "gemini":
-            raw = _gemini_generate(prompt)
+        if eff.provider == "gemini":
+            raw = _gemini_generate(prompt, eff)
+        elif eff.provider == "openai":
+            raw = _openai_generate(prompt, eff)
         else:
-            raw = _ollama_generate(prompt)
+            raw = _ollama_generate(prompt, eff)
     except (RuntimeError, httpx.HTTPError):
         return None
     return _parse_clarity_response(raw)
@@ -125,19 +172,25 @@ def summarize_result(
     rows: list[dict],
     requires_confirmation: bool,
     query_type: str = "unknown",
+    ai_config: AIConfig | None = None,
 ) -> str:
-    settings = get_settings()
+    eff = _effective_ai(ai_config)
     if requires_confirmation:
         return "This query can modify data, so it is waiting for your confirmation before execution."
     summary = ""
-    if settings.llm_provider == "gemini":
+    if eff.provider == "gemini":
         try:
-            summary = _summarize_with_gemini(question, columns, rows)
+            summary = _summarize_with_gemini(question, columns, rows, eff)
         except (RuntimeError, httpx.HTTPError):
             pass
-    if not summary and settings.llm_provider in {"gemini", "ollama"}:
+    elif eff.provider == "openai":
         try:
-            summary = _summarize_with_ollama(question, columns, rows)
+            summary = _summarize_with_openai(question, columns, rows, eff)
+        except (RuntimeError, httpx.HTTPError):
+            pass
+    if not summary and eff.provider in {"gemini", "openai", "ollama"}:
+        try:
+            summary = _summarize_with_ollama(question, columns, rows, eff)
         except Exception:
             pass
     summary = _sanitize_summary(summary, query_type, len(rows))
@@ -310,22 +363,26 @@ Latest user request:
 """.strip()
 
 
-def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None) -> str:
-    return _extract_sql(_gemini_generate(_sql_prompt(question, schema, history)))
+def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
+    return _extract_sql(_gemini_generate(_sql_prompt(question, schema, history), eff))
 
 
-def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None) -> str:
-    return _extract_sql(_ollama_generate(_sql_prompt(question, schema, history)))
+def _generate_sql_with_openai(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
+    return _extract_sql(_openai_generate(_sql_prompt(question, schema, history), eff))
 
 
-def _generate_sql_with_ollama_or_fallback(question: str, schema: dict, history: list[dict] | None = None) -> str:
+def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
+    return _extract_sql(_ollama_generate(_sql_prompt(question, schema, history), eff))
+
+
+def _generate_sql_with_ollama_or_fallback(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
     try:
-        return _generate_sql_with_ollama(question, schema, history)
+        return _generate_sql_with_ollama(question, schema, history, eff)
     except (RuntimeError, httpx.HTTPError):
         return _generate_sql_fallback(question, schema)
 
 
-def _summarize_with_gemini(question: str, columns: list[str], rows: list[dict]) -> str:
+def _summarize_with_gemini(question: str, columns: list[str], rows: list[dict], eff: _EffectiveAI | None = None) -> str:
     preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
     prompt = f"""
 Summarize this database query result in one short, plain-English sentence.
@@ -333,10 +390,10 @@ Summarize this database query result in one short, plain-English sentence.
 Question: {question}
 Result preview: {preview}
 """.strip()
-    return _gemini_generate(prompt).strip()
+    return _gemini_generate(prompt, eff).strip()
 
 
-def _summarize_with_ollama(question: str, columns: list[str], rows: list[dict]) -> str:
+def _summarize_with_openai(question: str, columns: list[str], rows: list[dict], eff: _EffectiveAI | None = None) -> str:
     preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
     prompt = f"""
 Summarize this database query result in one short, plain-English sentence.
@@ -344,21 +401,33 @@ Summarize this database query result in one short, plain-English sentence.
 Question: {question}
 Result preview: {preview}
 """.strip()
-    return _ollama_generate(prompt).strip()
+    return _openai_generate(prompt, eff).strip()
 
 
-def _gemini_generate(prompt: str) -> str:
-    settings = get_settings()
-    if not settings.gemini_api_key:
+def _summarize_with_ollama(question: str, columns: list[str], rows: list[dict], eff: _EffectiveAI | None = None) -> str:
+    preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
+    prompt = f"""
+Summarize this database query result in one short, plain-English sentence.
+
+Question: {question}
+Result preview: {preview}
+""".strip()
+    return _ollama_generate(prompt, eff).strip()
+
+
+def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
+    api_key = eff.gemini_key if eff else get_settings().gemini_api_key
+    model = eff.gemini_model if eff else get_settings().gemini_model
+    if not api_key:
         raise RuntimeError("Gemini API key is not configured")
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.gemini_model}:generateContent"
+        f"{model}:generateContent"
     )
     response = httpx.post(
         url,
-        params={"key": settings.gemini_api_key},
+        params={"key": api_key},
         json={
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
@@ -380,13 +449,42 @@ def _gemini_generate(prompt: str) -> str:
     return text
 
 
-def _ollama_generate(prompt: str) -> str:
+def _openai_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
+    api_key = eff.openai_key if eff else get_settings().openai_api_key
+    model = eff.openai_model if eff else "gpt-4o-mini"
+    if not api_key:
+        raise RuntimeError("OpenAI API key is not configured")
+
+    response = httpx.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("OpenAI returned no choices")
+    text = str(choices[0].get("message", {}).get("content", "")).strip()
+    if not text:
+        raise RuntimeError("OpenAI returned an empty response")
+    return text
+
+
+def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
     settings = get_settings()
-    url = f"{settings.ollama_base_url.rstrip('/')}/api/generate"
+    base_url = eff.ollama_url if eff else settings.ollama_base_url
+    model = eff.ollama_model if eff else settings.ollama_model
+    url = f"{base_url.rstrip('/')}/api/generate"
     response = httpx.post(
         url,
         json={
-            "model": settings.ollama_model,
+            "model": model,
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": 0.1},

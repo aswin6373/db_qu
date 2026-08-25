@@ -11,6 +11,10 @@ class Organization(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    ai_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    encrypted_ai_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    ai_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     users: Mapped[list["User"]] = relationship(back_populates="organization")

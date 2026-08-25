@@ -45,6 +45,21 @@ class MemberResponse(BaseModel):
     created_at: datetime | None = None
 
 
+class IntegrationUpdate(BaseModel):
+    provider: Literal["gemini", "openai", "ollama"]
+    api_key: str | None = None
+    model: str | None = Field(default=None, max_length=120)
+    base_url: str | None = Field(default=None, max_length=255)
+
+
+class IntegrationResponse(BaseModel):
+    provider: str | None = None
+    has_key: bool = False
+    key_hint: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+
+
 class ConnectionCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     host: str

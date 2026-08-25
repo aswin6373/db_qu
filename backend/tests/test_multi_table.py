@@ -45,7 +45,7 @@ MULTI_SCHEMA = {
 def test_multi_table_question_reaches_llm_without_single_table_block(monkeypatch):
     captured = {}
 
-    def fake_gemini(prompt):
+    def fake_gemini(prompt, eff=None):
         captured["prompt"] = prompt
         return "```sql\nSELECT c.name, p.name FROM customers c JOIN orders o ON o.customer_id = c.id JOIN products p ON p.id = o.product_id\n```"
 
@@ -76,7 +76,7 @@ def test_multi_table_question_still_blocked_in_fallback_mode():
 
 def test_join_sql_still_validated_against_schema(monkeypatch):
     # LLM hallucinating an unknown table must still be rejected by the validator.
-    monkeypatch.setattr(ai, "_gemini_generate", lambda prompt: "SELECT * FROM secret_table")
+    monkeypatch.setattr(ai, "_gemini_generate", lambda prompt, eff=None: "SELECT * FROM secret_table")
     monkeypatch.setattr(
         ai,
         "get_settings",

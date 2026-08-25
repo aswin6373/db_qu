@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
 import { useChatSessions } from "./ChatSessionsContext";
 import type { ChatSession, Connection } from "../types/api";
@@ -24,7 +24,12 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
   const nav: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "connections", label: "Connections", icon: Database },
-    ...(isAdmin ? [{ id: "members", label: "Members", icon: Users }] : [])
+    ...(isAdmin
+      ? [
+          { id: "integrations", label: "Integrations", icon: Plug },
+          { id: "members", label: "Members", icon: Users }
+        ]
+      : [])
   ];
   const current = nav.find((item) => item.id === active);
 

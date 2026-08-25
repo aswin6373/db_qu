@@ -7,6 +7,7 @@ import { apiRequest } from "./lib/api";
 import { Chat } from "./pages/Chat";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
+import { Integrations } from "./pages/Integrations";
 import { Members } from "./pages/Members";
 import { Connection, CurrentUser, Dashboard as DashboardType, DatabaseSchema, SchemaInsights } from "./types/api";
 
@@ -184,6 +185,7 @@ export function App() {
         {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
         {active === "connections" && <Connections isAdmin={isAdmin} token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
         {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
+        {active === "integrations" && isAdmin && <Integrations token={token} />}
         {active === "members" && isAdmin && user && <Members currentUserId={user.id} token={token} />}
       </Shell>
     </ChatSessionsProvider>

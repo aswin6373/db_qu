@@ -103,6 +103,7 @@ class QueryGenerateResponse(BaseModel):
     columns: list[str] = []
     rows: list[dict] = []
     needs_clarification: bool = False
+    meta_answer: bool = False
 
 
 class SchemaEdge(BaseModel):

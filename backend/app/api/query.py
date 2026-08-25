@@ -11,7 +11,7 @@ from app.api.organizations import ai_config_for_org
 from app.db.session import get_db
 from app.models import ChatSession, Message, Organization, QueryLog, User
 from app.schemas.dto import QueryGenerateRequest, QueryGenerateResponse
-from app.services.ai import QueryUnderstandingError, evaluate_clarity, generate_sql, summarize_result
+from app.services.ai import QueryUnderstandingError, SchemaAnswer, evaluate_clarity, generate_sql, schema_meta_answer, summarize_result
 from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
@@ -55,7 +55,7 @@ def _org_chat_session(session_id: int, user: User, db: Session) -> ChatSession:
 
 def _record_exchange(db: Session, session: ChatSession, question: str, response: QueryGenerateResponse) -> None:
     db.add(Message(session_id=session.id, role="user", content=question))
-    if response.needs_clarification:
+    if response.needs_clarification or response.meta_answer:
         db.add(Message(session_id=session.id, role="assistant", content=response.summary))
     else:
         db.add(
@@ -183,6 +183,23 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             _record_exchange(db, chat_session, payload.question, response)
         return response
 
+    def direct_answer(text: str) -> QueryGenerateResponse:
+        # Schema questions ("what tables do I have?") are answered like a human — no SQL.
+        response = QueryGenerateResponse(summary=text, needs_clarification=False, meta_answer=True)
+        if payload.session_id is not None:
+            chat_session = _org_chat_session(payload.session_id, user, db)
+            _record_exchange(db, chat_session, payload.question, response)
+        return response
+
+    # Questions about the database itself are answered directly from the schema,
+    # before the AI clarity/SQL steps ever run.
+    try:
+        meta_text = schema_meta_answer(payload.question, schema)
+    except Exception:
+        meta_text = None
+    if meta_text:
+        return direct_answer(meta_text)
+
     try:
         clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config)
     except Exception:
@@ -192,6 +209,8 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
 
     try:
         sql = generate_sql(payload.question, schema, history, ai_config)
+    except SchemaAnswer as exc:
+        return direct_answer(exc.text)
     except QueryUnderstandingError as exc:
         return clarification_response(str(exc))
     validation = validate_sql(sql, schema)

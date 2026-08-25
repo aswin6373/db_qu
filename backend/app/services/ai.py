@@ -189,7 +189,10 @@ LIST_INTENT_RE = re.compile(
 DESCRIBE_RE = re.compile(r"\b(?:describe|structure|layout|schema)\b", re.IGNORECASE)
 # Data/DDL operations must never be answered from the schema — they need real SQL.
 DATA_OP_RE = re.compile(
-    r"\b(?:add|insert|update|delete|drop|create|remove|modify|alter|truncate|rename|select|count|sum|avg|min|max|put|set)\b",
+    r"\b(?:add|insert|update|delete|drop|create|remove|modify|alter|truncate|rename|select|count|sum|avg|min|max|put|set)\b"
+    r"|\b(?:rows?|records?|entries|results)\b"
+    r"|\b(?:recent|latest|newest|oldest|earliest|biggest|largest|smallest|highest|lowest|shortest|longest)\b"
+    r"|\b(?:top|bottom|first|last)\s+\d+\b",
     re.IGNORECASE,
 )
 

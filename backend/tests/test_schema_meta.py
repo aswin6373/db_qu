@@ -110,6 +110,46 @@ def test_real_data_question_still_generates_sql(client, monkeypatch):
     assert result["sql"] != ""
 
 
+def test_data_request_with_superlatives_not_answered_from_schema():
+    from app.services.ai import schema_meta_answer
+
+    assert schema_meta_answer("Show the 10 most recent rows from my biggest table", SCHEMA) is None
+    assert schema_meta_answer("show the latest records", SCHEMA) is None
+    assert schema_meta_answer("top 5 largest entries", SCHEMA) is None
+    # Genuine schema questions still get the direct answer.
+    assert schema_meta_answer("what tables do I have", SCHEMA) is not None
+    assert schema_meta_answer("what columns does orders have", SCHEMA) is not None
+
+
+def test_recent_rows_request_goes_to_sql_pipeline(client, monkeypatch):
+    from app.api import query as query_api
+    from app.services import ai as ai_service
+
+    def fake_gemini(prompt, eff=None):
+        return "SELECT * FROM customers LIMIT 10"
+
+    monkeypatch.setattr(ai_service, "_gemini_generate", fake_gemini)
+    monkeypatch.setattr(
+        ai_service,
+        "get_settings",
+        lambda: __import__("types").SimpleNamespace(
+            llm_provider="gemini",
+            gemini_api_key="test",
+            gemini_model="test",
+            ollama_base_url="http://localhost",
+            ollama_model="test",
+        ),
+    )
+    monkeypatch.setattr(query_api, "build_connector", lambda connection: FakeConnector())
+    token = register_and_token(client, "meta-recent@example.com", "Meta Recent")
+    connection_id = create_connection_with_schema(client, token)
+
+    result = ask(client, token, connection_id, "Show the 10 most recent rows from my biggest table")
+    assert result["meta_answer"] is False
+    assert result["needs_clarification"] is False
+    assert result["sql"] != ""
+
+
 def test_system_table_queries_get_friendly_error(client, monkeypatch):
     from app.services import ai as ai_service
 

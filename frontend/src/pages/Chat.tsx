@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Send, Sparkles, Table2, User, X } from "lucide-react";
+import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, User, X, XCircle } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
 import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
@@ -106,7 +106,12 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
         method: "POST",
         body: JSON.stringify({ question: nextQuestion, connection_id: Number(selectedConnectionId), session_id: sessionId })
       }, token);
-      setMessages((items) => [...items, { id: tempIdRef.current--, role: "assistant", content: result.summary, result }]);
+      const assistantMessage: UiMessage = { id: tempIdRef.current--, role: "assistant", content: result.summary };
+      // Schema answers and clarifying questions are plain text — no result block.
+      if (!result.needs_clarification && !result.meta_answer) {
+        assistantMessage.result = result;
+      }
+      setMessages((items) => [...items, assistantMessage]);
       refresh();
       onActivity();
     } catch (err) {
@@ -188,7 +193,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
             <>
               {messages.map((message) => (
                 <MessageRow key={message.id} message={message}>
-                  {message.result && !message.result.needs_clarification && (
+                  {message.result && !message.result.needs_clarification && (message.result.sql || message.result.rows.length > 0 || (message.result.steps && message.result.steps.length > 0) ? (
                     <ResultBlock
                       confirmingQueryId={confirmingQueryId}
                       connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
@@ -198,14 +203,14 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                       onConfirm={confirmWrite}
                       result={message.result}
                     />
-                  )}
+                  ) : null)}
                 </MessageRow>
               ))}
 
               {isSending && (
                 <MessageRow message={{ id: -2, role: "assistant", content: "" }}>
                   <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                    Generating &amp; validating SQL
+                    Working through your question
                     <span className="flex gap-1">
                       <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
                     </span>
@@ -457,6 +462,36 @@ function ResultBlock({
   return (
     <div className="mt-3 space-y-3">
       <div className="absolute right-3 top-2">{downloadButton}</div>
+
+      {result.steps && result.steps.length > 0 && (
+        <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <Search size={12} /> How I got this answer
+          </p>
+          {result.steps.map((step, index) => (
+            <div className="flex items-start gap-2" key={index}>
+              <span className="mt-0.5 shrink-0">
+                {step.error ? (
+                  <XCircle className="text-rose-500" size={13} />
+                ) : step.tool === "run_sql" ? (
+                  <SquareSlash className="text-brand-600" size={13} />
+                ) : (
+                  <Search className="text-slate-400" size={13} />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className={`truncate text-xs font-medium ${step.error ? "text-rose-600" : "text-slate-600"}`}>{step.label}</p>
+                {step.sql ? (
+                  <code className="block truncate font-mono text-[10px] text-slate-400">{step.sql}</code>
+                ) : step.detail ? (
+                  <p className="truncate text-[10px] text-slate-400">{step.detail}</p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="group/sql relative">
         <code className="code-block pr-12">{result.sql}</code>
         <button

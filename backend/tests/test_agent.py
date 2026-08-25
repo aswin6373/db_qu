@@ -182,6 +182,47 @@ def test_agent_refuses_writes(client, monkeypatch):
     assert RecordingConnector.calls == []  # the DELETE never reached the database
 
 
+def test_agent_steps_survive_session_reload(client, monkeypatch):
+    from app.api import query as query_api
+
+    enable_agent(monkeypatch)
+
+    RecordingConnector.calls = []
+    monkeypatch.setattr(query_api, "build_connector", lambda connection: RecordingConnector())
+    patch_agent_llm(
+        monkeypatch,
+        [
+            action("get_columns", "orders"),
+            action("run_sql", "SELECT customer_id, SUM(total) AS spent FROM orders GROUP BY customer_id ORDER BY spent DESC LIMIT 1"),
+            action("finish", sql="SELECT customer_id, SUM(total) AS spent FROM orders GROUP BY customer_id ORDER BY spent DESC LIMIT 1", summary="Customer #1 spent the most, with 500 in orders."),
+        ],
+    )
+
+    token = register_and_token(client, "agent-reload@example.com", "Agent Reload")
+    headers = {"Authorization": f"Bearer {token}"}
+    connection_id = create_connection_with_schema(client, token)
+    session = client.post("/chat/sessions", json={"connection_id": connection_id}, headers=headers)
+    assert session.status_code == 200
+    session_id = session.json()["id"]
+
+    response = client.post(
+        "/query/generate",
+        json={"question": "Which customer spent the most?", "connection_id": connection_id, "session_id": session_id},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [step["tool"] for step in body["steps"]] == ["get_columns", "run_sql", "finish"]
+
+    # Simulate the user leaving and coming back: reload the persisted messages.
+    history = client.get(f"/chat/sessions/{session_id}", headers=headers)
+    assert history.status_code == 200
+    messages = history.json()
+    assistant = [m for m in messages if m["role"] == "assistant"][-1]
+    assert assistant["result"] is not None
+    assert [step["tool"] for step in assistant["result"]["steps"]] == ["get_columns", "run_sql", "finish"]
+
+
 def test_simple_questions_stay_on_fast_pipeline(client, monkeypatch):
     from app.api import query as query_api
 

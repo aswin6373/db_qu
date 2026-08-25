@@ -102,6 +102,7 @@ def _record_exchange(db: Session, session: ChatSession, question: str, response:
                         response.summary,
                         response.columns,
                         response.rows,
+                        response.steps,
                     ),
                     default=str,
                 ),

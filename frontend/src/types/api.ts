@@ -6,6 +6,10 @@ export type Connection = {
   username: string;
   database_name: string;
   ssl_mode?: string;
+  ssh_host?: string | null;
+  ssh_port?: number;
+  ssh_username?: string | null;
+  ssh_password?: string | null;
 };
 
 export type SslMode = "PREFERRED" | "REQUIRED" | "DISABLED";

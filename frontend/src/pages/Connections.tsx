@@ -37,7 +37,11 @@ const EMPTY_FORM = {
   password: "",
   database_name: "",
   ssl_mode: "PREFERRED" as SslMode,
-  test_live: true
+  test_live: true,
+  ssh_host: null as string | null,
+  ssh_port: 22,
+  ssh_username: null as string | null,
+  ssh_password: null as string | null
 };
 
 export function Connections({ token, connections, insights, schemas, onRefresh }: Props) {
@@ -243,6 +247,7 @@ function ConnectionForm({
   previousName?: string;
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showSshPassword, setShowSshPassword] = useState(false);
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
@@ -292,6 +297,15 @@ function ConnectionForm({
               />
             </label>
             <label className="block">
+              <span className="label">SSH Host</span>
+              <input
+                className="field font-mono"
+                placeholder="bastion.mycompany.com"
+                value={form.ssh_host ?? ""}
+                onChange={(event) => onFieldChange("ssh_host", event.target.value)}
+              />
+            </label>
+            <label className="block">
               <span className="label">Port</span>
               <input
                 className="field"
@@ -301,6 +315,18 @@ function ConnectionForm({
                 type="number"
                 value={form.port}
                 onChange={(event) => onFieldChange("port", Number(event.target.value) || 3306)}
+              />
+            </label>
+            <label className="block">
+              <span className="label">SSH Port</span>
+              <input
+                className="field"
+                placeholder="22"
+                type="number"
+                min={1}
+                max={65535}
+                value={form.ssh_port}
+                onChange={(event) => onFieldChange("ssh_port", Number(event.target.value) || 22)}
               />
             </label>
           </div>
@@ -317,6 +343,15 @@ function ConnectionForm({
                 required
                 value={form.username}
                 onChange={(event) => onFieldChange("username", event.target.value)}
+              />
+            </label>
+            <label className="block">
+              <span className="label">SSH Username</span>
+              <input
+                className="field font-mono"
+                placeholder="ec2-user"
+                value={form.ssh_username ?? ""}
+                onChange={(event) => onFieldChange("ssh_username", event.target.value)}
               />
             </label>
             <label className="block">
@@ -339,6 +374,30 @@ function ConnectionForm({
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
+              </span>
+            </label>
+            <label className="block">
+              <span className="label">SSH Password / Key</span>
+              <span className="relative block">
+                <input
+                  className="field pr-11"
+                  placeholder="SSH private key or password"
+                  required
+                  value={form.ssh_password ?? ""}
+                  onChange={(event) => onFieldChange("ssh_password", event.target.value)}
+                />
+                <button
+                  aria-label="Toggle SSH password/key visibility"
+                  className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  onClick={() => setShowSshPassword((visible) => !visible)}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  {form.ssh_password && form.ssh_password.startsWith("-----") ? <Eye size={15} /> : <EyeOff size={15} />}
+                </button>
+                <span className="mt-1.5 block text-xs text-slate-400">
+                  Paste your SSH private key or password for tunnel authentication
+                </span>
               </span>
             </label>
           </div>

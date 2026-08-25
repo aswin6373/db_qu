@@ -105,6 +105,7 @@ function SidebarContent({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   function startNewChat() {
     newChat();
@@ -277,9 +278,29 @@ function SidebarContent({
           </span>
           All systems operational
         </div>
-        <button className="btn-ghost w-full justify-start hover:bg-white/5 hover:text-white" onClick={onLogout} type="button">
-          <LogOut size={16} /> Sign out
-        </button>
+        {confirmingLogout ? (
+          <div className="flex items-center gap-2">
+            <button
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+              onClick={onLogout}
+              type="button"
+            >
+              <LogOut size={15} /> Confirm sign out
+            </button>
+            <button
+              aria-label="Cancel sign out"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white"
+              onClick={() => setConfirmingLogout(false)}
+              type="button"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button className="btn-ghost w-full justify-start hover:bg-white/5 hover:text-white" onClick={() => setConfirmingLogout(true)} type="button">
+            <LogOut size={16} /> Sign out
+          </button>
+        )}
       </div>
     </>
   );

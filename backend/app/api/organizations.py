@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -10,6 +11,14 @@ from app.models import DBConnection, Organization, QueryLog, User
 from app.schemas.dto import DashboardResponse
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
+
+
+def _iso_utc(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
 
 
 @router.get("/me")
@@ -42,7 +51,7 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 "question": log.natural_language,
                 "sql": log.generated_sql,
                 "status": log.status,
-                "created_at": log.created_at.isoformat() if log.created_at else None,
+                "created_at": _iso_utc(log.created_at),
                 "rows_returned": len((json.loads(log.result_preview or "{}") or {}).get("rows", [])),
                 "preview": json.loads(log.result_preview or "{}"),
             }

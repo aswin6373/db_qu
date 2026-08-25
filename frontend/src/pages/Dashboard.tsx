@@ -296,7 +296,8 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
 }
 
 function timeAgo(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  const normalized = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`;
+  const seconds = Math.floor((Date.now() - new Date(normalized).getTime()) / 1000);
   if (seconds < 60) return "just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;

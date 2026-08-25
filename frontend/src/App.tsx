@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AuthPanel } from "./components/AuthPanel";
 import { ChatSessionsProvider } from "./components/ChatSessionsContext";
 import { Onboarding } from "./components/Onboarding";
@@ -33,6 +33,31 @@ export function App() {
     }
   }, [token, onboarding]);
 
+  const prevActive = useRef(active);
+  useEffect(() => {
+    if (prevActive.current !== active && active === "dashboard" && token && !onboarding) {
+      refreshAll();
+    }
+    prevActive.current = active;
+  }, [active, token, onboarding]);
+
+  useEffect(() => {
+    if (!token || onboarding) return;
+    function handleVisible() {
+      if (document.visibilityState === "visible") refreshDashboard();
+    }
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && active === "dashboard") refreshDashboard();
+    }, 30_000);
+    window.addEventListener("focus", handleVisible);
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", handleVisible);
+      document.removeEventListener("visibilitychange", handleVisible);
+    };
+  }, [token, onboarding, active]);
+
   useEffect(() => {
     function handleAuthExpired() {
       localStorage.removeItem("querymind_token");
@@ -48,15 +73,22 @@ export function App() {
     return () => window.removeEventListener("querymind:auth-expired", handleAuthExpired);
   }, []);
 
+  async function refreshDashboard() {
+    if (!token) return;
+    const dashboardData = await apiRequest<DashboardType>("/organizations/dashboard", {}, token).catch(() => null);
+    if (dashboardData) {
+      setDashboard(dashboardData);
+    }
+  }
+
   async function refreshAll() {
     if (!token) return;
     try {
-      const [connectionData, dashboardData] = await Promise.all([
+      const [connectionData] = await Promise.all([
         apiRequest<Connection[]>("/connections", {}, token).catch(() => []),
-        apiRequest<DashboardType>("/organizations/dashboard", {}, token).catch(() => null)
+        refreshDashboard()
       ]);
       setConnections(connectionData);
-      setDashboard(dashboardData);
       if (connectionData.length === 0) {
         setSchemas({});
         setInsights({});

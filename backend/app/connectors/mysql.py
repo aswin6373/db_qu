@@ -1,6 +1,8 @@
 from typing import Any
 
 import mysql.connector
+import paramiko
+from contextlib import contextmanager
 
 from app.connectors.base import DBConnector
 from app.core.config import get_settings
@@ -17,6 +19,10 @@ class MySQLConnector(DBConnector):
         password: str,
         database_name: str,
         ssl_mode: str = "PREFERRED",
+        ssh_host: str | None = None,
+        ssh_port: int = 22,
+        ssh_username: str | None = None,
+        ssh_password: str | None = None,
     ) -> None:
         if ssl_mode not in self.VALID_SSL_MODES:
             raise ValueError(f"Unsupported SSL mode: {ssl_mode}")
@@ -34,9 +40,34 @@ class MySQLConnector(DBConnector):
             self.config["ssl_mode"] = "REQUIRED"
         self.database_name = database_name
 
+        # SSH tunnel setup
+        self.ssh_tunnel: paramiko.Transport | None = None
+        if ssh_host:
+            target_host = "127.0.0.1"  # Connect via tunnel
+            self.ssh_tunnel = paramiko.Transport((ssh_host, ssh_port))
+            self.ssh_tunnel.connect(
+                username=ssh_username or "root",
+                password=ssh_password or "",
+            )
+            # Set config to connect to localhost via the tunnel
+            self.config["host"] = target_host
+        else:
+            self.config["host"] = host
+
     def connect(self) -> None:
         connection = mysql.connector.connect(**self.config)
         connection.close()
+
+    @contextmanager
+    def tunnel(self):
+        """Context manager for SSH tunnel lifecycle."""
+        if self.ssh_tunnel:
+            self.ssh_tunnel.open()
+        try:
+            yield
+        finally:
+            if self.ssh_tunnel:
+                self.ssh_tunnel.close()
 
     def get_schema(self) -> dict[str, Any]:
         connection = mysql.connector.connect(**self.config)

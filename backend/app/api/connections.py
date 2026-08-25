@@ -33,6 +33,10 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(get_curren
         payload.password,
         payload.database_name,
         ssl_mode=payload.ssl_mode,
+        ssh_host=payload.ssh_host,
+        ssh_port=payload.ssh_port,
+        ssh_username=payload.ssh_username,
+        ssh_password=payload.ssh_password,
     )
     schema = {"tables": {}}
     if payload.test_live:
@@ -104,7 +108,13 @@ def delete_connection(connection_id: int, user: User = Depends(get_current_user)
     return Response(status_code=204)
 
 
-def build_connector(connection: DBConnection) -> MySQLConnector:
+def build_connector(
+    connection: DBConnection,
+    ssh_host: str | None = None,
+    ssh_port: int = 22,
+    ssh_username: str | None = None,
+    ssh_password: str | None = None,
+) -> MySQLConnector:
     try:
         password = decrypt_secret(connection.encrypted_password)
     except InvalidToken as exc:
@@ -122,6 +132,10 @@ def build_connector(connection: DBConnection) -> MySQLConnector:
         password,
         connection.database_name,
         ssl_mode=connection.ssl_mode or "PREFERRED",
+        ssh_host=ssh_host,
+        ssh_port=ssh_port,
+        ssh_username=ssh_username,
+        ssh_password=ssh_password,
     )
 
 

@@ -41,6 +41,10 @@ class ConnectionCreate(BaseModel):
     database_name: str
     ssl_mode: Literal["PREFERRED", "REQUIRED", "DISABLED"] = "PREFERRED"
     test_live: bool = True
+    ssh_host: str | None = None
+    ssh_port: int = 22
+    ssh_username: str | None = None
+    ssh_password: str | None = None  # Can be private key or password
 
 
 class ConnectionResponse(BaseModel):

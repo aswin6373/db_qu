@@ -60,7 +60,25 @@ def ask(client, token: str, connection_id: int, question: str) -> dict:
     return response.json()
 
 
-def test_table_names_answered_directly(client):
+def use_gemini(monkeypatch, reply: str) -> None:
+    from app.services import ai as ai_service
+
+    monkeypatch.setattr(ai_service, "_gemini_generate", lambda prompt, eff=None: reply)
+    monkeypatch.setattr(
+        ai_service,
+        "get_settings",
+        lambda: __import__("types").SimpleNamespace(
+            llm_provider="gemini",
+            gemini_api_key="test",
+            gemini_model="test",
+            ollama_base_url="http://localhost",
+            ollama_model="test",
+        ),
+    )
+
+
+def test_table_names_answered_directly(client, monkeypatch):
+    use_gemini(monkeypatch, "META: Your database has 2 tables: customers and orders.")
     token = register_and_token(client, "meta-tables@example.com", "Meta Tables")
     connection_id = create_connection_with_schema(client, token)
 
@@ -71,7 +89,8 @@ def test_table_names_answered_directly(client):
     assert "orders" in result["summary"]
 
 
-def test_column_names_answered_for_all_tables_with_typo(client):
+def test_column_names_answered_for_all_tables_with_typo(client, monkeypatch):
+    use_gemini(monkeypatch, "META: Here are the columns: customers (id, name, email), orders (id, customer_id, total).")
     token = register_and_token(client, "meta-cols@example.com", "Meta Cols")
     connection_id = create_connection_with_schema(client, token)
 
@@ -82,7 +101,8 @@ def test_column_names_answered_for_all_tables_with_typo(client):
     assert "email" in result["summary"]
 
 
-def test_columns_for_one_table(client):
+def test_columns_for_one_table(client, monkeypatch):
+    use_gemini(monkeypatch, "META: The orders table has 3 columns: id, customer_id, total.")
     token = register_and_token(client, "meta-one@example.com", "Meta One")
     connection_id = create_connection_with_schema(client, token)
 
@@ -110,36 +130,10 @@ def test_real_data_question_still_generates_sql(client, monkeypatch):
     assert result["sql"] != ""
 
 
-def test_data_request_with_superlatives_not_answered_from_schema():
-    from app.services.ai import schema_meta_answer
-
-    assert schema_meta_answer("Show the 10 most recent rows from my biggest table", SCHEMA) is None
-    assert schema_meta_answer("show the latest records", SCHEMA) is None
-    assert schema_meta_answer("top 5 largest entries", SCHEMA) is None
-    # Genuine schema questions still get the direct answer.
-    assert schema_meta_answer("what tables do I have", SCHEMA) is not None
-    assert schema_meta_answer("what columns does orders have", SCHEMA) is not None
-
-
 def test_recent_rows_request_goes_to_sql_pipeline(client, monkeypatch):
     from app.api import query as query_api
-    from app.services import ai as ai_service
 
-    def fake_gemini(prompt, eff=None):
-        return "SELECT * FROM customers LIMIT 10"
-
-    monkeypatch.setattr(ai_service, "_gemini_generate", fake_gemini)
-    monkeypatch.setattr(
-        ai_service,
-        "get_settings",
-        lambda: __import__("types").SimpleNamespace(
-            llm_provider="gemini",
-            gemini_api_key="test",
-            gemini_model="test",
-            ollama_base_url="http://localhost",
-            ollama_model="test",
-        ),
-    )
+    use_gemini(monkeypatch, "SELECT * FROM customers LIMIT 10")
     monkeypatch.setattr(query_api, "build_connector", lambda connection: FakeConnector())
     token = register_and_token(client, "meta-recent@example.com", "Meta Recent")
     connection_id = create_connection_with_schema(client, token)
@@ -151,23 +145,7 @@ def test_recent_rows_request_goes_to_sql_pipeline(client, monkeypatch):
 
 
 def test_system_table_queries_get_friendly_error(client, monkeypatch):
-    from app.services import ai as ai_service
-
-    def fake_gemini(prompt, eff=None):
-        return "SELECT table_name FROM information_schema.tables"
-
-    monkeypatch.setattr(ai_service, "_gemini_generate", fake_gemini)
-    monkeypatch.setattr(
-        ai_service,
-        "get_settings",
-        lambda: __import__("types").SimpleNamespace(
-            llm_provider="gemini",
-            gemini_api_key="test",
-            gemini_model="test",
-            ollama_base_url="http://localhost",
-            ollama_model="test",
-        ),
-    )
+    use_gemini(monkeypatch, "SELECT table_name FROM information_schema.tables")
 
     token = register_and_token(client, "meta-sys@example.com", "Meta Sys")
     connection_id = create_connection_with_schema(client, token)

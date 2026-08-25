@@ -61,9 +61,6 @@ def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
 
 def generate_sql(question: str, schema: dict, history: list[dict] | None = None, ai_config: AIConfig | None = None) -> str:
     eff = _effective_ai(ai_config)
-    meta_answer = schema_meta_answer(question, schema)
-    if meta_answer:
-        raise SchemaAnswer(meta_answer)
     schema_change = _detect_schema_change_request(question, schema)
     if schema_change:
         raise QueryUnderstandingError(schema_change)
@@ -122,6 +119,9 @@ Ask a clarifying question ONLY when the latest message is genuinely unclear:
   e.g. "Do you mean the customers table or the orders table?"),
 - or a write action (INSERT/UPDATE/DELETE) is missing required values.
 
+Questions about the database itself (what tables exist, what columns a table has)
+are always clear — answer {{"can_execute": true}} for those.
+
 If the request is clear enough to attempt, always answer {{"can_execute": true}}.
 Never refuse clear requests. Never ask about SQL syntax or about anything already
 visible in the schema. Ask at most one question.
@@ -168,115 +168,6 @@ def _history_block(history: list[dict] | None) -> str:
         return ""
     turns = "\n".join(f"{turn['role']}: {turn['content']}" for turn in history[-6:])
     return f"Recent conversation:\n{turns}\n"
-
-
-# --- Questions about the database itself ("what tables do I have?") ---------
-# These are answered directly from the discovered schema — no SQL, no guessing.
-
-COLWORD = r"col(?:ou?mn|l?umn|uman|ume|omn)s?"
-COLUMN_META_RE = re.compile(
-    rf"\b(?:what|which)\s+{COLWORD}\b"
-    rf"|(?:(?:show|list|give|tell|get)\b[^.?!]{{0,12}}?(?:me\s+)?(?:the\s+)?(?:all\s+)?{COLWORD}\b)"
-    rf"|\b{COLWORD}\s+names?\b"
-    rf"|\ball\s+{COLWORD}\b",
-    re.IGNORECASE,
-)
-TABLE_WORD_RE = re.compile(r"\btables?\b", re.IGNORECASE)
-LIST_INTENT_RE = re.compile(
-    r"\b(?:names?|list|show|give|all|available|exist|exists|have|has|see|display|tell|which|what|how many|know|present|overview)\b",
-    re.IGNORECASE,
-)
-DESCRIBE_RE = re.compile(r"\b(?:describe|structure|layout|schema)\b", re.IGNORECASE)
-# Data/DDL operations must never be answered from the schema — they need real SQL.
-DATA_OP_RE = re.compile(
-    r"\b(?:add|insert|update|delete|drop|create|remove|modify|alter|truncate|rename|select|count|sum|avg|min|max|put|set)\b"
-    r"|\b(?:rows?|records?|entries|results)\b"
-    r"|\b(?:recent|latest|newest|oldest|earliest|biggest|largest|smallest|highest|lowest|shortest|longest)\b"
-    r"|\b(?:top|bottom|first|last)\s+\d+\b",
-    re.IGNORECASE,
-)
-
-
-def schema_meta_answer(question: str, schema: dict) -> str | None:
-    """Human answer for schema questions ("what tables do I have?"), or None if
-    the question is a real data request that should become SQL."""
-    tables = schema.get("tables") or {}
-    if not tables:
-        return None
-    if DATA_OP_RE.search(question):
-        return None
-    mentioned = _mentioned_tables(question, list(tables.keys()))
-
-    if COLUMN_META_RE.search(question) or (DESCRIBE_RE.search(question) and mentioned):
-        if len(mentioned) == 1:
-            return _describe_table(tables, mentioned[0])
-        return _describe_all_tables(tables, mentioned)
-
-    if TABLE_WORD_RE.search(question) and LIST_INTENT_RE.search(question) and not mentioned:
-        return _list_tables(tables)
-    return None
-
-
-def _list_tables(tables: dict) -> str:
-    names = list(tables.keys())
-    count = len(names)
-    listing = "\n".join(f"• `{name}` — {len(tables[name].get('columns', []) or [])} columns" for name in names)
-    return (
-        f"Your database has {count} table{'' if count == 1 else 's'}:\n\n{listing}\n\n"
-        'Ask me about any of them — for example "what columns does orders have" '
-        'or "show the 10 latest rows from customers".'
-    )
-
-
-def _describe_table(tables: dict, table: str) -> str:
-    columns = tables[table].get("columns", []) or []
-    if not columns:
-        return f"The `{table}` table has no discovered columns. Re-test the connection to refresh its schema."
-    lines = "\n".join(_format_column_line(column) for column in columns)
-    return (
-        f"The `{table}` table has {len(columns)} column{'' if len(columns) == 1 else 's'}:\n\n{lines}\n\n"
-        f'Want me to query it? Try "show the 10 latest rows from {table}".'
-    )
-
-
-def _describe_all_tables(tables: dict, mentioned: list[str]) -> str:
-    targets = mentioned or list(tables.keys())
-    blocks = []
-    for name in targets:
-        columns = tables[name].get("columns", []) or []
-        if columns:
-            cols = ", ".join(f"`{column.get('name', '?')}`" for column in columns)
-        else:
-            cols = "no columns discovered"
-        blocks.append(f"• `{name}`: {cols}")
-    intro = (
-        f"Here are the columns for {len(targets)} tables:"
-        if len(targets) > 1
-        else "Here are the columns:"
-    )
-    return (
-        f"{intro}\n\n" + "\n".join(blocks)
-        + '\n\nAsk me to filter, count, or join any of these — for example "count the rows in each table".'
-    )
-
-
-def _format_column_line(column: dict) -> str:
-    name = str(column.get("name", "?"))
-    ctype = str(column.get("type", "") or "").lower()
-    key = str(column.get("key", "") or "").upper()
-    tags = []
-    if key == "PRI":
-        tags.append("primary key")
-    elif key == "UNI":
-        tags.append("unique")
-    elif key == "MUL":
-        tags.append("indexed")
-    if column.get("nullable"):
-        tags.append("nullable")
-    line = f"• `{name}` — {ctype}" if ctype else f"• `{name}`"
-    if tags:
-        line += f" ({', '.join(tags)})"
-    return line
 
 
 def _validated_sql(sql: str, schema: dict) -> str:
@@ -465,7 +356,7 @@ SQL_RULES = """
 - Support SELECT, INSERT, UPDATE, and DELETE.
 - Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
 - Do not generate multiple statements.
-- Never query information_schema, performance_schema, or other system tables — schema questions are answered outside SQL.
+- Never query information_schema, performance_schema, or other system tables — answer those questions with a META: line instead.
 - For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
 - Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
 - Use the recent conversation to resolve short follow-up answers like "yes" or "the customers one".
@@ -476,7 +367,13 @@ def _sql_prompt(question: str, schema: dict, history: list[dict] | None) -> str:
     return f"""
 You are QueryMind's SQL generator.
 
-Generate exactly one MySQL query for the user's latest request.
+If the latest request is about the database itself — what tables exist, what
+columns a table has, a table's structure — do NOT write SQL. Reply with a single
+line starting with "META:" followed by a short friendly answer based ONLY on the
+schema below. Example: "META: Your database has 2 tables: customers (3 columns)
+and orders (3 columns). Ask me for rows anytime."
+
+Otherwise generate exactly one MySQL query for the user's latest request.
 Return only SQL. Do not use markdown. Do not explain.
 
 Rules:
@@ -490,16 +387,28 @@ Latest user request:
 """.strip()
 
 
+def _sql_from_model_response(raw: str) -> str:
+    """Raise SchemaAnswer when the model replied conversationally (META: ...),
+    otherwise extract the SQL statement."""
+    text = re.sub(r"```(?:[a-zA-Z]+)?", "", raw).strip("` \n")
+    match = re.match(r"META\s*:\s*(.+)", text, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        answer = match.group(1).strip()
+        if answer:
+            raise SchemaAnswer(answer)
+    return _extract_sql(raw)
+
+
 def _generate_sql_with_gemini(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _extract_sql(_gemini_generate(_sql_prompt(question, schema, history), eff))
+    return _sql_from_model_response(_gemini_generate(_sql_prompt(question, schema, history), eff))
 
 
 def _generate_sql_with_openai(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _extract_sql(_openai_generate(_sql_prompt(question, schema, history), eff))
+    return _sql_from_model_response(_openai_generate(_sql_prompt(question, schema, history), eff))
 
 
 def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:
-    return _extract_sql(_ollama_generate(_sql_prompt(question, schema, history), eff))
+    return _sql_from_model_response(_ollama_generate(_sql_prompt(question, schema, history), eff))
 
 
 def _generate_sql_with_ollama_or_fallback(question: str, schema: dict, history: list[dict] | None = None, eff: _EffectiveAI | None = None) -> str:

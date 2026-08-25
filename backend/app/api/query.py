@@ -19,7 +19,6 @@ from app.services.ai import (
     _detect_schema_change_request,
     evaluate_clarity,
     generate_sql,
-    schema_meta_answer,
     summarize_result,
 )
 from app.services.agent import AgentError, agent_supported, run_agent
@@ -260,15 +259,8 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             _record_exchange(db, chat_session, payload.question, response)
         return response
 
-    # Questions about the database itself are answered directly from the schema,
-    # before the AI clarity/SQL steps ever run.
-    try:
-        meta_text = schema_meta_answer(payload.question, schema)
-    except Exception:
-        meta_text = None
-    if meta_text:
-        return direct_answer(meta_text)
-
+    # Questions about the database itself are answered conversationally by the
+    # AI via the SchemaAnswer path inside generate_sql.
     write_intent = bool(_WRITE_INTENT_RE.search(payload.question))
     agent_eligible = agent_supported(ai_config) and not write_intent
 

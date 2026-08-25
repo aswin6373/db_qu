@@ -1,7 +1,8 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Bot, Check, CircleHelp, Loader2, PlugZap, Send, Sparkles, User, X } from "lucide-react";
+import { BarChart3, Bot, Check, CircleHelp, Loader2, PlugZap, Send, Sparkles, Table2, User, X } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
+import { buildChartSpec, QueryChart } from "../components/QueryChart";
 import { apiRequest } from "../lib/api";
 import { ChatMessage, Connection, QueryResponse } from "../types/api";
 
@@ -386,6 +387,8 @@ function ResultBlock({
 }) {
   const isConfirming = confirmingQueryId === result.query_id;
   const isCancelled = dismissedQueryIds.has(result.query_id);
+  const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
+  const [view, setView] = useState<"chart" | "table">(chartSpec ? "chart" : "table");
 
   return (
     <div className="mt-3 space-y-3">
@@ -419,25 +422,53 @@ function ResultBlock({
       )}
 
       {result.rows.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full min-w-[520px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-                {result.columns.map((column) => (
-                  <th className="px-3.5 py-2.5 font-semibold" key={column}>{column}</th>
+        <div>
+          {chartSpec && (
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
+              </span>
+              <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                {(["chart", "table"] as const).map((option) => (
+                  <button
+                    className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                      view === option ? "bg-white text-brand-700 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    }`}
+                    key={option}
+                    onClick={() => setView(option)}
+                    type="button"
+                  >
+                    {option === "chart" ? <BarChart3 size={12} /> : <Table2 size={12} />}
+                    {option === "chart" ? "Chart" : "Table"}
+                  </button>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {result.rows.map((row, index) => (
-                <tr className="transition-colors hover:bg-brand-50/40" key={index}>
-                  {result.columns.map((column) => (
-                    <td className="px-3.5 py-2.5 text-slate-700" key={column}>{String(row[column] ?? "")}</td>
+              </div>
+            </div>
+          )}
+          {chartSpec && view === "chart" ? (
+            <QueryChart spec={chartSpec} totalRows={result.rows.length} />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+                    {result.columns.map((column) => (
+                      <th className="px-3.5 py-2.5 font-semibold" key={column}>{column}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.rows.map((row, index) => (
+                    <tr className="transition-colors hover:bg-brand-50/40" key={index}>
+                      {result.columns.map((column) => (
+                        <td className="px-3.5 py-2.5 text-slate-700" key={column}>{String(row[column] ?? "")}</td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

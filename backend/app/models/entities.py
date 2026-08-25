@@ -87,7 +87,8 @@ class QueryLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # Nullable: logs survive their author's removal without being re-attributed.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     connection_id: Mapped[int | None] = mapped_column(ForeignKey("db_connections.id"))
     natural_language: Mapped[str] = mapped_column(Text, nullable=False)
     generated_sql: Mapped[str] = mapped_column(Text, nullable=False)

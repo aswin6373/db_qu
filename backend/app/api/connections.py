@@ -1,4 +1,5 @@
 import json
+import logging
 
 from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -14,6 +15,7 @@ from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.schema_insights import build_schema_insights
 
 router = APIRouter(prefix="/connections", tags=["connections"])
+logger = logging.getLogger("querymind")
 
 
 @router.post("", response_model=ConnectionResponse)
@@ -36,7 +38,17 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(require_ad
             connector.connect()
             schema = connector.get_schema()
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Could not connect to MySQL: {exc}") from exc
+            logger.warning(
+                "connection_test_failed host=%s port=%s error=%s",
+                payload.host,
+                payload.port,
+                exc,
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Could not reach MySQL with these credentials and settings. Check the host, port, SSL mode, tunnel details, and password.",
+            ) from exc
     connection = DBConnection(
         organization_id=user.organization_id,
         name=payload.name,
@@ -81,8 +93,17 @@ def get_insights(connection_id: int, user: User = Depends(get_current_user), db:
 def refresh_connection(connection_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
     connector = build_connector(connection)
-    connector.connect()
-    connection.schema_cache = json.dumps(connector.get_schema())
+    try:
+        connector.connect()
+        connection.schema_cache = json.dumps(connector.get_schema())
+    except Exception as exc:
+        logger.warning(
+            "schema_refresh_failed connection=%s error=%s", connection.id, exc, exc_info=True
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Could not refresh the schema — the database is unreachable with the saved credentials.",
+        ) from exc
     db.commit()
     db.refresh(connection)
     return connection

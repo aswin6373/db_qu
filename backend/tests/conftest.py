@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["JWT_SECRET_KEY"] = "test-secret"
+os.environ["JWT_SECRET_KEY"] = "test-secret-key-with-at-least-32-characters!"
 os.environ["LLM_PROVIDER"] = "fallback"
 
 import pytest

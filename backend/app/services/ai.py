@@ -166,7 +166,11 @@ def _parse_clarity_response(raw: str) -> str | None:
 def _history_block(history: list[dict] | None) -> str:
     if not history:
         return ""
-    turns = "\n".join(f"{turn['role']}: {turn['content']}" for turn in history[-6:])
+    # Truncate each turn: long stored content is a prompt-injection and
+    # token-waste vector when replayed into later prompts.
+    turns = "\n".join(
+        f"{turn['role']}: {str(turn['content'])[:400]}" for turn in history[-6:]
+    )
     return f"Recent conversation:\n{turns}\n"
 
 
@@ -463,7 +467,9 @@ def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
     )
     response = httpx.post(
         url,
-        params={"key": api_key},
+        # The key travels in a header, never in the URL, so it cannot leak
+        # into proxy logs or access logs.
+        headers={"x-goog-api-key": api_key},
         json={
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {

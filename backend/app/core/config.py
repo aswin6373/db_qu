@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:8b"
     openai_api_key: str = ""
     mysql_connect_timeout: int = 5
+    mysql_statement_timeout_ms: int = 30000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

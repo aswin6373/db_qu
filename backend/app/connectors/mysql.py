@@ -1,4 +1,5 @@
 import io
+import re
 import select
 import socket
 import threading
@@ -167,6 +168,7 @@ class MySQLConnector(DBConnector):
             "database": database_name,
             "connection_timeout": get_settings().mysql_connect_timeout,
         }
+        self.statement_timeout_ms = get_settings().mysql_statement_timeout_ms
         if ssl_mode == "DISABLED":
             self.config["ssl_disabled"] = True
         elif ssl_mode == "REQUIRED":
@@ -235,11 +237,25 @@ class MySQLConnector(DBConnector):
             connection.close()
             return schema
 
+    def _with_execution_cap(self, sql: str) -> str:
+        """Server-side runtime cap for SELECTs. A runaway query (or a SLEEP-style
+        probe that slipped past validation) is killed by MySQL itself instead of
+        hanging the worker. MAX_EXECUTION_TIME applies to SELECT only."""
+        if self.statement_timeout_ms <= 0:
+            return sql
+        return re.sub(
+            r"^(\s*)SELECT\b",
+            rf"\1SELECT /*+ MAX_EXECUTION_TIME({self.statement_timeout_ms}) */",
+            sql,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+
     def execute(self, sql: str) -> tuple[list[str], list[dict[str, Any]]]:
         with self.tunneled_config() as config:
             connection = mysql.connector.connect(**config)
             cursor = connection.cursor(dictionary=True)
-            cursor.execute(sql)
+            cursor.execute(self._with_execution_cap(sql))
             columns = list(cursor.column_names or [])
             rows = list(cursor.fetchall() or []) if cursor.with_rows else []
             connection.commit()

@@ -59,6 +59,58 @@ def test_valid_update_requires_confirmation():
     assert result.requires_confirmation is True
 
 
+def test_sleep_function_is_blocked():
+    result = validate_sql("SELECT SLEEP(10) FROM customers", SCHEMA)
+    assert result.ok is False
+    assert "SLEEP" in result.error
+
+
+def test_load_file_function_is_blocked():
+    result = validate_sql("SELECT id FROM customers WHERE LOAD_FILE('/etc/passwd') IS NOT NULL", SCHEMA)
+    assert result.ok is False
+    assert "LOAD_FILE" in result.error
+
+
+def test_benchmark_function_is_blocked():
+    result = validate_sql("SELECT id FROM customers WHERE BENCHMARK(50000000, MD5('x'))", SCHEMA)
+    assert result.ok is False
+    assert "BENCHMARK" in result.error
+
+
+def test_update_without_where_is_rejected():
+    result = validate_sql("UPDATE customers SET name = 'x'", SCHEMA)
+    assert result.ok is False
+    assert "WHERE" in result.error
+
+
+def test_delete_without_where_is_rejected():
+    result = validate_sql("DELETE FROM customers", SCHEMA)
+    assert result.ok is False
+    assert "WHERE" in result.error
+
+
+def test_delete_with_where_still_requires_confirmation():
+    result = validate_sql("DELETE FROM customers WHERE id = 1", SCHEMA)
+    assert result.ok is True
+    assert result.query_type == "delete"
+    assert result.requires_confirmation is True
+
+
+def test_banned_word_as_column_identifier_is_allowed():
+    schema = {
+        "tables": {
+            "customers": {
+                "columns": [
+                    {"name": "id", "type": "int", "key": "PRI"},
+                    {"name": "create", "type": "datetime", "key": ""},
+                ]
+            }
+        }
+    }
+    result = validate_sql("SELECT `create` FROM customers", schema)
+    assert result.ok is True
+
+
 def test_valid_insert_with_column_list_requires_confirmation():
     result = validate_sql(
         "INSERT INTO customers (name, email, city) VALUES ('QueryMind Test', 'qm@example.com', 'Testville')",

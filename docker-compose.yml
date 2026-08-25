@@ -26,6 +26,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-300}
+      # Only set this to your proxy's IP when the backend sits behind one —
+      # never "*" — or clients can spoof X-Forwarded-For to dodge rate limits.
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:

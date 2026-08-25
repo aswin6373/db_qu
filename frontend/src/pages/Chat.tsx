@@ -5,7 +5,6 @@ import { useChatSessions } from "../components/ChatSessionsContext";
 import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
 import { apiRequest } from "../lib/api";
-import { downloadQueryReport } from "../lib/reportPdf";
 import { ChatMessage, Connection, QueryResponse } from "../types/api";
 
 type Props = {
@@ -433,6 +432,9 @@ function ResultBlock({
     if (isExporting) return;
     setIsExporting(true);
     try {
+      // Lazy-loaded: keeps jsPDF and its canvas dependencies out of the
+      // initial bundle; they are only fetched when a report is exported.
+      const { downloadQueryReport } = await import("../lib/reportPdf");
       await downloadQueryReport({
         chartSvg: chartRef.current?.querySelector("svg") ?? null,
         columns: result.columns,

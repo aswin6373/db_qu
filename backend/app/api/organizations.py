@@ -16,6 +16,7 @@ from app.schemas.dto import (
     IntegrationUpdate,
     MemberCreate,
     MemberResponse,
+    OrganizationResponse,
 )
 from app.services.ai import AIConfig
 from app.services.crypto import decrypt_secret, encrypt_secret
@@ -49,9 +50,14 @@ def _iso_utc(value: datetime | None) -> str | None:
     return value.isoformat()
 
 
-@router.get("/me")
-def my_organization(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.get(Organization, user.organization_id)
+@router.get("/me", response_model=OrganizationResponse)
+def my_organization(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> OrganizationResponse:
+    # Response model is mandatory here: returning the raw ORM row would leak
+    # internal columns such as encrypted_ai_key to every member.
+    organization = db.get(Organization, user.organization_id)
+    if organization is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return OrganizationResponse(id=organization.id, name=organization.name)
 
 
 def _integration_response(organization: Organization) -> IntegrationResponse:
@@ -86,7 +92,13 @@ def update_integration(payload: IntegrationUpdate, user: User = Depends(require_
         organization.encrypted_ai_key = encrypt_secret(payload.api_key.strip())
     organization.ai_provider = payload.provider
     organization.ai_model = (payload.model or "").strip() or None
-    organization.ai_base_url = (payload.base_url or "").strip() or None
+    # A base URL only makes sense for self-hosted providers; switching away
+    # from Ollama must not leave a stale server address behind.
+    organization.ai_base_url = (
+        (payload.base_url or "").strip() or None
+        if payload.provider == "ollama"
+        else None
+    )
     if payload.provider == "ollama" and not organization.ai_base_url:
         raise HTTPException(status_code=400, detail="Ollama needs a base URL (e.g. http://your-server:11434)")
     db.commit()
@@ -155,7 +167,9 @@ def remove_member(member_id: int, user: User = Depends(require_admin), db: Sessi
         raise HTTPException(status_code=400, detail="Admins cannot be removed")
 
     # Keep the organization's query history, but drop the member's personal chats.
-    db.execute(update(QueryLog).where(QueryLog.user_id == member.id).values(user_id=user.id))
+    # Their logs keep user_id=None — history is never silently re-attributed
+    # to another person, which would corrupt the audit trail.
+    db.execute(update(QueryLog).where(QueryLog.user_id == member.id).values(user_id=None))
     member_sessions = db.scalars(select(ChatSession).where(ChatSession.user_id == member.id)).all()
     for session in member_sessions:
         db.execute(delete(Message).where(Message.session_id == session.id))

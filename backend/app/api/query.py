@@ -1,6 +1,7 @@
 import json
+import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,6 +26,12 @@ from app.services.agent import AgentError, agent_supported, run_agent
 from app.services.sql_validator import validate_sql
 
 router = APIRouter(prefix="/query", tags=["query"])
+logger = logging.getLogger("querymind")
+
+
+def _utcnow() -> datetime:
+    # Naive UTC to match the server_default func.now() columns.
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # Questions that benefit from multi-step reasoning get the agent; everything
 # else stays on the fast one-shot pipeline.
@@ -110,7 +117,7 @@ def _record_exchange(db: Session, session: ChatSession, question: str, response:
         )
     if session.title == "New chat":
         session.title = question.strip()[:80] or "New chat"
-    session.updated_at = datetime.utcnow()
+    session.updated_at = _utcnow()
     db.commit()
 
 
@@ -144,7 +151,7 @@ def _finalize_confirmed_message(db: Session, user: User, query_id: int, response
             result_json=json.dumps(payload, default=str),
         )
     )
-    session.updated_at = datetime.utcnow()
+    session.updated_at = _utcnow()
     db.commit()
 
 
@@ -307,7 +314,8 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         except HTTPException:
             raise
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
+            logger.error("query_execution_failed error=%s", exc, exc_info=True)
+            raise HTTPException(status_code=400, detail="The database rejected this query. Rephrase the question and try again.") from exc
 
     summary = summarize_result(
         payload.question, columns, rows, validation.requires_confirmation, query_type=validation.query_type,
@@ -344,7 +352,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
 @router.post("/{query_id}/confirm", response_model=QueryGenerateResponse)
 def confirm(query_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     log = db.scalar(
-        select(QueryLog).where(QueryLog.id == query_id, QueryLog.organization_id == user.organization_id)
+        select(QueryLog).where(
+        QueryLog.id == query_id,
+        QueryLog.organization_id == user.organization_id,
+        QueryLog.user_id == user.id,
+    )
     )
     if log is None:
         raise HTTPException(status_code=404, detail="Query not found")
@@ -377,7 +389,11 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Database query failed: {exc}") from exc
+        logger.error("confirm_execution_failed query=%s error=%s", query_id, exc, exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail="The database rejected this query. Check the connection and try again.",
+        ) from exc
     log.status = "executed"
     log.result_preview = serialize_result_preview(columns, rows)
     db.commit()

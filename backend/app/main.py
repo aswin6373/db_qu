@@ -4,15 +4,14 @@ from collections import defaultdict, deque
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from sqlalchemy import text
 
 from app.api import auth, chat, connections, organizations, query
 from app.core.config import get_settings
 from app.db.session import engine
-from app.models import entities
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,41 +23,45 @@ logger = logging.getLogger("querymind")
 app = FastAPI(title="QueryMind API")
 settings = get_settings()
 
-
-def ensure_schema_upgrades() -> None:
-    statements = [
-        "ALTER TABLE chat_sessions ADD COLUMN updated_at TIMESTAMP NULL",
-        "ALTER TABLE messages ADD COLUMN query_id INTEGER",
-        "ALTER TABLE messages ADD COLUMN result_json TEXT",
-        "ALTER TABLE db_connections ADD COLUMN ssh_host VARCHAR(255)",
-        "ALTER TABLE db_connections ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22",
-        "ALTER TABLE db_connections ADD COLUMN ssh_username VARCHAR(255)",
-        "ALTER TABLE db_connections ADD COLUMN encrypted_ssh_password TEXT",
-    ]
-    with engine.begin() as connection:
-        for statement in statements:
-            try:
-                connection.execute(text(statement))
-                logger.info("schema_upgrade applied=%s", statement)
-            except Exception:
-                pass
-
-
-ensure_schema_upgrades()
+logger.info(
+    "starting service=%s environment=%s ai_provider=%s",
+    settings.app_name,
+    settings.environment,
+    settings.llm_provider,
+)
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Fixed-window per-IP limiter.
+
+    In-memory by design (no external store required); entries are swept
+    periodically so idle clients cannot grow the table without bound.
+    Schema changes belong to Alembic (`alembic upgrade head`), never to
+    import-time DDL.
+    """
+
     MAX_TRACKED_IPS = 10_000
+    PRUNE_EVERY_REQUESTS = 256
     HEALTH_PATHS = {"/health", "/health/readiness"}
 
     def __init__(self, app, limit_per_minute: int):
         super().__init__(app)
         self.limit_per_minute = limit_per_minute
         self._hits: dict[str, deque[float]] = defaultdict(deque)
+        self._requests_since_prune = 0
 
     def _prune(self, hits: deque[float], now: float) -> None:
         while hits and now - hits[0] > 60.0:
             hits.popleft()
+
+    def _prune_stale_ips(self, now: float) -> None:
+        stale = [
+            ip
+            for ip, hits in self._hits.items()
+            if not hits or now - hits[-1] > 60.0
+        ]
+        for ip in stale[: max(0, len(self._hits) - self.MAX_TRACKED_IPS // 2)]:
+            del self._hits[ip]
 
     async def dispatch(self, request: Request, call_next):
         try:
@@ -76,10 +79,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         client_ip = request.client.host if request.client else "unknown"
         now = time.monotonic()
-        if len(self._hits) > self.MAX_TRACKED_IPS:
-            stale = [ip for ip, hits in self._hits.items() if not hits]
-            for ip in stale[: len(self._hits) - self.MAX_TRACKED_IPS]:
-                del self._hits[ip]
+        self._requests_since_prune += 1
+        if (
+            self._requests_since_prune >= self.PRUNE_EVERY_REQUESTS
+            or len(self._hits) > self.MAX_TRACKED_IPS
+        ):
+            self._requests_since_prune = 0
+            self._prune_stale_ips(now)
         hits = self._hits[client_ip]
         self._prune(hits, now)
         if len(hits) >= self.limit_per_minute:
@@ -98,13 +104,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logger.info(
-    "starting service=%s environment=%s ai_provider=%s",
-    settings.app_name,
-    settings.environment,
-    settings.llm_provider,
-)
-
 app.include_router(auth.router)
 app.include_router(organizations.router)
 app.include_router(connections.router)
@@ -119,14 +118,15 @@ def health():
 
 @app.get("/health/readiness")
 def readiness():
-    checks = {
-        "database": "unknown",
-        "ai_provider": get_settings().llm_provider,
-        "gemini_key": "set" if get_settings().gemini_api_key else "missing",
-        "encryption_key": "set" if get_settings().fernet_key else "missing",
-    }
-    with engine.connect() as connection:
-        connection.execute(text("SELECT 1"))
-        checks["database"] = "ok"
-    ready = checks["database"] == "ok" and checks["encryption_key"] == "set"
-    return {"ready": ready, "checks": checks}
+    # Deliberately terse: this endpoint is public, so it must not disclose
+    # provider names or which secrets are configured.
+    checks = {"database": "unknown"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+    except Exception:
+        logger.exception("readiness_database_check_failed")
+        checks["database"] = "error"
+    ready = checks["database"] == "ok"
+    return JSONResponse({"ready": ready, "checks": checks}, status_code=200 if ready else 503)

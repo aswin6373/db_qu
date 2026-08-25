@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, Eye, EyeOff, Loader2, PartyPopper, PlugZap, ShieldCheck, UserRound } from "lucide-react";
+import { apiRequest } from "../lib/api";
 
 type Props = {
   token: string;
@@ -67,7 +68,8 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
     setFeedback(null);
     setSaving(true);
     try {
-      await fetchWithToken("/connections", form);
+      // Shared client: consistent errors plus the global auth-expired handler.
+      await apiRequest<unknown>("/connections", { method: "POST", body: JSON.stringify(form) }, token);
       setConnectedName(form.name);
       setFeedback(null);
       setStep(3);
@@ -76,20 +78,6 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function fetchWithToken(path: string, body: unknown) {
-    const response = await fetch(`${import.meta.env.VITE_API_URL ?? ""}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body)
-    });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      const detail = payload?.detail;
-      throw new Error(typeof detail === "string" ? detail : "Connection failed — check your details and try again.");
-    }
-    return response.json();
   }
 
   return (

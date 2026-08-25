@@ -183,6 +183,24 @@ def _recent_history(db: Session, user: User, session_id: int | None, limit: int 
     return [{"role": message.role, "content": message.content} for message in reversed(rows)]
 
 
+def _mentions_known_schema(question: str, schema: dict) -> bool:
+    """True when the question already names a real table or column. Such
+    questions skip the clarity LLM round trip: the SQL generator validates
+    against the schema anyway, so an extra pre-check only adds latency."""
+    lowered = question.lower()
+    tables = schema.get("tables") or {}
+    for table, meta in tables.items():
+        name = str(table).lower()
+        variants = {name, name.rstrip("s"), name.replace("_", " ")}
+        if any(variant and re.search(rf"\b{re.escape(variant)}\b", lowered) for variant in variants):
+            return True
+        for column in meta.get("columns", []):
+            column_name = str(column.get("name", "")).lower()
+            if len(column_name) > 2 and re.search(rf"\b{re.escape(column_name)}\b", lowered):
+                return True
+    return False
+
+
 def _is_followup_answer(chat_session: ChatSession | None, db: Session) -> bool:
     """True when the previous assistant turn was a clarifying question or a
     meta answer (both are stored without SQL): the current message is a
@@ -333,7 +351,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     # generator from the conversation — the clarity pre-check would only add
     # an LLM round trip (and can ping-pong clarifications). Past the time
     # budget there is no room for it either.
-    if not _is_followup_answer(chat_session, db) and time.monotonic() < deadline:
+    if (
+        not _is_followup_answer(chat_session, db)
+        and not _mentions_known_schema(payload.question, schema)
+        and time.monotonic() < deadline
+    ):
         try:
             clarifying_question = evaluate_clarity(payload.question, schema, history, ai_config, db_type=connection.db_type or "mysql")
         except Exception:

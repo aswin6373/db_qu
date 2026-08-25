@@ -453,7 +453,7 @@ Rules:
 {SQL_RULES}
 {_history_block(history)}
 Schema:
-{json.dumps(schema, indent=2)}
+{_schema_block(schema)}
 
 Latest user request:
 {question}

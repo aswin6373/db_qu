@@ -30,7 +30,10 @@ class Settings(BaseSettings):
     postgres_connect_timeout: int = 5
     postgres_statement_timeout_ms: int = 30000
     max_result_rows: int = 500
-    llm_timeout_seconds: int = 20
+    # Per-LLM-call cap. Kept low so one stalled call cannot eat the whole
+    # request budget: deadline check (45s) + this overshoot stays under the
+    # 60s Vercel maxDuration, so the answer always reaches the browser.
+    llm_timeout_seconds: int = 12
     # Wall-clock budget for one /query/generate request. Optional LLM stages
     # (clarity check, summary, agent rescue) are skipped once it is spent so
     # the request always answers within serverless limits (Vercel maxDuration).

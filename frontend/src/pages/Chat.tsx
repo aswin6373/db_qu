@@ -33,12 +33,33 @@ const SUGGESTIONS = [
   "Which columns look like they need an index?"
 ];
 
+// Mirrors the backend's agent routing (_AGENT_HINT_RE / _WRITE_INTENT_RE in
+// query.py). Purely cosmetic: questions the backend hands to the multi-step
+// agent get the deeper "agent at work" indicator instead of the plain one.
+const AGENT_HINT_RE = new RegExp(
+  [
+    "\\b(?:why|how come|compare|comparison|versus|trend|over time|growth|drop|dropped|decline|increase|decrease|correlat\\w*|relationship|break\\s?down|insight)\\b",
+    "\\bper\\s+(?:month|week|day|quarter|year)\\b",
+    "\\bby\\s+(?:month|week|quarter|year|category|region|status)\\b",
+    "\\bwhich\\s+[\\w ]{0,30}?\\b(?:most|least|best|worst|highest|lowest)\\b",
+    "\\btop\\s+\\d+\\b"
+  ].join("|"),
+  "i"
+);
+const WRITE_INTENT_RE = /\b(?:insert|update|delete|drop|create|remove|modify|alter|truncate|rename)\b/i;
+
+function looksLikeAgentQuestion(question: string): boolean {
+  return AGENT_HINT_RE.test(question) && !WRITE_INTENT_RE.test(question);
+}
+
 export function Chat({ token, connections, onActivity, onOpenConnections }: Props) {
   const { sessions, activeId, ensureSession, refresh } = useChatSessions();
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [question, setQuestion] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // True while a question the backend routes to the multi-step agent is in flight.
+  const [isAgentWorking, setIsAgentWorking] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmingQueryId, setConfirmingQueryId] = useState<number | null>(null);
   // Nonce bumped whenever the module-level decision sets change.
@@ -110,6 +131,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     setQuestion("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setMessages((items) => [...items, { id: tempIdRef.current--, role: "user", content: nextQuestion }]);
+    setIsAgentWorking(looksLikeAgentQuestion(nextQuestion));
     setIsSending(true);
     try {
       const sessionId = await ensureSession(Number(selectedConnectionId));
@@ -141,6 +163,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
       setMessages((items) => [...items, { id: tempIdRef.current--, role: "assistant", content: message, isError: true }]);
     } finally {
       setIsSending(false);
+      setIsAgentWorking(false);
     }
   }
 
@@ -237,12 +260,24 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
               {isSending && (
                 <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
-                  <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
-                    Working through your question
-                    <span className="flex gap-1">
-                      <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
-                    </span>
-                  </p>
+                  {isAgentWorking ? (
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                        Agent is analyzing your database
+                        <span className="flex gap-1">
+                          <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-400">Running queries step by step to build your answer…</p>
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                      Working through your question
+                      <span className="flex gap-1">
+                        <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
+                      </span>
+                    </p>
+                  )}
                 </MessageRow>
               )}
 

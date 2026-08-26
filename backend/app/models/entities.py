@@ -120,4 +120,9 @@ class QueryLog(Base):
     query_type: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False)
     result_preview: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    # Audit fields for the Changes page: which tables the statement touched
+    # (JSON list) and who confirmed a pending write, when.
+    affected_tables: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    confirmed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

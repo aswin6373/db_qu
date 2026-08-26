@@ -112,6 +112,23 @@ class QueryGenerateResponse(BaseModel):
     visualization: str = "table"
 
 
+class ChangeLogEntry(BaseModel):
+    """One data change (INSERT/UPDATE/DELETE) for the workspace audit page."""
+
+    id: int
+    user_name: str
+    user_email: str | None = None
+    question: str
+    sql: str
+    query_type: str
+    status: str
+    tables: list[str] = []
+    connection_name: str | None = None
+    confirmed_at: str | None = None
+    confirmed_by: str | None = None
+    created_at: str | None = None
+
+
 class SchemaEdge(BaseModel):
     from_: str = Field(alias="from")
     to: str

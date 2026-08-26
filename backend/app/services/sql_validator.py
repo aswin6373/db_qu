@@ -128,6 +128,23 @@ def _has_outer_where(statement) -> bool:
     return walk(statement)
 
 
+def extract_table_names(sql: str) -> list[str]:
+    """Best-effort table names referenced by a statement, for the audit log.
+
+    Never raises - a parse quirk must not break query logging. Capped at 10
+    names so pathological SQL cannot bloat the log row."""
+    try:
+        cleaned = sqlparse.format(sql, strip_comments=True).strip()
+        statements = [statement for statement in sqlparse.parse(cleaned) if str(statement).strip()]
+        if not statements:
+            return []
+        statement = statements[0]
+        dml = next((token.value.upper() for token in statement.flatten() if token.ttype is DML), "")
+        return sorted(_extract_table_names(statement, dml))[:10]
+    except Exception:
+        return []
+
+
 def _extract_table_names(statement, dml: str) -> set[str]:
     names: set[str] = set()
     expect_next = False

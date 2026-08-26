@@ -3,15 +3,16 @@ import logging
 from datetime import datetime, timezone
 
 from cryptography.fernet import InvalidToken
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.api.dependencies import get_current_user, require_admin
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models import ChatSession, DBConnection, Message, Organization, QueryLog, User
 from app.schemas.dto import (
+    ChangeLogEntry,
     DashboardResponse,
     IntegrationResponse,
     IntegrationUpdate,
@@ -187,6 +188,61 @@ def remove_member(member_id: int, user: User = Depends(require_admin), db: Sessi
     db.delete(member)
     db.commit()
     return Response(status_code=204)
+
+
+@router.get("/changes", response_model=list[ChangeLogEntry])
+def change_log(
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Workspace audit trail: every INSERT/UPDATE/DELETE attempt — who asked,
+    when, what, and which tables. Read-only for all members; entries are never
+    deletable from the UI."""
+    confirmer = aliased(User)
+    rows = db.execute(
+        select(QueryLog, User, confirmer, DBConnection.name)
+        .join(User, User.id == QueryLog.user_id, isouter=True)
+        .join(confirmer, confirmer.id == QueryLog.confirmed_by, isouter=True)
+        .join(DBConnection, DBConnection.id == QueryLog.connection_id, isouter=True)
+        .where(
+            QueryLog.organization_id == user.organization_id,
+            func.lower(QueryLog.query_type) != "select",
+        )
+        .order_by(QueryLog.created_at.desc(), QueryLog.id.desc())
+        .limit(limit)
+        .offset(offset)
+    ).all()
+
+    def _display_name(account: User | None) -> str | None:
+        if account is None:
+            return None
+        return account.email.split("@", 1)[0]
+
+    entries: list[ChangeLogEntry] = []
+    for log, author, confirmed_by_account, connection_name in rows:
+        try:
+            tables = json.loads(log.affected_tables or "[]")
+        except (json.JSONDecodeError, TypeError):
+            tables = []
+        entries.append(
+            ChangeLogEntry(
+                id=log.id,
+                user_name=_display_name(author) or "Unknown",
+                user_email=author.email if author else None,
+                question=log.natural_language,
+                sql=log.generated_sql,
+                query_type=log.query_type,
+                status=log.status,
+                tables=tables if isinstance(tables, list) else [],
+                connection_name=connection_name,
+                confirmed_at=_iso_utc(log.confirmed_at),
+                confirmed_by=_display_name(confirmed_by_account),
+                created_at=_iso_utc(log.created_at),
+            )
+        )
+    return entries
 
 
 @router.get("/dashboard", response_model=DashboardResponse)

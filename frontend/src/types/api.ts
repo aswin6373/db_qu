@@ -101,6 +101,21 @@ export type Dashboard = {
   }>;
 };
 
+export type ChangeLogEntry = {
+  id: number;
+  user_name: string;
+  user_email?: string | null;
+  question: string;
+  sql: string;
+  query_type: string;
+  status: string;
+  tables: string[];
+  connection_name?: string | null;
+  confirmed_at?: string | null;
+  confirmed_by?: string | null;
+  created_at?: string | null;
+};
+
 export type ChatSession = {
   id: number;
   title: string;

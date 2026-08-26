@@ -28,7 +28,13 @@ from app.services.ai import (
     summarize_result,
 )
 from app.services.agent import AgentError, agent_supported, run_agent
-from app.services.sql_validator import validate_sql
+from app.services.sql_validator import extract_table_names, validate_sql
+
+
+def _audit_tables(sql: str | None) -> str | None:
+    """JSON list of tables a statement touches, for the Changes audit page."""
+    tables = extract_table_names(sql or "")
+    return json.dumps(tables) if tables else None
 
 router = APIRouter(prefix="/query", tags=["query"])
 logger = logging.getLogger("querymind")
@@ -410,6 +416,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             query_type="SELECT",
             status="executed",
             result_preview=serialize_result_preview(result.columns, result.rows),
+            affected_tables=_audit_tables(result.sql),
         )
         db.add(log)
         db.commit()
@@ -543,6 +550,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         query_type=validation.query_type,
         status=status,
         result_preview=serialize_result_preview(columns, rows),
+        affected_tables=_audit_tables(sql),
     )
     db.add(log)
     db.commit()
@@ -615,6 +623,8 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
 
     if log.connection_id is None:
         log.status = "executed"
+        log.confirmed_at = _utcnow()
+        log.confirmed_by = user.id
         db.commit()
         response = QueryGenerateResponse(
             query_id=log.id,
@@ -664,6 +674,8 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
         connector.close()
     log.status = "executed"
     log.result_preview = serialize_result_preview(columns, rows)
+    log.confirmed_at = _utcnow()
+    log.confirmed_by = user.id
     db.commit()
     response = QueryGenerateResponse(
         query_id=log.id,

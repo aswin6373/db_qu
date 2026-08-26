@@ -5,6 +5,7 @@ import { Onboarding } from "./components/Onboarding";
 import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
 import { Chat } from "./pages/Chat";
+import { Changes } from "./pages/Changes";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
 import { Integrations } from "./pages/Integrations";
@@ -220,6 +221,7 @@ export function App() {
         {active === "dashboard" && <Dashboard connections={connections} dashboard={dashboard} insights={insights} schemas={schemas} onOpenConnections={() => setActive("connections")} />}
         {active === "connections" && <Connections isAdmin={isAdmin} token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
         {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
+        {active === "changes" && <Changes token={token} />}
         {active === "integrations" && isAdmin && <Integrations token={token} />}
         {active === "members" && isAdmin && user && <Members currentUserId={user.id} token={token} />}
       </Shell>

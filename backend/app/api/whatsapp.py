@@ -39,6 +39,7 @@ from app.api.connections import build_connector
 from app.api.dependencies import get_current_user
 from app.api.organizations import ai_config_for_org
 from app.api.query import (
+    _audit_tables,
     _is_followup_answer,
     _recent_history,
     _record_exchange,
@@ -736,6 +737,7 @@ def _answer_question(
             query_type=query_type,
             status=state,
             result_preview=serialize_result_preview(columns, rows),
+            affected_tables=_audit_tables(sql),
         )
         db.add(entry)
         db.commit()

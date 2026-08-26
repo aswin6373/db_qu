@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, Check, Database, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Check, Database, FilePenLine, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
 import { useChatSessions } from "./ChatSessionsContext";
 import { useDialog } from "../lib/useDialog";
@@ -35,6 +35,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
   const nav: NavItem[] = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "connections", label: "Connections", icon: Database },
+    { id: "changes", label: "Changes", icon: FilePenLine },
     ...(isAdmin
       ? [
           { id: "integrations", label: "Integrations", icon: Plug },

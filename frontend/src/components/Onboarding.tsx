@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, Eye, EyeOff, Loader2, PartyPopper, PlugZap, ShieldCheck, UserRound } from "lucide-react";
 import { NumberField } from "./NumberField";
+import { LogoMark } from "./LogoMark";
 import { apiRequest } from "../lib/api";
 
 type Props = {
@@ -89,8 +90,8 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-navy text-teal-soft">
-              <Database size={18} />
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-navy shadow-card">
+              <LogoMark className="h-6 w-6" />
             </span>
             <span className="text-lg font-extrabold tracking-tight text-navy">QueryMind</span>
           </div>

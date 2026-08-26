@@ -5,7 +5,6 @@
       <stop offset="1" stop-color="#1f6b65"/>
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="10.5" fill="#f7f4ec"/>
   <path d="M22.5 16.5v19.5a10.5 4.4 0 0 0 21 0V16.5Z" fill="url(#g)"/>
   <path d="M22.5 26.4a10.5 4.4 0 0 0 21 0" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="2.4"/>
   <ellipse cx="33" cy="16.5" rx="10.5" ry="4.4" fill="url(#g)" stroke="#fff" stroke-width="2.4"/>

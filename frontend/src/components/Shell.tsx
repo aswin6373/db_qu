@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, BarChart3, Check, Database, FilePenLine, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
+import { LogoMark } from "./LogoMark";
 import { useChatSessions } from "./ChatSessionsContext";
 import { useDialog } from "../lib/useDialog";
 import type { ChatSession, Connection } from "../types/api";
@@ -383,8 +384,8 @@ function SidebarContent({
 function Brand() {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal text-white shadow-lg shadow-teal/30">
-        <Database size={19} />
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream shadow-lg shadow-black/20">
+        <LogoMark className="h-7 w-7" />
       </span>
       <div>
         <strong className="block text-[15px] font-bold tracking-tight text-white">QueryMind</strong>

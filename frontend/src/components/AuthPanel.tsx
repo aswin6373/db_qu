@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowRight, Database, Github, Loader2, LogIn, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
+import { LogoMark } from "./LogoMark";
 
 type Props = {
   onToken: (token: string, options?: { onboard?: boolean; organizationName?: string }) => void;
@@ -46,8 +47,8 @@ export function AuthPanel({ onToken }: Props) {
       <header className="sticky top-0 z-30 border-b border-navy/5 bg-cream/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <a className="flex items-center gap-2.5" href="#top">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-navy text-teal-soft">
-              <Database size={18} />
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-navy shadow-card">
+              <LogoMark className="h-6 w-6" />
             </span>
             <span className="text-lg font-extrabold tracking-tight text-navy">QueryMind</span>
           </a>

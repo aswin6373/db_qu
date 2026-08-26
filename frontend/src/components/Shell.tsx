@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, Check, Database, FilePenLine, Loader2, LogOut, MessageSquarePlus, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, Check, Database, FilePenLine, Loader2, LogOut, MessageSquarePlus, MoreHorizontal, Pencil, Plug, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { NewChatDialog } from "./NewChatDialog";
 import { LogoMark } from "./LogoMark";
 import { useChatSessions } from "./ChatSessionsContext";
@@ -174,6 +174,48 @@ function SidebarContent({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [busySessionId, setBusySessionId] = useState<number | null>(null);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const [menu, setMenu] = useState<{ id: number; up: boolean } | null>(null);
+
+  // Close the options menu on any click outside the row that owns it, on
+  // Escape, and while the chat list scrolls.
+  useEffect(() => {
+    if (menu === null) return;
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("[data-chat-menu]")) return;
+      setMenu(null);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenu(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menu]);
+
+  function toggleMenu(id: number, anchor: HTMLElement) {
+    setMenu((current) => {
+      if (current?.id === id) return null;
+      // Flip the menu above the button when there is no room below, so the
+      // bottom of the list never clips it.
+      const up = anchor.getBoundingClientRect().bottom + 96 > window.innerHeight;
+      return { id, up };
+    });
+  }
+
+  function startRename(session: ChatSession) {
+    setMenu(null);
+    setRenamingId(session.id);
+    setRenameDraft(session.title);
+  }
+
+  function startDelete(session: ChatSession) {
+    setMenu(null);
+    setDeletingId(session.id);
+  }
 
   function startNewChat() {
     onRequestNewChat();
@@ -248,7 +290,7 @@ function SidebarContent({
       {/* Chat history — bottom section */}
       <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-navy/10 pt-4">
         <p className="eyebrow px-2 pb-2 text-navy-soft/60">Chats</p>
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 pb-2">
+        <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 pb-2" onScroll={() => setMenu(null)}>
           {isLoading ? (
             <div className="flex justify-center py-8 text-slate-400">
               <Loader2 className="animate-spin" size={18} />
@@ -289,7 +331,7 @@ function SidebarContent({
                   key={session.id}
                 >
                   <button
-                    className="min-w-0 flex-1 px-3 py-2 text-left text-[13px]"
+                    className="min-w-0 flex-1 py-2 pl-3 pr-2 text-left text-[13px]"
                     onClick={() => selectSession(session)}
                     title={session.title}
                     type="button"
@@ -323,31 +365,47 @@ function SidebarContent({
                       </button>
                     </span>
                   ) : (
-                    <span
-                      className={`reveal-touch absolute inset-y-0 right-1 flex items-center gap-0.5 bg-gradient-to-r from-transparent pl-10 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 ${
-                        isActive ? "to-white" : "to-cream"
-                      }`}
-                    >
+                    <>
                       <button
-                        aria-label={`Rename ${session.title}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy"
-                        onClick={() => {
-                          setRenamingId(session.id);
-                          setRenameDraft(session.title);
-                        }}
+                        aria-expanded={menu?.id === session.id}
+                        aria-haspopup="menu"
+                        aria-label={`Options for ${session.title}`}
+                        className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy ${
+                          menu?.id === session.id ? "bg-navy/10 text-navy opacity-100" : "opacity-50 group-hover:opacity-100"
+                        }`}
+                        data-chat-menu=""
+                        onClick={(event) => toggleMenu(session.id, event.currentTarget)}
                         type="button"
                       >
-                        <Pencil size={13} />
+                        <MoreHorizontal size={15} />
                       </button>
-                      <button
-                        aria-label={`Delete ${session.title}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-rose-600"
-                        onClick={() => setDeletingId(session.id)}
-                        type="button"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </span>
+                      {menu?.id === session.id && (
+                        <div
+                          className={`absolute right-1.5 z-20 w-36 overflow-hidden rounded-lg border border-navy/10 bg-white py-1 shadow-lift ${
+                            menu.up ? "bottom-8" : "top-8"
+                          }`}
+                          data-chat-menu=""
+                          role="menu"
+                        >
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-navy-soft transition hover:bg-navy/5 hover:text-navy"
+                            onClick={() => startRename(session)}
+                            role="menuitem"
+                            type="button"
+                          >
+                            <Pencil size={13} /> Rename
+                          </button>
+                          <button
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-rose-600 transition hover:bg-rose-500/10"
+                            onClick={() => startDelete(session)}
+                            role="menuitem"
+                            type="button"
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

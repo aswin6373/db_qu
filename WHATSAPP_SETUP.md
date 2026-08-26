@@ -79,7 +79,8 @@ Commands: `help`, `new chat` (`reset`), `disconnect`.
   Business Verification, get the display name approved.
 - Replying within 24h of a user's message is free; proactive outbound needs
   paid templates (not used by this bot).
-- Charts need matplotlib (already in requirements.txt); without it the bot
-  still replies with summary + table.
+- Charts and result tables need matplotlib (already in requirements.txt) —
+  both are sent as PNG images. Without matplotlib the bot still replies with
+  the text summary (no table/chart images).
 - On Vercel set `WHATSAPP_INLINE_PROCESSING=true` so processing finishes
   inside the request (budget: `WHATSAPP_TIME_BUDGET_SECONDS`, default 30).

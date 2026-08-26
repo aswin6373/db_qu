@@ -8,6 +8,7 @@ from app.api import whatsapp as whatsapp_module
 from app.core.config import get_settings
 from app.core.security import hash_password
 from app.models import ChatSession, DBConnection, Organization, User, WhatsAppBinding
+from app.services.crypto import encrypt_secret
 from conftest import TestingSessionLocal
 
 APP_SECRET = "test-app-secret"
@@ -85,7 +86,7 @@ def wa_config(client, monkeypatch):
         host="localhost",
         port=3306,
         username="u",
-        encrypted_password="x",
+        encrypted_password=encrypt_secret("db-password"),
         database_name="app",
         schema_cache='{"tables": {"orders": {"columns": [{"name": "id", "type": "int"}]}}}',
     )
@@ -302,17 +303,38 @@ def test_help_command_replies_even_when_unpaired(client, wa_config, sent_message
     assert "QueryMind on WhatsApp" in sent_messages[0]["body"]
 
 
-def test_table_formatting():
-    columns = ["name", "revenue"]
-    rows = [
-        {"name": f"customer-{index}", "revenue": index * 10}
-        for index in range(20)
-    ]
-    small = whatsapp_module._format_table(columns, rows[:5])
-    assert "customer-0" in small
+def test_render_table_png():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    rows = [{"name": f"customer-{index}", "revenue": index * 10} for index in range(5)]
+    png = whatsapp_module._render_table_png(["name", "revenue"], rows)
+    assert png is not None
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    # Empty results never render an image.
+    assert whatsapp_module._render_table_png(["name"], []) is None
 
-    wide = whatsapp_module._format_table(columns, rows)
-    assert "+12 more row(s)" in wide
+
+def test_connect_page_shows_already_connected_notice(client, wa_config):
+    token = whatsapp_module._make_connect_token("15551234567")
+    client.post(
+        f"/whatsapp/connect?token={token}",
+        data={"email": USER_EMAIL, "password": USER_PASSWORD},
+    )
+    # Reopening a still-valid link shows the paired notice with a masked email.
+    response = client.get("/whatsapp/connect", params={"token": token})
+    assert "already connected" in response.text
+    assert "a***@example.com" in response.text
+    assert USER_EMAIL not in response.text
+
+
+def test_paired_question_sends_loading_indicator_first(client, wa_config, sent_messages):
+    token = whatsapp_module._make_connect_token("15551234567")
+    client.post(
+        f"/whatsapp/connect?token={token}",
+        data={"email": USER_EMAIL, "password": USER_PASSWORD},
+    )
+    _post_webhook(client, _payload("how many orders?", message_id="wamid.load1"))
+    assert sent_messages[0]["body"].startswith("⏳")
 
 
 def test_maybe_chart_skips_non_numeric():

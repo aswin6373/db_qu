@@ -73,6 +73,7 @@ logger = logging.getLogger("querymind.whatsapp")
 GRAPH_BASE = "https://graph.facebook.com"
 MAX_TABLE_ROWS = 8
 MAX_CELL_WIDTH = 28
+TABLE_MAX_COLUMNS = 6
 MAX_MESSAGE_CHARS = 4000  # WhatsApp hard-caps messages at 4096 chars
 CHART_MAX_ROWS = 12
 _TEMPORAL_LABEL_RE = re.compile(r"date|month|year|day|week|quarter|time", re.IGNORECASE)
@@ -368,6 +369,7 @@ _PAGE_HEAD = """<!DOCTYPE html>
   h1 { font-size: 20px; margin: 0 0 6px; color: #0f172a; line-height: 1.3; }
   p  { color: #475569; line-height: 1.55; font-size: 14px; margin: 0 0 14px; }
   .error { color: #be123c; font-size: 13px; margin: 0 0 12px; }
+  .ok    { color: #0f766e; font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
   .hint  { color: #94a3b8; font-size: 12px; margin: 16px 0 0; }
   form { display: grid; gap: 12px; }
   /* 16px input font size prevents iOS Safari from auto-zooming on focus. */
@@ -398,6 +400,14 @@ def _page(body: str, status_code: int = 200) -> HTMLResponse:
     return HTMLResponse(_PAGE_HEAD + body + _PAGE_TAIL, status_code=status_code)
 
 
+def _mask_email(email: str) -> str:
+    """Show enough to recognise the account, little enough to stay private."""
+    local, _, domain = email.partition("@")
+    if not domain:
+        return "***"
+    return f"{local[:1]}***@{domain}"
+
+
 @router.get("/connect")
 def connect_page(token: str = "", error: str = "") -> HTMLResponse:
     wa_number = _read_connect_token(token)
@@ -408,11 +418,30 @@ def connect_page(token: str = "", error: str = "") -> HTMLResponse:
             "QueryMind WhatsApp bot to get a fresh one.</p>",
             status_code=400,
         )
+
+    # Already paired? Tell the user instead of showing a bare form - signing in
+    # again is still allowed (it switches accounts; last login wins).
+    paired_html = ""
+    db = SessionLocal()
+    try:
+        binding = _binding_for(db, wa_number)
+        if binding is not None:
+            bound_user = db.get(User, binding.user_id)
+            if bound_user is not None:
+                paired_html = (
+                    '<p class="ok">&#10003; This number is already connected to '
+                    f"<b>{_mask_email(bound_user.email)}</b>. Continue chatting in "
+                    "WhatsApp, or sign in below to switch accounts.</p>"
+                )
+    finally:
+        db.close()
+
     error_html = f'<p class="error">{error}</p>' if error else ""
     form = (
         "<h1>Connect WhatsApp</h1>"
         f'<p>Linking number <b>&middot;&middot;&middot;{wa_number[-4:]}</b> to your '
         "QueryMind account.</p>"
+        f"{paired_html}"
         f"{error_html}"
         f"<form method=\"post\" action=\"/whatsapp/connect?token={token}\">"
         '<input name="email" type="email" required placeholder="Work email" '
@@ -561,8 +590,19 @@ def _process_message(sender: str, text: str) -> None:
             session.connection_id = connection.id
             db.commit()
 
+        # The pipeline (intent + SQL + execution) can take several seconds;
+        # acknowledge immediately so the chat doesn't feel dead.
+        _send_text(sender, "⏳ Working on it - querying your database and preparing the answer…")
         answer = _answer_question(db, org, user, session, connection, text)
         _send_text(sender, answer.text)
+        table_png = _render_table_png(answer.columns, answer.rows)
+        if table_png is not None:
+            caption = f"Result table - {len(answer.rows)} row(s)"
+            if len(answer.rows) > MAX_TABLE_ROWS:
+                caption += f" (showing first {MAX_TABLE_ROWS})"
+            if len(answer.columns) > TABLE_MAX_COLUMNS:
+                caption += f" - {len(answer.columns) - TABLE_MAX_COLUMNS} more column(s)"
+            _send_image(sender, table_png, caption)
         chart_png = _maybe_chart(answer.columns, answer.rows)
         if chart_png is not None:
             _send_image(sender, chart_png, answer.caption[:1000])
@@ -725,14 +765,12 @@ def _answer_question(
     if getattr(connector, "last_truncated", False):
         summary += f" (showing the first {len(rows)} rows)"
     query_id = log_query(sql, validation.query_type, "executed", columns, rows)
-    table = _format_table(columns, rows)
-    body = f"{summary}\n{table}" if table else summary
     return finish(
         QueryGenerateResponse(
             query_id=query_id,
             sql=sql,
             query_type=validation.query_type,
-            summary=body,
+            summary=summary,
             columns=columns,
             rows=rows,
         ),
@@ -771,43 +809,78 @@ def _run_agent_path(
         result.columns,
         result.rows,
     )
-    table = _format_table(result.columns, result.rows)
-    body = f"{result.summary}\n{table}" if table else result.summary
     return QueryGenerateResponse(
         query_id=query_id,
         sql=result.sql,
         query_type="SELECT",
-        summary=body,
+        summary=result.summary,
         columns=result.columns,
         rows=result.rows,
         steps=result.steps,
     )
 
 
-def _format_table(columns: list[str], rows: list[dict]) -> str:
-    """Monospace preformatted block - the closest WhatsApp gets to a table."""
+def _render_table_png(columns: list[str], rows: list[dict]) -> bytes | None:
+    """Render the result table as a styled PNG image (WhatsApp has no native
+    table rendering, and an image beats monospace text on phones)."""
     if not columns or not rows:
-        return ""
-    headers = [str(column)[:MAX_CELL_WIDTH] for column in columns]
-    matrix = [headers]
-    for row in rows[:MAX_TABLE_ROWS]:
-        matrix.append([str(row.get(column, ""))[:MAX_CELL_WIDTH] for column in columns])
-    widths = [
-        max(len(row[index]) for row in matrix if index < len(row))
-        for index in range(len(headers))
+        return None
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        logger.info("whatsapp_table_skipped matplotlib_unavailable")
+        return None
+
+    shown_columns = [str(column)[:MAX_CELL_WIDTH] for column in columns[:TABLE_MAX_COLUMNS]]
+    shown_rows = rows[:MAX_TABLE_ROWS]
+    cell_text = [
+        [str(row.get(column, ""))[:MAX_CELL_WIDTH] for column in columns[:TABLE_MAX_COLUMNS]]
+        for row in shown_rows
     ]
 
-    lines = [" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(matrix[0]))]
-    lines.append("-+-".join("-" * width for width in widths))
-    for row in matrix[1:]:
-        lines.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
-    if len(rows) > MAX_TABLE_ROWS:
-        lines.append(f"... +{len(rows) - MAX_TABLE_ROWS} more row(s)")
+    try:
+        widest_cell = max(
+            [len(column) for column in shown_columns]
+            + [len(cell) for row in cell_text for cell in row]
+            or [8]
+        )
+        fig_width = min(14.0, max(5.0, 0.11 * widest_cell * len(shown_columns) + 1.5))
+        fig_height = max(1.8, 0.42 * (len(shown_rows) + 1) + 0.8)
+        fig, axis = plt.subplots(figsize=(fig_width, fig_height), dpi=150)
+        axis.axis("off")
 
-    while len("\n".join(lines)) > MAX_MESSAGE_CHARS - 64 and len(lines) > 3:
-        lines.pop()
-    block = "\n".join(lines)
-    return f"```\n{block}\n```"
+        table = axis.table(
+            cellText=cell_text,
+            colLabels=shown_columns,
+            loc="upper center",
+            cellLoc="left",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        table.scale(1, 1.6)
+        for (row_index, _col_index), cell in table.get_celld().items():
+            cell.set_edgecolor("#e2e8f0")
+            if row_index == 0:
+                cell.set_facecolor("#0f766e")
+                cell.set_text_props(color="white", fontweight="bold")
+            elif row_index % 2 == 0:
+                cell.set_facecolor("#f1f5f9")
+            else:
+                cell.set_facecolor("#ffffff")
+
+        import io
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", bbox_inches="tight")
+        return buffer.getvalue()
+    except Exception:
+        logger.exception("whatsapp_table_render_failed")
+        return None
+    finally:
+        plt.close("all")
 
 
 def _as_float(value) -> float | None:

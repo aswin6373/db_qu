@@ -395,6 +395,38 @@ def test_maybe_chart_renders_bar():
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
 
 
+def test_my_status_requires_authentication(client, wa_config):
+    assert client.get("/whatsapp/my-status").status_code in {401, 403}
+
+
+def test_my_status_reflects_personal_pairing(client, wa_config, sent_messages):
+    """'Connected' must mean the SIGNED-IN user paired a number, not just that
+    the bot infrastructure is up."""
+    # A freshly registered user has no WhatsApp binding.
+    registered = client.post(
+        "/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "super-secret-1",
+            "organization_name": "Member Org",
+        },
+    )
+    assert registered.status_code == 200
+    token = registered.json()["access_token"]
+    unpaired = client.get("/whatsapp/my-status", headers={"Authorization": f"Bearer {token}"})
+    assert unpaired.status_code == 200
+    assert unpaired.json() == {"paired": False, "number_tail": None}
+
+    # After pairing through the magic-link flow, their status flips.
+    pairing_token = whatsapp_module._make_connect_token("15551234567")
+    client.post(
+        f"/whatsapp/connect?token={pairing_token}",
+        data={"email": "member@example.com", "password": "super-secret-1"},
+    )
+    paired = client.get("/whatsapp/my-status", headers={"Authorization": f"Bearer {token}"})
+    assert paired.json() == {"paired": True, "number_tail": "4567"}
+
+
 def test_maybe_chart_respects_max_rows_budget():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")

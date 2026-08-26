@@ -10,6 +10,8 @@ type Feedback = { kind: "success" | "error"; text: string };
 
 type WhatsAppStatus = { ready: boolean; charts: boolean; number?: string | null };
 
+type WhatsAppPairing = { paired: boolean; number_tail?: string | null };
+
 type Provider = "gemini" | "openai" | "ollama";
 
 const PROVIDERS: Array<{
@@ -66,6 +68,7 @@ export function Integrations({ token }: Props) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   const [whatsapp, setWhatsapp] = useState<WhatsAppStatus | null>(null);
+  const [pairing, setPairing] = useState<WhatsAppPairing | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +84,25 @@ export function Integrations({ token }: Props) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Personal pairing state for the signed-in account (separate from whether
+    // the bot itself is live — "Connected" must mean THIS user linked a number).
+    apiRequest<WhatsAppPairing>("/whatsapp/my-status", {}, token)
+      .then((data) => {
+        if (!cancelled) setPairing(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPairing(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const botReady = whatsapp?.ready === true;
+  const personallyPaired = pairing?.paired === true;
 
   useEffect(() => {
     let cancelled = false;
@@ -245,7 +267,16 @@ export function Integrations({ token }: Props) {
         <div className="min-w-0 flex-1">
           {whatsapp === null ? (
             <Loader2 className="animate-spin text-slate-400" size={18} />
-          ) : whatsapp.ready ? (
+          ) : !botReady ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
+              <p className="text-xs text-slate-500">
+                Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta
+                Cloud API access token, phone number ID, verify token, app secret) and point the
+                Meta webhook at <span className="font-mono">/whatsapp/webhook</span>.
+              </p>
+            </>
+          ) : personallyPaired ? (
             <>
               <p className="text-sm font-semibold text-slate-900">
                 WhatsApp AI chat is live
@@ -256,25 +287,25 @@ export function Integrations({ token }: Props) {
                 ) : null}
               </p>
               <p className="text-xs text-slate-500">
-                Message your bot's WhatsApp number to ask questions about the connected database —
-                answers arrive as chat messages with tables and charts. Say "help" in the chat for
-                examples. Tap "Open WhatsApp" to start chatting right away.
+                Your number{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""} is linked —
+                ask questions about the connected database and answers arrive as chat messages
+                with tables and charts. Say "help" in the chat for examples.
               </p>
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
+              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat is available</p>
               <p className="text-xs text-slate-500">
-                Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta
-                Cloud API access token, phone number ID, verify token, app secret, organization ID)
-                and point the Meta webhook at <span className="font-mono">/whatsapp/webhook</span>.
+                Your WhatsApp number isn't linked to your account yet. Tap "Open WhatsApp", send{" "}
+                <span className="font-mono">hi</span> to the bot, and you'll get a one-time login
+                link that connects this account.
               </p>
             </>
           )}
         </div>
-        {whatsapp !== null && (
+        {whatsapp !== null && botReady && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {whatsapp.ready && whatsapp.number && (
+            {whatsapp.number && (
               <a
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
                 href={`https://wa.me/${whatsapp.number}?text=hi`}
@@ -284,14 +315,20 @@ export function Integrations({ token }: Props) {
                 <MessageCircle size={13} /> Open WhatsApp
               </a>
             )}
-            <span
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                whatsapp.ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              <span className={`h-2 w-2 rounded-full ${whatsapp.ready ? "bg-emerald-500" : "bg-slate-400"}`} />
-              {whatsapp.ready ? "Connected" : "Not connected"}
-            </span>
+            {pairing !== null && (
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  personallyPaired ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${personallyPaired ? "bg-emerald-500" : "bg-amber-400"}`}
+                />
+                {personallyPaired
+                  ? `Connected${pairing?.number_tail ? ` ···${pairing.number_tail}` : ""}`
+                  : "Not linked"}
+              </span>
+            )}
           </div>
         )}
       </div>

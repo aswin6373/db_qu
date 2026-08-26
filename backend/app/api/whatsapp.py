@@ -29,13 +29,14 @@ from collections import OrderedDict
 from urllib.parse import parse_qs, quote
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.responses import HTMLResponse, JSONResponse, Response
 
 from app.api.connections import build_connector
+from app.api.dependencies import get_current_user
 from app.api.organizations import ai_config_for_org
 from app.api.query import (
     _is_followup_answer,
@@ -46,7 +47,7 @@ from app.api.query import (
 )
 from app.core.config import get_settings
 from app.core.security import verify_password
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, get_db
 from app.models import (
     ChatSession,
     DBConnection,
@@ -190,6 +191,25 @@ def status():
     if settings.whatsapp_configured:
         payload["number"] = _bot_display_number()
     return payload
+
+
+@router.get("/my-status")
+def my_status(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """The signed-in account's personal pairing state.
+
+    "Connected" on the Integrations card must mean THIS user linked their
+    WhatsApp number - the public /status only says the bot infrastructure is
+    up, which is true for everyone and says nothing about the viewer."""
+    binding = db.scalar(
+        select(WhatsAppBinding).where(
+            WhatsAppBinding.user_id == user.id,
+            WhatsAppBinding.organization_id == user.organization_id,
+        )
+    )
+    return {
+        "paired": binding is not None,
+        "number_tail": binding.wa_number[-4:] if binding is not None else None,
+    }
 
 
 @router.get("/webhook")

@@ -13,3 +13,4 @@ pydantic-settings==2.7.1
 httpx==0.28.1
 email-validator==2.2.0
 paramiko==3.4.1
+matplotlib==3.10.1

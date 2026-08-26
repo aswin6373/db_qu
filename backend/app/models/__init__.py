@@ -1,3 +1,19 @@
-from app.models.entities import ChatSession, DBConnection, Message, Organization, QueryLog, User
+from app.models.entities import (
+    ChatSession,
+    DBConnection,
+    Message,
+    Organization,
+    QueryLog,
+    User,
+    WhatsAppBinding,
+)
 
-__all__ = ["ChatSession", "DBConnection", "Message", "Organization", "QueryLog", "User"]
+__all__ = [
+    "ChatSession",
+    "DBConnection",
+    "Message",
+    "Organization",
+    "QueryLog",
+    "User",
+    "WhatsAppBinding",
+]

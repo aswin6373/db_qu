@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { CheckCircle2, Cpu, Eye, EyeOff, Loader2, Plug, ShieldCheck, Trash2, X, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, Eye, EyeOff, Loader2, MessageCircle, Plug, ShieldCheck, Trash2, X, XCircle } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { apiRequest } from "../lib/api";
 import { AIIntegration } from "../types/api";
@@ -7,6 +7,8 @@ import { AIIntegration } from "../types/api";
 type Props = { token: string };
 
 type Feedback = { kind: "success" | "error"; text: string };
+
+type WhatsAppStatus = { ready: boolean; charts: boolean };
 
 type Provider = "gemini" | "openai" | "ollama";
 
@@ -63,6 +65,22 @@ export function Integrations({ token }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [whatsapp, setWhatsapp] = useState<WhatsAppStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Public endpoint — no token needed; admins and members see the same state.
+    apiRequest<WhatsAppStatus>("/whatsapp/status")
+      .then((data) => {
+        if (!cancelled) setWhatsapp(data);
+      })
+      .catch(() => {
+        if (!cancelled) setWhatsapp({ ready: false, charts: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +234,53 @@ export function Integrations({ token }: Props) {
               </button>
             )}
           </div>
+        )}
+      </div>
+
+      {/* WhatsApp AI chat */}
+      <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
+          <MessageCircle size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          {whatsapp === null ? (
+            <Loader2 className="animate-spin text-slate-400" size={18} />
+          ) : whatsapp.ready ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900">
+                WhatsApp AI chat is live
+                {whatsapp.charts ? (
+                  <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    charts on
+                  </span>
+                ) : null}
+              </p>
+              <p className="text-xs text-slate-500">
+                Message your bot's WhatsApp number to ask questions about the connected database —
+                answers arrive as chat messages with tables and charts. Say "help" in the chat for
+                examples.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
+              <p className="text-xs text-slate-500">
+                Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta
+                Cloud API access token, phone number ID, verify token, app secret, organization ID)
+                and point the Meta webhook at <span className="font-mono">/whatsapp/webhook</span>.
+              </p>
+            </>
+          )}
+        </div>
+        {whatsapp !== null && (
+          <span
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+              whatsapp.ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${whatsapp.ready ? "bg-emerald-500" : "bg-slate-400"}`} />
+            {whatsapp.ready ? "Connected" : "Not connected"}
+          </span>
         )}
       </div>
 

@@ -83,6 +83,26 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class WhatsAppBinding(Base):
+    """Links a WhatsApp sender number to a platform account.
+
+    Created through the magic-link pairing flow (/whatsapp/connect): the bot
+    never sees credentials - the user logs in on the web and this row is the
+    result. One WhatsApp number maps to exactly one account (last login wins).
+    """
+
+    __tablename__ = "whatsapp_bindings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # Digits only, international format without '+' (matches webhook 'from').
+    wa_number: Mapped[str] = mapped_column(String(32), unique=True, index=True, nullable=False)
+    linked_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class QueryLog(Base):
     __tablename__ = "query_logs"
 

@@ -43,8 +43,38 @@ class Settings(BaseSettings):
     ollama_fallback_timeout_seconds: int = 8
     forwarded_allow_ips: str = "127.0.0.1"
     confirmation_ttl_minutes: int = 15
+    # WhatsApp Cloud API bot (app/api/whatsapp.py). The first three values come
+    # from the Meta app dashboard; without them the webhook stays disabled.
+    whatsapp_verify_token: str = ""
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    whatsapp_app_secret: str = ""
+    # Public origin of THIS backend (e.g. https://api.example.com). Used to
+    # build the magic links users tap to pair their WhatsApp number.
+    whatsapp_connect_base_url: str = ""
+    # Pairing links expire this fast - treat them like one-time passwords.
+    whatsapp_connect_token_ttl_minutes: int = 15
+    # Comma-separated allowlist of sender numbers (digits only, empty = open).
+    # Intended for testing only; production auth is per-user via pairing.
+    whatsapp_allowed_numbers: str = ""
+    whatsapp_graph_version: str = "v21.0"
+    # Wall-clock budget for answering one WhatsApp message (Meta retries
+    # webhooks that respond too slowly, so this stays under /query's budget).
+    whatsapp_time_budget_seconds: int = 30
+    # Serverless platforms may freeze background threads right after the HTTP
+    # response returns; flip this on there so processing finishes inside the
+    # request instead (self-hosted Docker is fine with the default).
+    whatsapp_inline_processing: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @property
+    def whatsapp_configured(self) -> bool:
+        return bool(
+            self.whatsapp_verify_token
+            and self.whatsapp_access_token
+            and self.whatsapp_phone_number_id
+        )
 
     @property
     def encryption_key(self) -> bytes:

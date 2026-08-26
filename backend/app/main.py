@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.api import auth, chat, connections, organizations, query
+from app.api import auth, chat, connections, organizations, query, whatsapp
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -133,6 +133,7 @@ app.include_router(organizations.router)
 app.include_router(connections.router)
 app.include_router(query.router)
 app.include_router(chat.router)
+app.include_router(whatsapp.router)
 
 
 @app.get("/health")

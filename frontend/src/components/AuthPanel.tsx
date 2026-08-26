@@ -225,6 +225,27 @@ export function AuthPanel({ onToken }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Product demo video */}
+            <div className="mx-auto mt-12 max-w-3xl">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-teal">See it in action</p>
+              <h3 className="mt-2 text-center text-xl font-bold tracking-tight text-navy sm:text-2xl">
+                QueryMind running on a real database
+              </h3>
+              <div className="mt-6 overflow-hidden rounded-2xl border border-navy/10 bg-navy shadow-[0_24px_60px_-20px_rgba(22,50,79,0.35)]">
+                <video
+                  className="aspect-video w-full"
+                  controls
+                  playsInline
+                  poster="/demo-poster.jpg"
+                  preload="metadata"
+                  src="/demo.mp4"
+                />
+              </div>
+              <p className="mt-3 text-center text-xs text-navy-soft/60">
+                A quick walkthrough — connect a database, ask in plain English, run validated SQL.
+              </p>
+            </div>
           </div>
         </section>
 

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowRight, Database, Github, Loader2, LogIn, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
+import { ArrowRight, BarChart3, Database, FileText, Github, Loader2, LogIn, MessageCircle, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { LogoMark } from "./LogoMark";
 
@@ -59,7 +59,9 @@ export function AuthPanel({ onToken }: Props) {
           </nav>
           <a
             className="hidden items-center gap-2 rounded-xl border border-navy/15 bg-white px-4 py-2 text-sm font-semibold text-navy shadow-sm transition hover:-translate-y-0.5 hover:shadow sm:inline-flex"
-            href="#get-started"
+            href="https://github.com/aswin6373/db_qu"
+            rel="noreferrer"
+            target="_blank"
           >
             <Github size={16} /> Star us
             <span className="rounded-md bg-teal-soft px-1.5 py-0.5 text-xs font-bold text-teal-dark">beta</span>
@@ -90,7 +92,7 @@ export function AuthPanel({ onToken }: Props) {
               The <TypewriterWord /> SQL Agent
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-navy-soft lg:mx-0">
-              Natural language <Dot /> Validated SQL <Dot /> Guarded writes <Dot /> Schema-aware
+              Natural language <Dot /> Validated SQL <Dot /> Guarded writes <Dot /> WhatsApp <Dot /> AI charts
             </p>
             <p className="mx-auto mt-3 max-w-xl text-[15px] leading-7 text-navy-soft/80 lg:mx-0">
               Let your team query the company database in plain English — every statement reviewed, every write
@@ -121,10 +123,13 @@ export function AuthPanel({ onToken }: Props) {
             </div>
 
             {/* Feature strip */}
-            <div className="mt-12 grid gap-3 sm:grid-cols-3" id="features">
-              <LandingFeature icon={<ShieldCheck size={17} />} title="Validated SQL" text="Every statement parsed and checked against your live schema." />
+            <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" id="features">
+              <LandingFeature icon={<ShieldCheck size={17} />} title="Validated SQL" text="Every statement parsed and checked against your live schema before it runs." />
+              <LandingFeature icon={<MessageCircle size={17} />} title="WhatsApp built in" text="Pair your WhatsApp and ask from your phone — answers and charts come back as images." />
+              <LandingFeature icon={<BarChart3 size={17} />} title="AI-chosen charts" text="Ask for a trend or a total — QueryMind picks the right visualization automatically." />
+              <LandingFeature icon={<FileText size={17} />} title="PDF reports" text="Export any answer as a polished PDF report your team can share." />
               <LandingFeature icon={<Database size={17} />} title="Encrypted credentials" text="Passwords sealed with Fernet encryption before storage." />
-              <LandingFeature icon={<Sparkles size={17} />} title="Confirm-before-write" text="INSERT, UPDATE, DELETE wait for your explicit approval." />
+              <LandingFeature icon={<Sparkles size={17} />} title="Confirm-before-write" text="INSERT, UPDATE, DELETE wait for your explicit approval — always." />
             </div>
           </section>
 
@@ -216,7 +221,7 @@ export function AuthPanel({ onToken }: Props) {
               {[
                 { step: "01", title: "Connect", text: "Add your MySQL or PostgreSQL host and credentials. We test the connection and map your full schema." },
                 { step: "02", title: "Ask", text: "Type what you want to know. The AI writes one precise SQL statement for your schema." },
-                { step: "03", title: "Review & run", text: "Reads execute instantly. Writes pause for your confirmation — always." }
+                { step: "03", title: "Review & run", text: "Reads execute instantly. Writes pause for your confirmation — and every change lands in the audit log." }
               ].map((item) => (
                 <div className="card-landing p-6" key={item.step}>
                   <span className="font-mono text-sm font-bold text-teal">{item.step}</span>
@@ -260,7 +265,7 @@ export function AuthPanel({ onToken }: Props) {
               are encrypted at rest. Every query is logged for your audit trail.
             </p>
             <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-3">
-              {["SQL injection guarded", "Multi-statement blocked", "Org-level isolation", "Fernet encryption", "Full audit log"].map((chip) => (
+              {["SQL injection guarded", "Multi-statement blocked", "DROP & ALTER blocked", "Org-level isolation", "Fernet encryption", "Full audit log", "WhatsApp device pairing"].map((chip) => (
                 <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200" key={chip}>
                   {chip}
                 </span>
@@ -338,9 +343,15 @@ function TypewriterWord() {
   }, [text, isDeleting, wordIndex]);
 
   return (
-    <span className="relative inline-block text-teal">
-      {text}
-      <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
+    <span className="inline-grid text-teal">
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1">
+        {TYPEWRITER_WORDS.reduce((a, b) => (a.length >= b.length ? a : b))}
+      </span>
+      <span aria-hidden="true" className="col-start-1 row-start-1 justify-self-start">
+        {text}
+        <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
+      </span>
+      <span className="sr-only">{TYPEWRITER_WORDS[wordIndex]}</span>
     </span>
   );
 }

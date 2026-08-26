@@ -595,6 +595,16 @@ def _process_message(sender: str, text: str) -> None:
         _send_text(sender, "⏳ Working on it - querying your database and preparing the answer…")
         answer = _answer_question(db, org, user, session, connection, text)
         _send_text(sender, answer.text)
+
+        # Auto-title: after the first real question, name the session after it
+        # so the web sidebar is self-explanatory. Manual renames in the web app
+        # (any other title) are respected and never overwritten.
+        default_title = f"WhatsApp ···{sender[-4:]}"
+        if session.title == default_title:
+            first_question = " ".join(text.split())[:60]
+            if first_question:
+                session.title = f"{default_title} · {first_question}"
+                db.commit()
         table_png = _render_table_png(answer.columns, answer.rows)
         if table_png is not None:
             caption = f"Result table - {len(answer.rows)} row(s)"

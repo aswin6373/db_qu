@@ -337,6 +337,46 @@ def test_paired_question_sends_loading_indicator_first(client, wa_config, sent_m
     assert sent_messages[0]["body"].startswith("⏳")
 
 
+def test_session_auto_titles_with_first_question(client, wa_config, sent_messages):
+    token = whatsapp_module._make_connect_token("15551234567")
+    client.post(
+        f"/whatsapp/connect?token={token}",
+        data={"email": USER_EMAIL, "password": USER_PASSWORD},
+    )
+    _post_webhook(
+        client,
+        _payload("top customers by revenue?", message_id="wamid.title1"),
+    )
+    db = TestingSessionLocal()
+    session = db.scalar(select(ChatSession).order_by(ChatSession.id.desc()))
+    title = session.title if session else ""
+    db.close()
+    assert title == "WhatsApp ···4567 · top customers by revenue?"
+
+
+def test_manual_session_rename_is_respected(client, wa_config, sent_messages):
+    token = whatsapp_module._make_connect_token("15551234567")
+    client.post(
+        f"/whatsapp/connect?token={token}",
+        data={"email": USER_EMAIL, "password": USER_PASSWORD},
+    )
+    # First message creates the session (titled "WhatsApp ···4567").
+    _post_webhook(client, _payload("first question", message_id="wamid.title2a"))
+
+    db = TestingSessionLocal()
+    session = db.scalar(select(ChatSession).order_by(ChatSession.id.desc()))
+    session.title = "My custom name"
+    db.commit()
+    db.close()
+
+    _post_webhook(client, _payload("another question", message_id="wamid.title2b"))
+    db = TestingSessionLocal()
+    renamed = db.scalar(select(ChatSession).order_by(ChatSession.id.desc()))
+    title = renamed.title if renamed else ""
+    db.close()
+    assert title == "My custom name"
+
+
 def test_maybe_chart_skips_non_numeric():
     rows = [{"name": "a"}, {"name": "b"}]
     assert whatsapp_module._maybe_chart(["name"], rows) is None

@@ -383,9 +383,12 @@ function TypewriterWord() {
   return (
     <span className="inline-grid text-teal">
       <span aria-hidden="true" className="invisible col-start-1 row-start-1">
-        {TYPEWRITER_WORDS.reduce((a, b) => (a.length >= b.length ? a : b))}
+        {TYPEWRITER_WORDS[wordIndex]}
       </span>
-      <span aria-hidden="true" className="col-start-1 row-start-1 justify-self-start">
+      <span
+        aria-hidden="true"
+        className="col-start-1 row-start-1 justify-self-center whitespace-nowrap lg:justify-self-start"
+      >
         {text}
         <span className="ml-0.5 inline-block h-[0.85em] w-[3px] animate-caret bg-teal align-[-0.08em]" />
       </span>

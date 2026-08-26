@@ -222,7 +222,7 @@ function SidebarContent({
 
       {/* New chat — top of the sidebar */}
       <button
-        className={`focus-ring flex w-full items-center gap-2.5 rounded-lg bg-teal px-3 py-2 text-left text-[13px] font-semibold text-white shadow-md shadow-teal/25 transition hover:bg-teal-dark ${orgName ? "mt-4" : "mt-6"}`}
+        className={`focus-ring flex w-full items-center gap-2.5 rounded-lg border border-brand-200 bg-teal-soft px-3 py-2 text-left text-[13px] font-semibold text-teal-dark transition hover:border-brand-300 hover:bg-brand-100 ${orgName ? "mt-4" : "mt-6"}`}
         onClick={startNewChat}
         type="button"
       >
@@ -284,7 +284,7 @@ function SidebarContent({
               return (
                 <div
                   className={`group relative flex items-center rounded-lg transition ${
-                    isActive ? "bg-navy/[0.07] font-medium text-navy" : "text-navy-soft hover:bg-navy/5 hover:text-navy"
+                    isActive ? "bg-white font-medium text-navy shadow-sm" : "text-navy-soft hover:text-navy"
                   } ${isDeleting ? "!bg-rose-500/10 !text-rose-600" : ""}`}
                   key={session.id}
                 >
@@ -323,7 +323,11 @@ function SidebarContent({
                       </button>
                     </span>
                   ) : (
-                    <span className="reveal-touch flex items-center gap-0.5 pr-1.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <span
+                      className={`reveal-touch absolute inset-y-0 right-1 flex items-center gap-0.5 bg-gradient-to-r from-transparent pl-10 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 ${
+                        isActive ? "to-white" : "to-cream"
+                      }`}
+                    >
                       <button
                         aria-label={`Rename ${session.title}`}
                         className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy"

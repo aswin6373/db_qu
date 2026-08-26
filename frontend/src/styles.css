@@ -101,10 +101,15 @@ select {
 
   /* Sidebar navigation item */
   .nav-item {
-    @apply focus-ring relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-navy-soft transition hover:bg-navy/5 hover:text-navy;
+    @apply focus-ring relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-navy-soft transition;
+  }
+  /* Hover must not override the active state, otherwise the highlight only
+     settles after the cursor leaves the item. */
+  .nav-item:not(.nav-item-active):hover {
+    @apply bg-navy/5 text-navy;
   }
   .nav-item-active {
-    @apply bg-navy text-white shadow-sm;
+    @apply bg-white text-navy shadow-sm;
   }
   .nav-item-active::before {
     content: "";

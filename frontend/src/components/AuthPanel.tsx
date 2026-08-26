@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowRight, BarChart3, Database, FileText, Github, Loader2, LogIn, MessageCircle, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
+import { ArrowRight, BarChart3, Check, Database, FileText, Github, Loader2, LogIn, MessageCircle, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { LogoMark } from "./LogoMark";
 
@@ -274,6 +274,44 @@ export function AuthPanel({ onToken }: Props) {
             <a className="btn-landing-primary mt-10 inline-flex" href="#get-started">
               Start free <ArrowRight size={16} />
             </a>
+          </div>
+        </section>
+
+        {/* Talk to your data */}
+        <section className="relative px-5 pb-20 sm:px-8">
+          <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-navy/10 shadow-lift">
+              <img
+                alt="Illustration of a friendly robot asking a database for sales figures — Talk to your data with QueryMind"
+                className="h-auto w-full"
+                loading="lazy"
+                src="/talk-to-your-data.jpg"
+              />
+            </div>
+            <div className="text-center lg:text-left">
+              <p className="eyebrow text-teal">No dashboards to learn</p>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
+                Your database, one conversation away
+              </h2>
+              <p className="mx-auto mt-4 max-w-md text-[15px] leading-7 text-navy-soft lg:mx-0">
+                Ask a question the way you'd ask a colleague. QueryMind writes the SQL, checks it against your schema,
+                and brings back answers, charts, and reports — from the web or your WhatsApp.
+              </p>
+              <ul className="mx-auto mt-6 max-w-md space-y-2.5 text-left lg:mx-0">
+                {[
+                  "Plain-English questions, production-safe SQL",
+                  "Charts and PDF reports generated for you",
+                  "Every write confirmed and logged"
+                ].map((point) => (
+                  <li className="flex items-start gap-2.5 text-sm font-medium text-navy" key={point}>
+                    <Check className="mt-0.5 shrink-0 text-teal" size={16} /> {point}
+                  </li>
+                ))}
+              </ul>
+              <a className="btn-landing-primary mt-8 inline-flex" href="#get-started">
+                Create your workspace <ArrowRight size={16} />
+              </a>
+            </div>
           </div>
         </section>
 

@@ -285,7 +285,7 @@ export function AuthPanel({ onToken }: Props) {
                 alt="Illustration of a friendly robot asking a database for sales figures — Talk to your data with QueryMind"
                 className="h-auto w-full"
                 loading="lazy"
-                src="/talk-to-your-data.jpg"
+                src="/talk-to-your-data.png"
               />
             </div>
             <div className="text-center lg:text-left">

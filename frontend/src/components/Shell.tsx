@@ -67,7 +67,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
   return (
     <div className="min-h-screen bg-canvas">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-navy p-5 shadow-sidebar lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-navy/10 bg-cream p-5 lg:flex">
         <SidebarContent
           active={active}
           nav={nav}
@@ -83,10 +83,10 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu" ref={drawerRef}>
           <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-navy p-5 shadow-lift">
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-navy/10 bg-cream p-5 shadow-lift">
             <div className="mb-4 flex items-center justify-between">
               <Brand />
-              <button aria-label="Close menu" className="rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white" onClick={() => setDrawerOpen(false)} type="button">
+              <button aria-label="Close menu" className="rounded-lg p-2 text-navy-soft transition hover:bg-navy/5 hover:text-navy" onClick={() => setDrawerOpen(false)} type="button">
                 <X size={20} />
               </button>
             </div>
@@ -222,11 +222,11 @@ function SidebarContent({
 
       {/* New chat — top of the sidebar */}
       <button
-        className={`focus-ring relative flex w-full items-center gap-3 rounded-lg bg-teal/15 px-3 py-2.5 text-left text-sm font-medium text-teal-soft shadow-md shadow-teal/20 transition hover:bg-teal/20 hover:text-white ${orgName ? "mt-4" : "mt-6"}`}
+        className={`focus-ring flex w-full items-center gap-2.5 rounded-lg bg-teal px-3 py-2 text-left text-[13px] font-semibold text-white shadow-md shadow-teal/25 transition hover:bg-teal-dark ${orgName ? "mt-4" : "mt-6"}`}
         onClick={startNewChat}
         type="button"
       >
-        <MessageSquarePlus size={17} /> New chat
+        <MessageSquarePlus size={16} /> New chat
       </button>
 
       <nav className="mt-4 space-y-1">
@@ -239,18 +239,18 @@ function SidebarContent({
               onClick={() => onNavigate(item.id)}
               type="button"
             >
-              <Icon size={17} /> {item.label}
+              <Icon size={16} /> {item.label}
             </button>
           );
         })}
       </nav>
 
       {/* Chat history — bottom section */}
-      <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-white/10 pt-4">
-        <p className="eyebrow px-2 pb-2 text-slate-400">Chats</p>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-navy/10 pt-4">
+        <p className="eyebrow px-2 pb-2 text-navy-soft/60">Chats</p>
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 pb-2">
           {isLoading ? (
-            <div className="flex justify-center py-8 text-slate-500">
+            <div className="flex justify-center py-8 text-slate-400">
               <Loader2 className="animate-spin" size={18} />
             </div>
           ) : sessions.length === 0 ? (
@@ -268,7 +268,7 @@ function SidebarContent({
                   <div className="px-1 py-0.5" key={session.id}>
                     <input
                       autoFocus
-                      className="h-9 w-full rounded-lg border border-white/15 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-teal"
+                      className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-[13px] text-navy outline-none placeholder:text-slate-400 focus:border-teal"
                       onBlur={() => saveRename(session)}
                       onChange={(event) => setRenameDraft(event.target.value)}
                       onKeyDown={(event) => {
@@ -284,19 +284,19 @@ function SidebarContent({
               return (
                 <div
                   className={`group relative flex items-center rounded-lg transition ${
-                    isActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/5"
-                  } ${isDeleting ? "!bg-rose-500/15 text-rose-300" : ""}`}
+                    isActive ? "bg-navy/[0.07] font-medium text-navy" : "text-navy-soft hover:bg-navy/5 hover:text-navy"
+                  } ${isDeleting ? "!bg-rose-500/10 !text-rose-600" : ""}`}
                   key={session.id}
                 >
                   <button
-                    className="min-w-0 flex-1 px-3 py-2 text-left text-sm"
+                    className="min-w-0 flex-1 px-3 py-2 text-left text-[13px]"
                     onClick={() => selectSession(session)}
                     title={session.title}
                     type="button"
                   >
                     <span className="block truncate">{session.title}</span>
                     {session.connection_name && (
-                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-teal-soft/70">
+                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-brand-700/80">
                         <Database size={10} className="shrink-0" /> {session.connection_name}
                       </span>
                     )}
@@ -314,7 +314,7 @@ function SidebarContent({
                       </button>
                       <button
                         aria-label="Keep chat"
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy"
                         disabled={busySessionId !== null}
                         onClick={() => setDeletingId(null)}
                         type="button"
@@ -326,7 +326,7 @@ function SidebarContent({
                     <span className="reveal-touch flex items-center gap-0.5 pr-1.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                       <button
                         aria-label={`Rename ${session.title}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy"
                         onClick={() => {
                           setRenamingId(session.id);
                           setRenameDraft(session.title);
@@ -337,7 +337,7 @@ function SidebarContent({
                       </button>
                       <button
                         aria-label={`Delete ${session.title}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-rose-400"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-rose-600"
                         onClick={() => setDeletingId(session.id)}
                         type="button"
                       >
@@ -352,7 +352,7 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="mt-4 border-t border-white/10 pt-3">
+      <div className="mt-4 border-t border-navy/10 pt-3">
         {confirmingLogout ? (
           <div className="flex items-center gap-2">
             <button
@@ -364,7 +364,7 @@ function SidebarContent({
             </button>
             <button
               aria-label="Cancel sign out"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-navy/10 hover:text-navy"
               onClick={() => setConfirmingLogout(false)}
               type="button"
             >
@@ -372,8 +372,8 @@ function SidebarContent({
             </button>
           </div>
         ) : (
-          <button className="btn-ghost w-full justify-start hover:bg-white/5 hover:text-white" onClick={() => setConfirmingLogout(true)} type="button">
-            <LogOut size={16} /> Sign out
+          <button className="btn-ghost w-full justify-start" onClick={() => setConfirmingLogout(true)} type="button">
+            <LogOut size={15} /> Sign out
           </button>
         )}
       </div>
@@ -384,12 +384,12 @@ function SidebarContent({
 function Brand() {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cream shadow-lg shadow-black/20">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy shadow-card">
         <LogoMark className="h-7 w-7" />
       </span>
       <div>
-        <strong className="block text-[15px] font-bold tracking-tight text-white">QueryMind</strong>
-        <p className="text-xs text-slate-400">Production console</p>
+        <strong className="block text-sm font-bold tracking-tight text-navy">QueryMind</strong>
+        <p className="text-[11px] text-navy-soft">Production console</p>
       </div>
     </div>
   );
@@ -397,9 +397,9 @@ function Brand() {
 
 function OrgChip({ name }: { name: string }) {
   return (
-    <div className="mt-6 truncate rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">Workspace</p>
-      <p className="truncate text-sm font-semibold text-white">{name}</p>
+    <div className="mt-6 truncate rounded-xl border border-navy/10 bg-white/60 px-3.5 py-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-navy-soft/70">Workspace</p>
+      <p className="truncate text-[13px] font-semibold text-navy">{name}</p>
     </div>
   );
 }

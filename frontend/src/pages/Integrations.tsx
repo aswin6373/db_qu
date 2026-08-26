@@ -8,7 +8,7 @@ type Props = { token: string };
 
 type Feedback = { kind: "success" | "error"; text: string };
 
-type WhatsAppStatus = { ready: boolean; charts: boolean };
+type WhatsAppStatus = { ready: boolean; charts: boolean; number?: string | null };
 
 type Provider = "gemini" | "openai" | "ollama";
 
@@ -258,7 +258,7 @@ export function Integrations({ token }: Props) {
               <p className="text-xs text-slate-500">
                 Message your bot's WhatsApp number to ask questions about the connected database —
                 answers arrive as chat messages with tables and charts. Say "help" in the chat for
-                examples.
+                examples. Tap "Open WhatsApp" to start chatting right away.
               </p>
             </>
           ) : (
@@ -273,14 +273,26 @@ export function Integrations({ token }: Props) {
           )}
         </div>
         {whatsapp !== null && (
-          <span
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-              whatsapp.ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-            }`}
-          >
-            <span className={`h-2 w-2 rounded-full ${whatsapp.ready ? "bg-emerald-500" : "bg-slate-400"}`} />
-            {whatsapp.ready ? "Connected" : "Not connected"}
-          </span>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {whatsapp.ready && whatsapp.number && (
+              <a
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                href={`https://wa.me/${whatsapp.number}?text=hi`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <MessageCircle size={13} /> Open WhatsApp
+              </a>
+            )}
+            <span
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                whatsapp.ready ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${whatsapp.ready ? "bg-emerald-500" : "bg-slate-400"}`} />
+              {whatsapp.ready ? "Connected" : "Not connected"}
+            </span>
+          </div>
         )}
       </div>
 

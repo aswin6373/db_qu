@@ -137,17 +137,55 @@ def _allowed(sender: str) -> bool:
     return _clean_number(sender) in allowed
 
 
+# Display number of the bot, fetched from Graph and cached so the public
+# status endpoint stays cheap (the frontend builds a wa.me link from it).
+_NUMBER_CACHE_TTL_SECONDS = 600
+_number_cache_lock = threading.Lock()
+_number_cache: dict = {"at": 0.0, "number": None}
+
+
+def _bot_display_number() -> str | None:
+    now = time.time()
+    with _number_cache_lock:
+        if _number_cache["number"] and now - _number_cache["at"] < _NUMBER_CACHE_TTL_SECONDS:
+            return _number_cache["number"]
+
+    settings = get_settings()
+    number = None
+    try:
+        response = httpx.get(
+            f"{GRAPH_BASE}/{settings.whatsapp_graph_version}/{settings.whatsapp_phone_number_id}",
+            params={
+                "fields": "display_phone_number",
+                "access_token": settings.whatsapp_access_token,
+            },
+            timeout=6,
+        )
+        if response.status_code == 200:
+            number = (response.json() or {}).get("display_phone_number") or None
+    except (httpx.HTTPError, ValueError):
+        number = None
+    with _number_cache_lock:
+        _number_cache["at"] = now
+        _number_cache["number"] = number
+    return number
+
+
 @router.get("/status")
 def status():
     # Terse on purpose: this endpoint is public and must not disclose numbers,
     # ids, or which parts of the configuration are missing.
+    settings = get_settings()
     try:
         import matplotlib  # noqa: F401
 
         charts = True
     except ImportError:
         charts = False
-    return {"ready": get_settings().whatsapp_configured, "charts": charts}
+    payload: dict = {"ready": settings.whatsapp_configured, "charts": charts}
+    if settings.whatsapp_configured:
+        payload["number"] = _bot_display_number()
+    return payload
 
 
 @router.get("/webhook")
@@ -293,19 +331,71 @@ def _read_connect_token(token: str) -> str | None:
     return _clean_number(wa_number) or None
 
 
-_PAGE_STYLE = """
-<body style="margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:#f1f5f9;
- display:grid;place-items:center;min-height:100vh">
-<div style="background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(2,6,23,.08);
- padding:40px 36px;max-width:360px;width:92%">
-<div style="width:44px;height:44px;border-radius:12px;background:#0f766e;color:#fff;display:grid;
- place-items:center;font-weight:800;font-size:18px;margin-bottom:18px">Q</div>
-{body}
-</div></body>"""
+_PAGE_HEAD = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Viewport meta is what makes the page render at phone width instead of
+     a zoomed-out desktop canvas when opened from WhatsApp on mobile. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QueryMind - WhatsApp</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f1f5f9;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(2, 6, 23, .08);
+    padding: 28px 22px;
+    width: 100%;
+    max-width: 380px;
+  }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: #0f766e; color: #fff;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 18px; margin-bottom: 16px;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; color: #0f172a; line-height: 1.3; }
+  p  { color: #475569; line-height: 1.55; font-size: 14px; margin: 0 0 14px; }
+  .error { color: #be123c; font-size: 13px; margin: 0 0 12px; }
+  .hint  { color: #94a3b8; font-size: 12px; margin: 16px 0 0; }
+  form { display: grid; gap: 12px; }
+  /* 16px input font size prevents iOS Safari from auto-zooming on focus. */
+  input {
+    width: 100%; border: 1px solid #cbd5e1; border-radius: 10px;
+    padding: 12px 14px; font-size: 16px; color: #0f172a; background: #fff;
+  }
+  input:focus { outline: 2px solid #0f766e; outline-offset: 1px; border-color: #0f766e; }
+  button {
+    width: 100%; background: #0f766e; color: #fff; border: 0; border-radius: 10px;
+    padding: 13px; font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  button:active { background: #115e59; }
+</style>
+</head>
+<body>
+<div class="card">
+<div class="logo">Q</div>
+"""
+
+_PAGE_TAIL = """
+</div>
+</body>
+</html>"""
 
 
 def _page(body: str, status_code: int = 200) -> HTMLResponse:
-    return HTMLResponse(_PAGE_STYLE.format(body=body), status_code=status_code)
+    return HTMLResponse(_PAGE_HEAD + body + _PAGE_TAIL, status_code=status_code)
 
 
 @router.get("/connect")
@@ -313,30 +403,26 @@ def connect_page(token: str = "", error: str = "") -> HTMLResponse:
     wa_number = _read_connect_token(token)
     if wa_number is None:
         return _page(
-            "<h1 style='font-size:20px;color:#0f172a'>Link expired</h1>"
-            "<p style='color:#475569;line-height:1.5'>This login link is invalid or has "
-            "expired. Send a new message to the QueryMind WhatsApp bot to get a fresh one.</p>",
+            "<h1>Link expired</h1>"
+            "<p>This login link is invalid or has expired. Send a new message to the "
+            "QueryMind WhatsApp bot to get a fresh one.</p>",
             status_code=400,
         )
-    error_html = (
-        f"<p style='color:#be123c;font-size:13px;margin:0 0 12px'>{error}</p>" if error else ""
-    )
+    error_html = f'<p class="error">{error}</p>' if error else ""
     form = (
-        "<h1 style='font-size:20px;margin:0 0 6px;color:#0f172a'>Connect WhatsApp</h1>"
-        f"<p style='color:#64748b;font-size:13px;margin:0 0 20px'>Linking number "
-        f"<b>···{wa_number[-4:]}</b> to your QueryMind account.</p>"
+        "<h1>Connect WhatsApp</h1>"
+        f'<p>Linking number <b>&middot;&middot;&middot;{wa_number[-4:]}</b> to your '
+        "QueryMind account.</p>"
         f"{error_html}"
-        f"<form method='post' action='/whatsapp/connect?token={token}' "
-        "style='display:grid;gap:12px'>"
-        "<input name='email' type='email' required placeholder='Work email' "
-        "style='border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font-size:14px'/>"
-        "<input name='password' type='password' required placeholder='Password' "
-        "style='border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font-size:14px'/>"
-        "<button type='submit' style='background:#0f766e;color:#fff;border:0;border-radius:10px;"
-        "padding:12px;font-size:14px;font-weight:700;cursor:pointer'>Sign in &amp; link</button>"
+        f"<form method=\"post\" action=\"/whatsapp/connect?token={token}\">"
+        '<input name="email" type="email" required placeholder="Work email" '
+        'autocomplete="email" inputmode="email"/>'
+        '<input name="password" type="password" required placeholder="Password" '
+        'autocomplete="current-password"/>'
+        '<button type="submit">Sign in &amp; link</button>'
         "</form>"
-        "<p style='color:#94a3b8;font-size:11px;margin:16px 0 0'>Never enter your password "
-        "inside WhatsApp itself - we will never ask for it there.</p>"
+        '<p class="hint">Never enter your password inside WhatsApp itself - '
+        "we will never ask for it there.</p>"
     )
     return _page(form)
 
@@ -370,11 +456,10 @@ async def connect_submit(request: Request, token: str = "") -> HTMLResponse:
         db.close()
     logger.info("whatsapp_paired sender_tail=%s", wa_number[-4:])
     return _page(
-        "<h1 style='font-size:20px;color:#0f172a'>WhatsApp connected &#10003;</h1>"
-        f"<p style='color:#475569;line-height:1.6'>Number <b>&middot;&middot;&middot;"
-        f"{wa_number[-4:]}</b> is now linked to <b>{email}</b>.</p>"
-        "<p style='color:#475569;line-height:1.6'>Close this page and continue the "
-        "conversation in WhatsApp.</p>",
+        "<h1>WhatsApp connected &#10003;</h1>"
+        f"<p>Number <b>&middot;&middot;&middot;{wa_number[-4:]}</b> is now linked to "
+        f"<b>{email}</b>.</p>"
+        "<p>You can close this page and continue the conversation in WhatsApp.</p>",
     )
 
 

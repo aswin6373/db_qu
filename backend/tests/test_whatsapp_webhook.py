@@ -202,7 +202,24 @@ def test_connect_page_renders_for_valid_token(client, wa_config):
     response = client.get("/whatsapp/connect", params={"token": token})
     assert response.status_code == 200
     assert "Connect WhatsApp" in response.text
-    assert "···4567" in response.text
+    assert "4567" in response.text
+    # Responsive on mobile: the viewport meta tag must be present.
+    assert "viewport" in response.text
+
+
+def test_status_exposes_bot_number_for_wa_me_link(client, wa_config, monkeypatch):
+    monkeypatch.setattr(whatsapp_module, "_bot_display_number", lambda: "15550001111")
+    response = client.get("/whatsapp/status")
+    body = response.json()
+    assert body["ready"] is True
+    assert body["number"] == "15550001111"
+
+
+def test_status_without_number_still_ready(client, wa_config, monkeypatch):
+    monkeypatch.setattr(whatsapp_module, "_bot_display_number", lambda: None)
+    body = client.get("/whatsapp/status").json()
+    assert body["ready"] is True
+    assert body["number"] is None
 
 
 def test_connect_login_wrong_password_shows_error(client, wa_config):

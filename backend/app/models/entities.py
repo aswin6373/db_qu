@@ -68,6 +68,10 @@ class ChatSession(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     connection: Mapped[DBConnection | None] = relationship()
+    # Rolling AI summary of the conversation ("memory") injected into later
+    # prompts so follow-up answers keep their context. NULL until the chat is
+    # long enough to be worth compressing.
+    context_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Message(Base):

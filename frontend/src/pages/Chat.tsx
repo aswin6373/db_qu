@@ -482,7 +482,11 @@ function ResultBlock({
   const isConfirming = confirmingQueryId === result.query_id;
   const isCancelled = dismissedQueryIds.has(result.query_id);
   const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
-  const [view, setView] = useState<"chart" | "table">("table");
+  // The AI decides whether a result opens as a chart or a table ("text" and
+  // unparseable shapes fall back to the table). The user can still toggle.
+  const [view, setView] = useState<"chart" | "table">(
+    result.visualization === "chart" && chartSpec ? "chart" : "table"
+  );
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);

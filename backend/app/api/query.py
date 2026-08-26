@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.api.connections import _get_org_connection, build_connector
@@ -22,6 +22,8 @@ from app.services.ai import (
     SchemaAnswer,
     _detect_schema_change_request,
     classify_question,
+    compress_history,
+    decide_visualization,
     generate_sql,
     summarize_result,
 )
@@ -99,6 +101,7 @@ def _result_payload(
     columns: list[str],
     rows: list[dict],
     steps: list[dict] | None = None,
+    visualization: str = "table",
 ) -> dict:
     return {
         "query_id": query_id,
@@ -109,6 +112,7 @@ def _result_payload(
         "columns": columns,
         "rows": rows,
         "steps": steps or [],
+        "visualization": visualization,
     }
 
 
@@ -127,7 +131,14 @@ def _org_chat_session(session_id: int, user: User, db: Session) -> ChatSession:
     return session
 
 
-def _record_exchange(db: Session, session: ChatSession, question: str, response: QueryGenerateResponse) -> None:
+def _record_exchange(
+    db: Session,
+    session: ChatSession,
+    question: str,
+    response: QueryGenerateResponse,
+    ai_config=None,
+    deadline: float | None = None,
+) -> None:
     db.add(Message(session_id=session.id, role="user", content=question))
     if response.needs_clarification or response.meta_answer:
         db.add(Message(session_id=session.id, role="assistant", content=response.summary))
@@ -149,6 +160,7 @@ def _record_exchange(db: Session, session: ChatSession, question: str, response:
                         response.columns,
                         response.rows,
                         response.steps,
+                        response.visualization,
                     ),
                     default=str,
                 ),
@@ -158,6 +170,39 @@ def _record_exchange(db: Session, session: ChatSession, question: str, response:
         session.title = question.strip()[:80] or "New chat"
     session.updated_at = _utcnow()
     db.commit()
+    _refresh_context_summary(db, session, ai_config, deadline)
+
+
+def _refresh_context_summary(db: Session, session: ChatSession, ai_config, deadline: float | None) -> None:
+    """Keep the rolling conversation summary fresh ("memory").
+
+    Starts once there is real history, then refreshes every other exchange to
+    amortize the extra LLM call. Skips itself when the request's time budget
+    is nearly spent so the answer always ships first."""
+    if ai_config is None or deadline is None:
+        return
+    count = db.scalar(
+        select(func.count()).select_from(Message).where(Message.session_id == session.id)
+    )
+    count = count or 0
+    if count < 6 or count % 2 != 0:
+        return
+    if time.monotonic() >= deadline - 6:
+        return
+    recent = db.scalars(
+        select(Message)
+        .where(Message.session_id == session.id)
+        .order_by(Message.id.desc())
+        .limit(10)
+    ).all()
+    summary = compress_history(
+        session.context_summary,
+        [{"role": message.role, "content": message.content} for message in reversed(recent)],
+        ai_config,
+    )
+    if summary and summary != session.context_summary:
+        session.context_summary = summary
+        db.commit()
 
 
 def _finalize_confirmed_message(db: Session, user: User, query_id: int, response: QueryGenerateResponse) -> None:
@@ -204,7 +249,22 @@ def _recent_history(db: Session, user: User, session_id: int | None, limit: int 
         .order_by(Message.id.desc())
         .limit(limit)
     ).all()
-    return [{"role": message.role, "content": message.content} for message in reversed(rows)]
+    history = [{"role": message.role, "content": message.content} for message in reversed(rows)]
+    if chat_session.context_summary:
+        # The rolling summary rides along as a system entry so follow-up
+        # questions keep the conversation's key facts ("memory"). It survives
+        # the turn window - _history_block never drops system entries.
+        history.insert(
+            0,
+            {
+                "role": "system",
+                "content": (
+                    "Summary of the earlier conversation (use it for follow-ups):\n"
+                    f"{chat_session.context_summary}"
+                ),
+            },
+        )
+    return history
 
 
 def _mentions_known_schema(question: str, schema: dict) -> bool:
@@ -300,18 +360,20 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     ai_config = ai_config_for_org(db.get(Organization, user.organization_id))
 
     def clarification_response(text: str) -> QueryGenerateResponse:
-        response = QueryGenerateResponse(summary=text, needs_clarification=True)
+        response = QueryGenerateResponse(summary=text, needs_clarification=True, visualization="text")
         if payload.session_id is not None:
             chat_session = _org_chat_session(payload.session_id, user, db)
-            _record_exchange(db, chat_session, payload.question, response)
+            _record_exchange(db, chat_session, payload.question, response, ai_config, deadline)
         return response
 
     def direct_answer(text: str) -> QueryGenerateResponse:
         # Schema questions ("what tables do I have?") are answered like a human — no SQL.
-        response = QueryGenerateResponse(summary=text, needs_clarification=False, meta_answer=True)
+        response = QueryGenerateResponse(
+            summary=text, needs_clarification=False, meta_answer=True, visualization="text"
+        )
         if payload.session_id is not None:
             chat_session = _org_chat_session(payload.session_id, user, db)
-            _record_exchange(db, chat_session, payload.question, response)
+            _record_exchange(db, chat_session, payload.question, response, ai_config, deadline)
         return response
 
     def run_agent_mode() -> QueryGenerateResponse | None:
@@ -352,6 +414,9 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         db.add(log)
         db.commit()
         db.refresh(log)
+        visualization = decide_visualization(
+            payload.question, result.columns, result.rows, ai_config, deadline
+        )
         response = QueryGenerateResponse(
             query_id=log.id,
             sql=result.sql,
@@ -361,10 +426,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
             columns=result.columns,
             rows=result.rows,
             steps=result.steps,
+            visualization=visualization,
         )
         if payload.session_id is not None:
             chat_session = _org_chat_session(payload.session_id, user, db)
-            _record_exchange(db, chat_session, payload.question, response)
+            _record_exchange(db, chat_session, payload.question, response, ai_config, deadline)
         return response
 
     # Questions about the database itself are answered conversationally by the
@@ -481,6 +547,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     db.add(log)
     db.commit()
     db.refresh(log)
+    visualization = (
+        decide_visualization(payload.question, columns, rows, ai_config, deadline)
+        if not validation.requires_confirmation
+        else "table"
+    )
     response = QueryGenerateResponse(
         query_id=log.id,
         sql=sql,
@@ -489,10 +560,11 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         summary=summary,
         columns=columns,
         rows=rows,
+        visualization=visualization,
     )
     if payload.session_id is not None:
         chat_session = _org_chat_session(payload.session_id, user, db)
-        _record_exchange(db, chat_session, payload.question, response)
+        _record_exchange(db, chat_session, payload.question, response, ai_config, deadline)
     return response
 
 

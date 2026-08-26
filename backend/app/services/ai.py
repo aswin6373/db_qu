@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -237,11 +238,23 @@ def _history_block(history: list[dict] | None) -> str:
     if not history:
         return ""
     # Truncate each turn: long stored content is a prompt-injection and
-    # token-waste vector when replayed into later prompts.
+    # token-waste vector when replayed into later prompts. System entries
+    # (the rolling conversation summary) are kept out of the turn window so
+    # they are never crowded out by newer messages.
+    system_lines = [
+        str(turn["content"])[:900] for turn in history if turn.get("role") == "system"
+    ]
     turns = "\n".join(
-        f"{turn['role']}: {str(turn['content'])[:400]}" for turn in history[-6:]
+        f"{turn['role']}: {str(turn['content'])[:400]}"
+        for turn in history[-6:]
+        if turn.get("role") != "system"
     )
-    return f"Recent conversation:\n{turns}\n"
+    blocks = ""
+    if system_lines:
+        blocks += "\n".join(system_lines) + "\n"
+    if turns:
+        blocks += f"Recent conversation:\n{turns}\n"
+    return blocks
 
 
 def _schema_block(schema: dict) -> str:
@@ -681,6 +694,126 @@ def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None, timeout: int 
     response.raise_for_status()
     data = response.json()
     return str(data.get("response", "")).strip()
+
+
+def _ai_generate(prompt: str, eff: _EffectiveAI) -> str:
+    """Route a one-shot prompt to whichever provider is configured."""
+    if eff.provider == "gemini":
+        return _gemini_generate(prompt, eff)
+    if eff.provider == "openai":
+        return _openai_generate(prompt, eff)
+    if eff.provider == "ollama":
+        return _ollama_generate(prompt, eff)
+    raise RuntimeError(f"Provider '{eff.provider}' cannot answer free-form prompts")
+
+
+def _as_number(value) -> float | None:
+    try:
+        return float(str(value).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def chart_shape_ok(columns: list[str], rows: list[dict], max_rows: int = 12) -> bool:
+    """True when the result's shape can be drawn readably: at least one
+    mostly-numeric column plus a label column, within the row budget."""
+    if len(rows) < 2 or len(rows) > max_rows or len(columns) < 2:
+        return False
+    has_numeric = False
+    has_label = False
+    for column in columns:
+        values = [row.get(column) for row in rows]
+        usable = [value for value in values if value is not None and str(value).strip() != ""]
+        if not usable:
+            continue
+        numeric_ratio = sum(1 for value in usable if _as_number(value) is not None) / len(usable)
+        if numeric_ratio >= 0.8:
+            has_numeric = True
+        elif not has_label:
+            has_label = True
+    return has_numeric and has_label
+
+
+def decide_visualization(
+    question: str,
+    columns: list[str],
+    rows: list[dict],
+    ai_config: AIConfig | None = None,
+    deadline: float | None = None,
+) -> str:
+    """AI-driven choice of how to present a result: "chart", "table" or "text".
+
+    The AI sees the question and a preview of the result, so an explicit ask
+    ("show it as a diagram") wins even when the data shape is borderline.
+    Falls back to a shape heuristic whenever AI is unavailable or the request
+    is out of time budget."""
+    if not rows or not columns:
+        return "text"
+    heuristic = "chart" if chart_shape_ok(columns, rows) else "table"
+    eff = _effective_ai(ai_config)
+    if eff.provider not in {"gemini", "openai", "ollama"}:
+        return heuristic
+    if deadline is not None and time.monotonic() >= deadline - 6:
+        return heuristic
+
+    preview = [
+        {str(key)[:24]: str(value)[:40] for key, value in list(row.items())[:8]}
+        for row in rows[:3]
+    ]
+    prompt = (
+        f"User question: {str(question)[:300]}\n"
+        f"Result columns: {[str(c) for c in columns[:10]]}\n"
+        f"First rows: {json.dumps(preview, default=str)[:600]}\n\n"
+        "Decide how to present this result in a chat UI. Reply with exactly one word:\n"
+        "chart - the user asked for a visual/diagram/graph/trend, or the numbers clearly benefit from one\n"
+        "table - the data is best read as a table\n"
+        "text - a single value or plain explanation needs no visual\n"
+        "One word only:"
+    )
+    try:
+        raw = _ai_generate(prompt, eff).strip().lower()
+    except Exception:
+        return heuristic
+    if "chart" in raw or "visual" in raw or "graph" in raw or "diagram" in raw:
+        return "chart"
+    if "text" in raw:
+        return "text"
+    if "table" in raw:
+        return "table"
+    return heuristic
+
+
+def compress_history(
+    previous_summary: str | None,
+    recent_messages: list[dict],
+    ai_config: AIConfig | None = None,
+) -> str | None:
+    """Distill the conversation into a short running summary ("memory") that
+    later prompts inject so follow-up answers keep their context. Returns None
+    when there is no AI to do it or the call fails - callers then keep the
+    previous summary untouched."""
+    eff = _effective_ai(ai_config)
+    if eff.provider not in {"gemini", "openai", "ollama"}:
+        return None
+    if not recent_messages:
+        return previous_summary
+    transcript = "\n".join(
+        f"{message.get('role', 'user')}: {str(message.get('content', ''))[:400]}"
+        for message in recent_messages[-10:]
+    )
+    previous = f"Summary so far:\n{previous_summary}\n\n" if previous_summary else ""
+    prompt = (
+        f"{previous}Latest messages:\n{transcript}\n\n"
+        "Merge everything above into one running summary for an assistant that must "
+        "answer follow-up questions later. Keep the key facts: tables and columns "
+        "discussed, filters, numbers, names, and what the user is trying to learn. "
+        "At most 8 short bullet lines starting with '- '. Output only the summary."
+    )
+    try:
+        text = _ai_generate(prompt, eff).strip()
+    except Exception:
+        return None
+    return text[:1200] or None
 
 
 def _extract_sql(text: str) -> str:

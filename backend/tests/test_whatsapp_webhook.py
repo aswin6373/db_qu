@@ -393,3 +393,12 @@ def test_maybe_chart_renders_bar():
     png = whatsapp_module._maybe_chart(["region", "sales"], rows)
     assert png is not None
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_maybe_chart_respects_max_rows_budget():
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    rows = [{"label": f"row-{index}", "value": index * 2} for index in range(15)]
+    # Default budget refuses oversized charts; an AI-approved visual gets one.
+    assert whatsapp_module._maybe_chart(["label", "value"], rows) is None
+    assert whatsapp_module._maybe_chart(["label", "value"], rows, max_rows=20) is not None

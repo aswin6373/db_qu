@@ -61,7 +61,10 @@ from app.services.ai import (
     Intent,
     QueryUnderstandingError,
     SchemaAnswer,
+    chart_shape_ok,
     classify_question,
+    compress_history,  # noqa: F401 - re-exported for tests
+    decide_visualization,
     generate_sql,
     summarize_result,
 )
@@ -589,12 +592,10 @@ def _process_message(sender: str, text: str) -> None:
         if session.connection_id != connection.id:
             session.connection_id = connection.id
             db.commit()
-
         # The pipeline (intent + SQL + execution) can take several seconds;
         # acknowledge immediately so the chat doesn't feel dead.
         _send_text(sender, "⏳ Working on it - querying your database and preparing the answer…")
         answer = _answer_question(db, org, user, session, connection, text)
-        _send_text(sender, answer.text)
 
         # Auto-title: after the first real question, name the session after it
         # so the web sidebar is self-explanatory. Manual renames in the web app
@@ -605,7 +606,23 @@ def _process_message(sender: str, text: str) -> None:
             if first_question:
                 session.title = f"{default_title} · {first_question}"
                 db.commit()
-        table_png = _render_table_png(answer.columns, answer.rows)
+
+        # Images are rendered BEFORE the text is sent, so the "coming next"
+        # notices can never promise something that then fails to appear.
+        table_png = None
+        chart_png = None
+        if answer.visualization != "text" and answer.columns and answer.rows:
+            table_png = _render_table_png(answer.columns, answer.rows)
+            if answer.visualization == "chart":
+                # Explicitly requested visuals get a bigger row budget.
+                chart_png = _maybe_chart(answer.columns, answer.rows, max_rows=20)
+        notice = ""
+        if table_png is not None:
+            notice += "\n\n📊 Result table image is coming in the next message…"
+        if chart_png is not None:
+            notice += "\n📈 Chart image right after…"
+        _send_text(sender, answer.text + notice)
+
         if table_png is not None:
             caption = f"Result table - {len(answer.rows)} row(s)"
             if len(answer.rows) > MAX_TABLE_ROWS:
@@ -613,7 +630,6 @@ def _process_message(sender: str, text: str) -> None:
             if len(answer.columns) > TABLE_MAX_COLUMNS:
                 caption += f" - {len(answer.columns) - TABLE_MAX_COLUMNS} more column(s)"
             _send_image(sender, table_png, caption)
-        chart_png = _maybe_chart(answer.columns, answer.rows)
         if chart_png is not None:
             _send_image(sender, chart_png, answer.caption[:1000])
     except Exception:
@@ -667,11 +683,12 @@ def _resolve_connection(db: Session, organization_id: int, session: ChatSession)
 
 
 class _Answer:
-    def __init__(self, text: str, caption: str = "", columns=None, rows=None):
+    def __init__(self, text: str, caption: str = "", columns=None, rows=None, visualization: str = "table"):
         self.text = text
         self.caption = caption or text
         self.columns = columns or []
         self.rows = rows or []
+        self.visualization = visualization
 
 
 def _answer_question(
@@ -708,8 +725,14 @@ def _answer_question(
     def finish(response: QueryGenerateResponse, caption: str | None = None) -> _Answer:
         # Reuse the web app's transcript writer so WhatsApp conversations show
         # up in the SAME account's chat history as normal chats.
-        _record_exchange(db, session, question, response)
-        return _Answer(response.summary, caption or response.summary, response.columns, response.rows)
+        _record_exchange(db, session, question, response, ai_config, deadline)
+        return _Answer(
+            response.summary,
+            caption or response.summary,
+            response.columns,
+            response.rows,
+            response.visualization,
+        )
 
     # Analytical questions go through the multi-step agent first.
     if agent_supported(ai_config) and not _is_followup_answer(session, db):
@@ -718,7 +741,11 @@ def _answer_question(
         except Exception:
             intent = Intent()
         if intent.clarification:
-            return finish(QueryGenerateResponse(summary=intent.clarification, needs_clarification=True))
+            return finish(
+                QueryGenerateResponse(
+                    summary=intent.clarification, needs_clarification=True, visualization="text"
+                )
+            )
         if intent.analytical and time.monotonic() < deadline:
             agent_response = _run_agent_path(
                 question, schema, history, ai_config, deadline, db_type, connection, log_query
@@ -729,13 +756,19 @@ def _answer_question(
     try:
         sql = generate_sql(question, schema, history, ai_config, db_type=db_type)
     except SchemaAnswer as exc:
-        return finish(QueryGenerateResponse(summary=exc.text, meta_answer=True))
+        return finish(QueryGenerateResponse(summary=exc.text, meta_answer=True, visualization="text"))
     except QueryUnderstandingError as exc:
-        return finish(QueryGenerateResponse(summary=str(exc), needs_clarification=True))
+        return finish(
+            QueryGenerateResponse(summary=str(exc), needs_clarification=True, visualization="text")
+        )
 
     validation = validate_sql(sql, schema)
     if not validation.ok:
-        return finish(QueryGenerateResponse(summary=validation.error, needs_clarification=True))
+        return finish(
+            QueryGenerateResponse(
+                summary=validation.error, needs_clarification=True, visualization="text"
+            )
+        )
 
     if validation.requires_confirmation:
         # Writes never run from a chat channel: confirm them in the web app.
@@ -751,6 +784,7 @@ def _answer_question(
                     "confirm it there.\n"
                     f"```{sql[:500]}```"
                 ),
+                visualization="text",
             )
         )
 
@@ -775,6 +809,7 @@ def _answer_question(
     if getattr(connector, "last_truncated", False):
         summary += f" (showing the first {len(rows)} rows)"
     query_id = log_query(sql, validation.query_type, "executed", columns, rows)
+    visualization = decide_visualization(question, columns, rows, ai_config, deadline)
     return finish(
         QueryGenerateResponse(
             query_id=query_id,
@@ -783,6 +818,7 @@ def _answer_question(
             summary=summary,
             columns=columns,
             rows=rows,
+            visualization=visualization,
         ),
         caption=summary,
     )
@@ -819,6 +855,9 @@ def _run_agent_path(
         result.columns,
         result.rows,
     )
+    visualization = decide_visualization(
+        question, result.columns, result.rows, ai_config, deadline
+    )
     return QueryGenerateResponse(
         query_id=query_id,
         sql=result.sql,
@@ -827,6 +866,7 @@ def _run_agent_path(
         columns=result.columns,
         rows=result.rows,
         steps=result.steps,
+        visualization=visualization,
     )
 
 
@@ -900,9 +940,9 @@ def _as_float(value) -> float | None:
         return None
 
 
-def _maybe_chart(columns: list[str], rows: list[dict]) -> bytes | None:
-    """Render a PNG when the shape of the result clearly benefits from one."""
-    if len(rows) < 2 or len(rows) > CHART_MAX_ROWS or len(columns) < 2:
+def _maybe_chart(columns: list[str], rows: list[dict], max_rows: int = CHART_MAX_ROWS) -> bytes | None:
+    """Render a chart PNG when the AI-approved shape check passes."""
+    if not chart_shape_ok(columns, rows, max_rows=max_rows):
         return None
 
     label_column: str | None = None

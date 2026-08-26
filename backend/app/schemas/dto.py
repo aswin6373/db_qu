@@ -108,6 +108,8 @@ class QueryGenerateResponse(BaseModel):
     needs_clarification: bool = False
     meta_answer: bool = False
     steps: list[dict] = []
+    # AI-decided presentation for the result: "chart", "table" or "text".
+    visualization: str = "table"
 
 
 class SchemaEdge(BaseModel):

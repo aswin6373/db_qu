@@ -83,6 +83,8 @@ export type QueryResponse = {
   needs_clarification?: boolean;
   meta_answer?: boolean;
   steps?: AgentStep[];
+  // AI-decided presentation: opens the result as a chart or table by default.
+  visualization?: "chart" | "table" | "text";
 };
 
 export type Dashboard = {

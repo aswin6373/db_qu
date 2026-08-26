@@ -280,7 +280,7 @@ export function AuthPanel({ onToken }: Props) {
         {/* Talk to your data */}
         <section className="relative px-5 pb-20 sm:px-8">
           <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-navy/10 shadow-lift">
+            <div className="mx-auto w-full max-w-sm">
               <img
                 alt="Illustration of a friendly robot asking a database for sales figures — Talk to your data with QueryMind"
                 className="h-auto w-full"

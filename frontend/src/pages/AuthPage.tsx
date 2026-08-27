@@ -82,76 +82,83 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
       </header>
 
       {/* Centered Auth Box */}
-      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-md animate-fade-up rounded-2xl border border-navy/10 bg-white p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(22,50,79,0.25)]">
-          <div className="text-center sm:text-left">
-            <p className="eyebrow text-teal">{mode === "register" ? "Get started" : "Welcome back"}</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
-              {mode === "register" ? "Create your workspace" : "Sign in to QueryMind"}
-            </h1>
-            <p className="mt-1.5 text-sm leading-6 text-navy-soft/80">
-              {mode === "register"
-                ? "One workspace per team. Credentials stay encrypted."
-                : "Secure access to your QueryMind platform."}
-            </p>
-          </div>
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
+        <div className="w-full max-w-md animate-fade-up rounded-2xl border border-navy/10 bg-white p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(22,50,79,0.25)] flex flex-col justify-between min-h-[580px]">
+          <div>
+            <div className="text-center sm:text-left min-h-[80px]">
+              <p className="eyebrow text-teal">{mode === "register" ? "Get started" : "Welcome back"}</p>
+              <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
+                {mode === "register" ? "Create your workspace" : "Sign in to QueryMind"}
+              </h1>
+              <p className="mt-1.5 text-sm leading-6 text-navy-soft/80">
+                {mode === "register"
+                  ? "One workspace per team. Credentials stay encrypted."
+                  : "Secure access to your QueryMind platform."}
+              </p>
+            </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-navy/10 bg-cream p-1">
-            <TabButton active={mode === "register"} icon={<UserPlus size={15} />} label="Register" onClick={() => { setMode("register"); setError(""); }} />
-            <TabButton active={mode === "login"} icon={<LogIn size={15} />} label="Login" onClick={() => { setMode("login"); setError(""); }} />
-          </div>
+            <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-navy/10 bg-cream p-1">
+              <TabButton active={mode === "register"} icon={<UserPlus size={15} />} label="Register" onClick={() => { setMode("register"); setError(""); }} />
+              <TabButton active={mode === "login"} icon={<LogIn size={15} />} label="Login" onClick={() => { setMode("login"); setError(""); }} />
+            </div>
 
-          <form className="mt-6 space-y-4" onSubmit={submit}>
-            {mode === "register" && (
-              <label className="block">
-                <span className="label text-navy-soft">Organization Name</span>
-                <input
-                  autoFocus
-                  className="field border-navy/15 focus-visible:ring-teal/30"
-                  placeholder="Acme Analytics"
-                  minLength={2}
-                  required
-                  value={organizationName}
-                  onChange={(event) => setOrganizationName(event.target.value)}
-                />
-              </label>
-            )}
-            <label className="block">
-              <span className="label text-navy-soft">Email</span>
-              <input
-                autoComplete="email"
-                autoFocus={mode === "login"}
-                className="field border-navy/15 focus-visible:ring-teal/30"
-                placeholder="you@company.com"
-                required
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="label text-navy-soft">Password</span>
-              <input
-                aria-describedby={error ? "auth-error" : undefined}
-                aria-invalid={Boolean(error) || undefined}
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
-                className="field border-navy/15 focus-visible:ring-teal/30"
-                minLength={mode === "register" ? 8 : undefined}
-                placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
-                required
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-            {error && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
-            )}
-            <button className="btn-landing-primary w-full !h-11" disabled={busy} type="submit">
-              {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}
-              {mode === "register" ? "Create workspace" : "Enter workspace"}
-            </button>
-          </form>
+            <form className="mt-6 flex flex-col justify-between min-h-[265px]" onSubmit={submit}>
+              <div className="space-y-4">
+                {mode === "register" && (
+                  <label className="block">
+                    <span className="label text-navy-soft">Organization Name</span>
+                    <input
+                      autoFocus
+                      className="field border-navy/15 focus-visible:ring-teal/30"
+                      placeholder="Acme Analytics"
+                      minLength={2}
+                      required
+                      value={organizationName}
+                      onChange={(event) => setOrganizationName(event.target.value)}
+                    />
+                  </label>
+                )}
+                <label className="block">
+                  <span className="label text-navy-soft">Email</span>
+                  <input
+                    autoComplete="email"
+                    autoFocus={mode === "login"}
+                    className="field border-navy/15 focus-visible:ring-teal/30"
+                    placeholder="you@company.com"
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="label text-navy-soft">Password</span>
+                  <input
+                    aria-describedby={error ? "auth-error" : undefined}
+                    aria-invalid={Boolean(error) || undefined}
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                    className="field border-navy/15 focus-visible:ring-teal/30"
+                    minLength={mode === "register" ? 8 : undefined}
+                    placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </label>
+                {error && (
+                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
+                )}
+              </div>
+
+              <div className="pt-4">
+                <button className="btn-landing-primary w-full !h-11" disabled={busy} type="submit">
+                  {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}
+                  {mode === "register" ? "Create workspace" : "Enter workspace"}
+                </button>
+              </div>
+            </form>
+          </div>
 
           <p className="mt-6 border-t border-navy/5 pt-4 text-center text-xs leading-5 text-navy-soft/60">
             Free while in beta · No credit card required · Your data stays in your databases

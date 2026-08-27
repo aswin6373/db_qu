@@ -37,9 +37,9 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "connections", label: "Connections", icon: Database },
     { id: "changes", label: "Changes", icon: FilePenLine },
+    { id: "integrations", label: "Integrations", icon: Plug },
     ...(isAdmin
       ? [
-          { id: "integrations", label: "Integrations", icon: Plug },
           { id: "members", label: "Members", icon: Users }
         ]
       : [])

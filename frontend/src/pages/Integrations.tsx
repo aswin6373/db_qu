@@ -4,7 +4,7 @@ import { PageHeader } from "../components/PageHeader";
 import { apiRequest } from "../lib/api";
 import { AIIntegration } from "../types/api";
 
-type Props = { token: string };
+type Props = { token: string; isAdmin?: boolean };
 
 type Feedback = { kind: "success" | "error"; text: string };
 
@@ -58,9 +58,9 @@ const PROVIDERS: Array<{
 
 const EMPTY_FORM = { provider: "gemini" as Provider, api_key: "", model: "", base_url: "" };
 
-export function Integrations({ token }: Props) {
+export function Integrations({ token, isAdmin = false }: Props) {
   const [current, setCurrent] = useState<AIIntegration | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(isAdmin);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [showKey, setShowKey] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -105,6 +105,10 @@ export function Integrations({ token }: Props) {
   const personallyPaired = pairing?.paired === true;
 
   useEffect(() => {
+    if (!isAdmin) {
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
     setIsLoading(true);
     apiRequest<AIIntegration>("/organizations/integrations", {}, token)
@@ -120,7 +124,7 @@ export function Integrations({ token }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, isAdmin]);
 
   const activeProvider = PROVIDERS.find((provider) => provider.id === form.provider) ?? PROVIDERS[0];
 
@@ -171,9 +175,13 @@ export function Integrations({ token }: Props) {
   return (
     <section className="space-y-7">
       <PageHeader
-        eyebrow="Settings"
+        eyebrow={isAdmin ? "Settings" : "Apps & Services"}
         title="Integrations"
-        description="Bring your own AI key. Connect the provider that powers SQL generation for this workspace — your key stays encrypted and is never shared with other workspaces."
+        description={
+          isAdmin
+            ? "Bring your own AI key. Connect the provider that powers SQL generation for this workspace — your key stays encrypted and is never shared with other workspaces."
+            : "Connect external services to your QueryMind workspace. Link your WhatsApp account to ask database questions directly from your phone."
+        }
       />
 
       {feedback && (
@@ -198,68 +206,70 @@ export function Integrations({ token }: Props) {
         </div>
       )}
 
-      {/* Current status */}
-      <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
-          <Cpu size={20} />
-        </span>
-        <div className="min-w-0 flex-1">
-          {isLoading ? (
-            <Loader2 className="animate-spin text-slate-400" size={18} />
-          ) : current?.provider ? (
-            <>
-              <p className="text-sm font-semibold text-slate-900">
-                Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
-                {current.key_hint ? <span className="ml-2 font-mono text-xs text-slate-400">{current.key_hint}</span> : null}
-              </p>
-              <p className="text-xs text-slate-500">
-                All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-slate-900">Using the platform default AI</p>
-              <p className="text-xs text-slate-500">Connect your own key below to control the provider, model, and billing yourself.</p>
-            </>
-          )}
-        </div>
-        {current?.provider && (
-          <div className="flex shrink-0 items-center gap-2">
-            {confirmingRemove ? (
+      {/* Current AI Provider status - Admins only */}
+      {isAdmin && (
+        <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+            <Cpu size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            {isLoading ? (
+              <Loader2 className="animate-spin text-slate-400" size={18} />
+            ) : current?.provider ? (
               <>
-                <span className="text-xs font-medium text-rose-600">Disconnect?</span>
-                <button
-                  className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
-                  disabled={isRemoving}
-                  onClick={remove}
-                  title="Confirm disconnect"
-                  type="button"
-                >
-                  {isRemoving ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                </button>
-                <button
-                  aria-label="Cancel"
-                  className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                  onClick={() => setConfirmingRemove(false)}
-                  type="button"
-                >
-                  <X size={15} />
-                </button>
+                <p className="text-sm font-semibold text-slate-900">
+                  Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
+                  {current.key_hint ? <span className="ml-2 font-mono text-xs text-slate-400">{current.key_hint}</span> : null}
+                </p>
+                <p className="text-xs text-slate-500">
+                  All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
+                </p>
               </>
             ) : (
-              <button
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-                onClick={() => setConfirmingRemove(true)}
-                type="button"
-              >
-                <Trash2 size={13} /> Disconnect
-              </button>
+              <>
+                <p className="text-sm font-semibold text-slate-900">Using the platform default AI</p>
+                <p className="text-xs text-slate-500">Connect your own key below to control the provider, model, and billing yourself.</p>
+              </>
             )}
           </div>
-        )}
-      </div>
+          {current?.provider && (
+            <div className="flex shrink-0 items-center gap-2">
+              {confirmingRemove ? (
+                <>
+                  <span className="text-xs font-medium text-rose-600">Disconnect?</span>
+                  <button
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
+                    disabled={isRemoving}
+                    onClick={remove}
+                    title="Confirm disconnect"
+                    type="button"
+                  >
+                    {isRemoving ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
+                  </button>
+                  <button
+                    aria-label="Cancel"
+                    className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() => setConfirmingRemove(false)}
+                    type="button"
+                  >
+                    <X size={15} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  onClick={() => setConfirmingRemove(true)}
+                  type="button"
+                >
+                  <Trash2 size={13} /> Disconnect
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* WhatsApp AI chat */}
+      {/* WhatsApp AI chat - Available to all members */}
       <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
           <MessageCircle size={20} />
@@ -271,9 +281,9 @@ export function Integrations({ token }: Props) {
             <>
               <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
               <p className="text-xs text-slate-500">
-                Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta
-                Cloud API access token, phone number ID, verify token, app secret) and point the
-                Meta webhook at <span className="font-mono">/whatsapp/webhook</span>.
+                {isAdmin
+                  ? "Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta Cloud API access token, phone number ID, verify token, app secret) and point the Meta webhook at /whatsapp/webhook."
+                  : "WhatsApp AI chat is currently not configured for this workspace. Please ask an admin to enable it."}
               </p>
             </>
           ) : personallyPaired ? (
@@ -333,114 +343,116 @@ export function Integrations({ token }: Props) {
         )}
       </div>
 
-      {/* Connect form */}
-      <form className="card animate-fade-up overflow-hidden" onSubmit={save}>
-        <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
-            <Plug size={20} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-lg font-bold tracking-tight text-slate-900">Connect an AI provider</h2>
-            <p className="text-xs text-slate-500">You create the key on the provider's website — we never see your provider account.</p>
-          </div>
-        </div>
-
-        <div className="space-y-6 p-6 sm:p-7">
-          <div className="grid gap-2.5 sm:grid-cols-3">
-            {PROVIDERS.map((provider) => (
-              <button
-                className={`rounded-xl border px-4 py-3 text-left transition ${
-                  form.provider === provider.id
-                    ? "border-teal bg-teal-soft/60 shadow-sm"
-                    : "border-slate-200 bg-white hover:border-teal/40"
-                }`}
-                key={provider.id}
-                onClick={() =>
-                  setForm((currentForm) => ({
-                    // Switching providers must not carry over the previous
-                    // provider's key, model, or server URL.
-                    provider: provider.id,
-                    api_key: "",
-                    model: "",
-                    base_url: ""
-                  }))
-                }
-                type="button"
-              >
-                <span className="block text-sm font-bold text-slate-800">{provider.name}</span>
-                <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{provider.blurb}</span>
-              </button>
-            ))}
+      {/* Connect AI form - Admins only */}
+      {isAdmin && (
+        <form className="card animate-fade-up overflow-hidden" onSubmit={save}>
+          <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+              <Plug size={20} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900">Connect an AI provider</h2>
+              <p className="text-xs text-slate-500">You create the key on the provider's website — we never see your provider account.</p>
+            </div>
           </div>
 
-          <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
-            <label className="block">
-              <span className="label">{activeProvider.keyLabel}</span>
-              <span className="relative block">
-                <input
-                  autoComplete="off"
-                  className="field pr-11"
-                  placeholder={activeProvider.keyPlaceholder}
-                  required={activeProvider.needsKey}
-                  type={showKey ? "text" : "password"}
-                  value={form.api_key}
-                  onChange={(event) => setForm({ ...form, api_key: event.target.value })}
-                />
+          <div className="space-y-6 p-6 sm:p-7">
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              {PROVIDERS.map((provider) => (
                 <button
-                  aria-label={showKey ? "Hide key" : "Show key"}
-                  className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                  onClick={() => setShowKey((visible) => !visible)}
+                  className={`rounded-xl border px-4 py-3 text-left transition ${
+                    form.provider === provider.id
+                      ? "border-teal bg-teal-soft/60 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-teal/40"
+                  }`}
+                  key={provider.id}
+                  onClick={() =>
+                    setForm((currentForm) => ({
+                      // Switching providers must not carry over the previous
+                      // provider's key, model, or server URL.
+                      provider: provider.id,
+                      api_key: "",
+                      model: "",
+                      base_url: ""
+                    }))
+                  }
                   type="button"
                 >
-                  {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                  <span className="block text-sm font-bold text-slate-800">{provider.name}</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">{provider.blurb}</span>
                 </button>
-              </span>
-              {!activeProvider.needsKey && (
-                <span className="mt-1.5 block text-xs text-slate-400">Leave empty for {activeProvider.name}.</span>
-              )}
-            </label>
+              ))}
+            </div>
 
-            <label className="block">
-              <span className="label">Model</span>
-              <input
-                className="field font-mono"
-                placeholder={activeProvider.modelPlaceholder}
-                value={form.model}
-                onChange={(event) => setForm({ ...form, model: event.target.value })}
-              />
-              <span className="mt-1.5 block text-xs text-slate-400">Optional — uses a sensible default when empty.</span>
-            </label>
+            <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
+              <label className="block">
+                <span className="label">{activeProvider.keyLabel}</span>
+                <span className="relative block">
+                  <input
+                    autoComplete="off"
+                    className="field pr-11"
+                    placeholder={activeProvider.keyPlaceholder}
+                    required={activeProvider.needsKey}
+                    type={showKey ? "text" : "password"}
+                    value={form.api_key}
+                    onChange={(event) => setForm({ ...form, api_key: event.target.value })}
+                  />
+                  <button
+                    aria-label={showKey ? "Hide key" : "Show key"}
+                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() => setShowKey((visible) => !visible)}
+                    type="button"
+                  >
+                    {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </span>
+                {!activeProvider.needsKey && (
+                  <span className="mt-1.5 block text-xs text-slate-400">Leave empty for {activeProvider.name}.</span>
+                )}
+              </label>
 
-            {activeProvider.needsBaseUrl && (
-              <label className="block md:col-span-2">
-                <span className="label">Ollama server URL</span>
+              <label className="block">
+                <span className="label">Model</span>
                 <input
                   className="field font-mono"
-                  placeholder="http://your-server:11434"
-                  required
-                  value={form.base_url}
-                  onChange={(event) => setForm({ ...form, base_url: event.target.value })}
+                  placeholder={activeProvider.modelPlaceholder}
+                  value={form.model}
+                  onChange={(event) => setForm({ ...form, model: event.target.value })}
                 />
+                <span className="mt-1.5 block text-xs text-slate-400">Optional — uses a sensible default when empty.</span>
               </label>
-            )}
+
+              {activeProvider.needsBaseUrl && (
+                <label className="block md:col-span-2">
+                  <span className="label">Ollama server URL</span>
+                  <input
+                    className="field font-mono"
+                    placeholder="http://your-server:11434"
+                    required
+                    value={form.base_url}
+                    onChange={(event) => setForm({ ...form, base_url: event.target.value })}
+                  />
+                </label>
+              )}
+            </div>
+
+            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm">
+              <ShieldCheck className="mt-0.5 shrink-0 text-brand-600" size={16} />
+              <span className="text-xs leading-5 text-slate-500">
+                Your key is encrypted before storage and used only for this workspace's AI requests. Members never see it —
+                they just chat normally. Disconnect anytime to fall back to the platform default.
+              </span>
+            </label>
           </div>
 
-          <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm">
-            <ShieldCheck className="mt-0.5 shrink-0 text-brand-600" size={16} />
-            <span className="text-xs leading-5 text-slate-500">
-              Your key is encrypted before storage and used only for this workspace's AI requests. Members never see it —
-              they just chat normally. Disconnect anytime to fall back to the platform default.
-            </span>
-          </label>
-        </div>
-
-        <div className="flex justify-end border-t border-slate-100 bg-slate-50/60 px-6 py-4">
-          <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
-            {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
-            {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}
-          </button>
-        </div>
-      </form>
+          <div className="flex justify-end border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+            <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
+              {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
+              {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

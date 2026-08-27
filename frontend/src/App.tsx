@@ -222,7 +222,7 @@ export function App() {
         {active === "connections" && <Connections isAdmin={isAdmin} token={token} connections={connections} insights={insights} schemas={schemas} onRefresh={refreshAll} />}
         {active === "chat" && <Chat token={token} connections={connections} onActivity={refreshAll} onOpenConnections={() => setActive("connections")} />}
         {active === "changes" && <Changes token={token} />}
-        {active === "integrations" && isAdmin && <Integrations token={token} />}
+        {active === "integrations" && <Integrations isAdmin={isAdmin} token={token} />}
         {active === "members" && isAdmin && user && <Members currentUserId={user.id} token={token} />}
       </Shell>
     </ChatSessionsProvider>

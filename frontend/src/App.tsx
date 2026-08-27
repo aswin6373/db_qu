@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { AuthPanel } from "./components/AuthPanel";
 import { ChatSessionsProvider } from "./components/ChatSessionsContext";
 import { Onboarding } from "./components/Onboarding";
 import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
+import { AuthPage } from "./pages/AuthPage";
+import { LandingPage } from "./pages/LandingPage";
 import { Chat } from "./pages/Chat";
 import { Changes } from "./pages/Changes";
 import { Connections } from "./pages/Connections";
@@ -14,6 +15,7 @@ import { Connection, CurrentUser, Dashboard as DashboardType, DatabaseSchema, Sc
 
 export function App() {
   const [token, setToken] = useState(() => localStorage.getItem("querymind_token") ?? "");
+  const [unauthView, setUnauthView] = useState<"landing" | "login" | "register">("landing");
   const [active, setActive] = useState("dashboard");
   const [booted, setBooted] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
@@ -172,6 +174,7 @@ export function App() {
   function logout() {
     authGenerationRef.current += 1;
     localStorage.removeItem("querymind_token");
+    setUnauthView("landing");
     setToken("");
   }
 
@@ -191,7 +194,16 @@ export function App() {
   }
 
   if (!token) {
-    return <AuthPanel onToken={handleAuth} />;
+    if (unauthView === "login" || unauthView === "register") {
+      return (
+        <AuthPage
+          initialMode={unauthView}
+          onBack={() => setUnauthView("landing")}
+          onToken={handleAuth}
+        />
+      );
+    }
+    return <LandingPage onNavigateAuth={(mode) => setUnauthView(mode)} />;
   }
 
   if (onboarding) {

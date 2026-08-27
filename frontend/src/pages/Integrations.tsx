@@ -208,32 +208,34 @@ export function Integrations({ token, isAdmin = false }: Props) {
 
       {/* Current AI Provider status - Admins only */}
       {isAdmin && (
-        <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
-            <Cpu size={20} />
-          </span>
-          <div className="min-w-0 flex-1">
-            {isLoading ? (
-              <Loader2 className="animate-spin text-slate-400" size={18} />
-            ) : current?.provider ? (
-              <>
-                <p className="text-sm font-semibold text-slate-900">
-                  Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
-                  {current.key_hint ? <span className="ml-2 font-mono text-xs text-slate-400">{current.key_hint}</span> : null}
-                </p>
-                <p className="text-xs text-slate-500">
-                  All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-slate-900">Using the platform default AI</p>
-                <p className="text-xs text-slate-500">Connect your own key below to control the provider, model, and billing yourself.</p>
-              </>
-            )}
+        <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+            <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+              <Cpu size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              {isLoading ? (
+                <Loader2 className="animate-spin text-slate-400" size={18} />
+              ) : current?.provider ? (
+                <>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
+                    {current.key_hint ? <span className="ml-2 font-mono text-xs text-slate-400">{current.key_hint}</span> : null}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-slate-900">Using the platform default AI</p>
+                  <p className="text-xs text-slate-500">Connect your own key below to control the provider, model, and billing yourself.</p>
+                </>
+              )}
+            </div>
           </div>
           {current?.provider && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 pl-14 sm:pl-0">
               {confirmingRemove ? (
                 <>
                   <span className="text-xs font-medium text-rose-600">Disconnect?</span>
@@ -270,51 +272,53 @@ export function Integrations({ token, isAdmin = false }: Props) {
       )}
 
       {/* WhatsApp AI chat - Available to all members */}
-      <div className="card animate-fade-up flex flex-wrap items-center gap-4 p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
-          <MessageCircle size={20} />
-        </span>
-        <div className="min-w-0 flex-1">
-          {whatsapp === null ? (
-            <Loader2 className="animate-spin text-slate-400" size={18} />
-          ) : !botReady ? (
-            <>
-              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
-              <p className="text-xs text-slate-500">
-                {isAdmin
-                  ? "Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta Cloud API access token, phone number ID, verify token, app secret) and point the Meta webhook at /whatsapp/webhook."
-                  : "WhatsApp AI chat is currently not configured for this workspace. Please ask an admin to enable it."}
-              </p>
-            </>
-          ) : personallyPaired ? (
-            <>
-              <p className="text-sm font-semibold text-slate-900">
-                WhatsApp AI chat is live
-                {whatsapp.charts ? (
-                  <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                    charts on
-                  </span>
-                ) : null}
-              </p>
-              <p className="text-xs text-slate-500">
-                Your number{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""} is linked —
-                ask questions about the connected database and answers arrive as chat messages
-                with tables and charts. Say "help" in the chat for examples.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat is available</p>
-              <p className="text-xs text-slate-500">
-                Your WhatsApp number isn't linked to your account yet. Tap "Open WhatsApp", send{" "}
-                <span className="font-mono">hi</span> to the bot, and you'll get a one-time login
-                link that connects this account.
-              </p>
-            </>
-          )}
+      <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
+        <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+          <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
+            <MessageCircle size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            {whatsapp === null ? (
+              <Loader2 className="animate-spin text-slate-400" size={18} />
+            ) : !botReady ? (
+              <>
+                <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
+                <p className="text-xs text-slate-500">
+                  {isAdmin
+                    ? "Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta Cloud API access token, phone number ID, verify token, app secret) and point the Meta webhook at /whatsapp/webhook."
+                    : "WhatsApp AI chat is currently not configured for this workspace. Please ask an admin to enable it."}
+                </p>
+              </>
+            ) : personallyPaired ? (
+              <>
+                <p className="text-sm font-semibold text-slate-900">
+                  WhatsApp AI chat is live
+                  {whatsapp.charts ? (
+                    <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      charts on
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Your number{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""} is linked —
+                  ask questions about the connected database and answers arrive as chat messages
+                  with tables and charts. Say "help" in the chat for examples.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat is available</p>
+                <p className="text-xs text-slate-500">
+                  Your WhatsApp number isn't linked to your account yet. Tap "Open WhatsApp", send{" "}
+                  <span className="font-mono">hi</span> to the bot, and you'll get a one-time login
+                  link that connects this account.
+                </p>
+              </>
+            )}
+          </div>
         </div>
         {whatsapp !== null && botReady && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 pl-14 sm:pl-0">
             {whatsapp.number && (
               <a
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"

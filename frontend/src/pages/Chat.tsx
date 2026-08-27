@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, X, XCircle } from "lucide-react";
+import { BarChart3, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, X, XCircle } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
 import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
@@ -360,7 +360,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-navy/10 bg-white px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-card">
+        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-brand-200 bg-teal-soft/85 px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-sm">
           <p className="whitespace-pre-line">{message.content}</p>
         </div>
       </div>
@@ -371,12 +371,9 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   const isClarifying = Boolean(message.result?.needs_clarification);
 
   return (
-    <div className="flex gap-3">
-      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft shadow-sm">
-        <Bot size={15} />
-      </span>
+    <div className="flex justify-start">
       <div
-        className={`relative min-w-0 flex-1 rounded-2xl border px-5 py-3.5 text-[14px] leading-6 shadow-card ${
+        className={`relative w-full rounded-2xl border px-5 py-4 text-[14px] leading-6 shadow-card ${
           isError
             ? "border-rose-200 bg-rose-50/90 text-rose-700"
             : isClarifying

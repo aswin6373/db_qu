@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowLeft, Loader2, LogIn, Sparkles, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, LogIn, ShieldCheck, Sparkles, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { LogoMark } from "../components/LogoMark";
 
@@ -53,9 +53,9 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           backgroundSize: "26px 26px"
         }}
       />
-      <div className="pointer-events-none absolute -left-32 top-24 h-80 w-80 rounded-[3rem] border border-rose-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(12deg)" }} />
-      <div className="pointer-events-none absolute -right-24 top-40 h-72 w-72 animate-float-slow rounded-[3rem] border border-teal-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(-10deg)" }} />
-      <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 animate-float rounded-[2.5rem] border border-amber-200/70 bg-white/30 backdrop-blur-sm" style={{ transform: "rotate(8deg)" }} />
+      <div className="pointer-events-none absolute -left-32 top-24 hidden h-80 w-80 rounded-[3rem] border border-rose-200/50 bg-white/30 sm:block" style={{ transform: "rotate(12deg)" }} />
+      <div className="pointer-events-none absolute -right-24 top-40 hidden h-72 w-72 animate-float-slow rounded-[3rem] border border-teal-200/50 bg-white/30 sm:block" style={{ transform: "rotate(-10deg)" }} />
+      <div className="pointer-events-none absolute -left-16 bottom-10 hidden h-64 w-64 animate-float rounded-[2.5rem] border border-amber-200/50 bg-white/20 sm:block" style={{ transform: "rotate(8deg)" }} />
 
       {/* Top Header */}
       <header className="relative z-10 border-b border-navy/5 bg-cream/85 backdrop-blur">
@@ -83,9 +83,9 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
       {/* Centered Auth Box */}
       <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
-        <div className="w-full max-w-md animate-fade-up rounded-2xl border border-navy/10 bg-white p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(22,50,79,0.25)] flex flex-col justify-between min-h-[580px]">
+        <div className="w-full max-w-md animate-fade-up rounded-2xl border border-navy/10 bg-white p-6 sm:p-8 shadow-[0_24px_60px_-20px_rgba(22,50,79,0.25)] flex flex-col justify-between">
           <div>
-            <div className="text-center sm:text-left min-h-[80px]">
+            <div className="text-center sm:text-left">
               <p className="eyebrow text-teal">{mode === "register" ? "Get started" : "Welcome back"}</p>
               <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-navy">
                 {mode === "register" ? "Create your workspace" : "Sign in to QueryMind"}
@@ -93,7 +93,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               <p className="mt-1.5 text-sm leading-6 text-navy-soft/80">
                 {mode === "register"
                   ? "One workspace per team. Credentials stay encrypted."
-                  : "Secure access to your QueryMind platform."}
+                  : "Secure access to your team's QueryMind workspace."}
               </p>
             </div>
 
@@ -102,61 +102,88 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               <TabButton active={mode === "login"} icon={<LogIn size={15} />} label="Login" onClick={() => { setMode("login"); setError(""); }} />
             </div>
 
-            <form className="mt-6 flex flex-col justify-between min-h-[265px]" onSubmit={submit}>
-              <div className="space-y-4">
-                {mode === "register" && (
-                  <label className="block">
-                    <span className="label text-navy-soft">Organization Name</span>
-                    <input
-                      autoFocus
-                      className="field border-navy/15 focus-visible:ring-teal/30"
-                      placeholder="Acme Analytics"
-                      minLength={2}
-                      required
-                      value={organizationName}
-                      onChange={(event) => setOrganizationName(event.target.value)}
-                    />
-                  </label>
-                )}
+            <form className="mt-6 space-y-4" onSubmit={submit}>
+              {mode === "register" ? (
                 <label className="block">
-                  <span className="label text-navy-soft">Email</span>
+                  <span className="label text-navy-soft">Organization Name</span>
                   <input
-                    autoComplete="email"
-                    autoFocus={mode === "login"}
+                    autoFocus
                     className="field border-navy/15 focus-visible:ring-teal/30"
-                    placeholder="you@company.com"
+                    placeholder="Acme Analytics"
+                    minLength={2}
                     required
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    value={organizationName}
+                    onChange={(event) => setOrganizationName(event.target.value)}
                   />
                 </label>
-                <label className="block">
-                  <span className="label text-navy-soft">Password</span>
-                  <input
-                    aria-describedby={error ? "auth-error" : undefined}
-                    aria-invalid={Boolean(error) || undefined}
-                    autoComplete={mode === "register" ? "new-password" : "current-password"}
-                    className="field border-navy/15 focus-visible:ring-teal/30"
-                    minLength={mode === "register" ? 8 : undefined}
-                    placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
-                    required
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                </label>
-                {error && (
-                  <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
-                )}
-              </div>
+              ) : null}
 
-              <div className="pt-4">
-                <button className="btn-landing-primary w-full !h-11" disabled={busy} type="submit">
-                  {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}
-                  {mode === "register" ? "Create workspace" : "Enter workspace"}
-                </button>
-              </div>
+              <label className="block">
+                <span className="label text-navy-soft">Email</span>
+                <input
+                  autoComplete="email"
+                  autoFocus={mode === "login"}
+                  className="field border-navy/15 focus-visible:ring-teal/30"
+                  placeholder="you@company.com"
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
+
+              <label className="block">
+                <span className="label text-navy-soft">Password</span>
+                <input
+                  aria-describedby={error ? "auth-error" : undefined}
+                  aria-invalid={Boolean(error) || undefined}
+                  autoComplete={mode === "register" ? "new-password" : "current-password"}
+                  className="field border-navy/15 focus-visible:ring-teal/30"
+                  minLength={mode === "register" ? 8 : undefined}
+                  placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
+                  required
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </label>
+
+              {mode === "login" ? (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between text-xs text-navy-soft">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input type="checkbox" defaultChecked className="rounded border-navy/20 text-teal focus:ring-teal/30" />
+                      <span>Remember this session</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setError("Contact your workspace administrator to reset your credentials.")}
+                      className="text-teal font-medium hover:underline"
+                    >
+                      Need help?
+                    </button>
+                  </div>
+
+                  <div className="flex items-start gap-2.5 rounded-xl border border-navy/10 bg-cream/70 p-3 text-xs leading-5 text-navy-soft">
+                    <ShieldCheck className="mt-0.5 shrink-0 text-teal" size={15} />
+                    <span>Team member? Use the email where you received your workspace invitation.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-navy/10 bg-cream/70 p-3 text-xs leading-5 text-navy-soft flex items-start gap-2.5">
+                  <CheckCircle2 className="mt-0.5 shrink-0 text-teal" size={15} />
+                  <span>Includes full schema validation, WhatsApp pairing, and automatic AI charts.</span>
+                </div>
+              )}
+
+              {error && (
+                <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
+              )}
+
+              <button className="btn-landing-primary w-full !h-11 !mt-5" disabled={busy} type="submit">
+                {busy ? <Loader2 className="animate-spin" size={17} /> : mode === "register" ? <UserPlus size={17} /> : <LogIn size={17} />}
+                {mode === "register" ? "Create workspace" : "Enter workspace"}
+              </button>
             </form>
           </div>
 

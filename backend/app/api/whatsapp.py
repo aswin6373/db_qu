@@ -99,9 +99,11 @@ HELP_TEXT = (
     "- Top 5 customers by revenue\n"
     "- Sales trend per month\n\n"
     "Commands:\n"
-    "*help* - this message\n"
+    "*databases* - list all connected databases\n"
+    "*use <name/number>* - switch to a specific database\n"
     "*new chat* - start a fresh conversation\n"
-    "*disconnect* - unlink this WhatsApp number"
+    "*disconnect* - unlink this WhatsApp number\n"
+    "*help* - this message"
 )
 
 _PAIRING_UNCONFIGURED_TEXT = (
@@ -407,6 +409,17 @@ _PAGE_HEAD = """<!DOCTYPE html>
     padding: 13px; font-size: 16px; font-weight: 700; cursor: pointer;
   }
   button:active { background: #115e59; }
+  .db-choice {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+    cursor: pointer; background: #f8fafc; font-size: 14px; color: #0f172a;
+    transition: all 0.15s ease;
+  }
+  .db-choice:hover { border-color: #0f766e; background: #f0fdfa; }
+  .db-choice input[type="radio"] { width: auto; margin: 0; accent-color: #0f766e; }
+  .db-choice div { display: flex; flex-direction: column; text-align: left; }
+  .db-choice strong { font-size: 14px; color: #0f172a; font-weight: 600; }
+  .db-choice span { font-size: 12px; color: #64748b; }
 </style>
 </head>
 <body>
@@ -504,15 +517,71 @@ async def connect_submit(request: Request, token: str = "") -> HTMLResponse:
         if user is None or not verify_password(password, user.hashed_password):
             logger.info("whatsapp_pairing_failed_login sender_tail=%s", wa_number[-4:])
             return back_with_error("Invalid email or password.")
+        
+        connections = db.scalars(
+            select(DBConnection)
+            .where(DBConnection.organization_id == user.organization_id)
+            .order_by(DBConnection.id.asc())
+        ).all()
+        
+        connection_id_val = (form.get("connection_id") or [""])[0].strip()
+        
+        # If organization has multiple databases and user hasn't selected one yet, show Step 2
+        if len(connections) > 1 and not connection_id_val:
+            db_options = "".join(
+                f'<label class="db-choice">'
+                f'<input type="radio" name="connection_id" value="{c.id}" {"checked" if idx == 0 else ""}/>'
+                f'<div><strong>{c.name}</strong><span>{c.db_type or "database"} &middot; {c.database_name or c.host}</span></div>'
+                f'</label>'
+                for idx, c in enumerate(connections)
+            )
+            form_html = (
+                "<h1>Select Database</h1>"
+                f"<p>Choose which database to chat with on WhatsApp for <b>{_mask_email(user.email)}</b>:</p>"
+                f'<form method="post" action="/whatsapp/connect?token={token}">'
+                f'<input type="hidden" name="email" value="{email}"/>'
+                f'<input type="hidden" name="password" value="{password}"/>'
+                f"{db_options}"
+                '<button type="submit">Set Database &amp; Connect</button>'
+                "</form>"
+            )
+            return _page(form_html)
+
+        chosen_conn = None
+        if connection_id_val.isdigit():
+            chosen_conn = db.get(DBConnection, int(connection_id_val))
+        elif connections:
+            chosen_conn = connections[0]
+
         _bind_number(db, wa_number, user)
+        session = _session_for(db, user.organization_id, user.id, wa_number)
+        if chosen_conn is not None:
+            session.connection_id = chosen_conn.id
+        db.commit()
+
+        # Send greeting on WhatsApp
+        db_name_str = f"*{chosen_conn.name}* ({chosen_conn.db_type or 'database'})" if chosen_conn else "no database connected yet"
+        try:
+            _send_text(
+                wa_number,
+                f"✅ *WhatsApp connected to QueryMind!*\n"
+                f"Account: {email}\n"
+                f"Active Database: {db_name_str}\n\n"
+                f"Ask any question about your data or request charts anytime!\n"
+                f"Send *databases* anytime to view or switch databases."
+            )
+        except Exception:
+            logger.exception("whatsapp_pairing_welcome_send_failed")
     finally:
         db.close()
     logger.info("whatsapp_paired sender_tail=%s", wa_number[-4:])
+    db_info = f'<p class="ok">&#10003; Connected database: <b>{chosen_conn.name} ({chosen_conn.db_type or "database"})</b></p>' if chosen_conn else ""
     return _page(
         "<h1>WhatsApp connected &#10003;</h1>"
         f"<p>Number <b>&middot;&middot;&middot;{wa_number[-4:]}</b> is now linked to "
         f"<b>{email}</b>.</p>"
-        "<p>You can close this page and continue the conversation in WhatsApp.</p>",
+        f"{db_info}"
+        "<p>You can close this page and start chatting in WhatsApp!</p>",
     )
 
 
@@ -590,6 +659,47 @@ def _process_message(sender: str, text: str) -> None:
             return
 
         session = _session_for(db, org.id, user.id, sender)
+
+        all_conns = db.scalars(
+            select(DBConnection)
+            .where(DBConnection.organization_id == org.id)
+            .order_by(DBConnection.id.asc())
+        ).all()
+
+        if lowered in {"databases", "switch db", "switch database", "dbs"}:
+            if not all_conns:
+                _send_text(sender, "Your workspace has no databases connected yet. Connect one in the web app first.")
+                return
+            lines = ["*Connected Databases in Workspace:*"]
+            for idx, c in enumerate(all_conns, 1):
+                active_mark = "  👈 *(active)*" if session.connection_id == c.id else ""
+                lines.append(f"{idx}. *{c.name}* ({c.db_type or 'db'}){active_mark}")
+            lines.append("\nTo switch, reply with *use 1* or *use <name>*.")
+            _send_text(sender, "\n".join(lines))
+            return
+
+        use_match = re.match(r"^use\s+(.+)$", lowered)
+        if use_match:
+            target = use_match.group(1).strip()
+            chosen = None
+            if target.isdigit():
+                target_idx = int(target) - 1
+                if 0 <= target_idx < len(all_conns):
+                    chosen = all_conns[target_idx]
+            else:
+                for c in all_conns:
+                    if c.name.lower() == target or str(c.id) == target:
+                        chosen = c
+                        break
+            if chosen:
+                session.connection_id = chosen.id
+                db.commit()
+                _send_text(sender, f"✅ Switched active database to *{chosen.name}* ({chosen.db_type or 'db'}). Ask me anything!")
+                return
+            else:
+                _send_text(sender, f"Could not find database '{target}'. Send *databases* to see all available options.")
+                return
+
         if lowered in {"new chat", "reset"}:
             fresh = ChatSession(
                 organization_id=org.id,

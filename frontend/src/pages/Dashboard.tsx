@@ -15,12 +15,17 @@ type Props = {
 };
 
 export function Dashboard({ connections, dashboard, insights, schemas, onOpenConnections }: Props) {
-  const primaryConnection = connections[0];
-  const primarySchema = primaryConnection ? schemas[primaryConnection.id] : null;
-  const primaryInsights = primaryConnection ? insights[primaryConnection.id] : null;
-  const tableCount = Object.keys(primarySchema?.tables ?? {}).length;
-  const columnCount = Object.values(primarySchema?.tables ?? {}).reduce((total, table) => total + table.columns.length, 0);
-  const score = primaryInsights?.score ?? 0;
+  const [selectedConnectionId, setSelectedConnectionId] = useState<number | null>(() => connections[0]?.id ?? null);
+
+  const activeConnection = useMemo(() => {
+    return connections.find((c) => c.id === selectedConnectionId) ?? connections[0] ?? null;
+  }, [connections, selectedConnectionId]);
+
+  const activeSchema = activeConnection ? schemas[activeConnection.id] : null;
+  const activeInsights = activeConnection ? insights[activeConnection.id] : null;
+  const tableCount = Object.keys(activeSchema?.tables ?? {}).length;
+  const columnCount = Object.values(activeSchema?.tables ?? {}).reduce((total, table) => total + table.columns.length, 0);
+  const score = activeInsights?.score ?? 0;
 
   const activity = dashboard?.recent_activity ?? [];
   const rowsSeries = [...activity].reverse().map((item) => item.rows_returned ?? 0);
@@ -103,7 +108,12 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
           label="AI queries"
           value={dashboard?.query_count ?? 0}
         />
-        <KpiCard caption={`${columnCount.toLocaleString()} columns indexed`} icon={<Table2 size={17} />} label="Discovered tables" value={tableCount} />
+        <KpiCard
+          caption={activeConnection ? `${activeConnection.name} · ${columnCount.toLocaleString()} cols` : `${columnCount.toLocaleString()} columns indexed`}
+          icon={<Table2 size={17} />}
+          label="Discovered tables"
+          value={tableCount}
+        />
         <KpiCard
           caption={readinessLabel(score)}
           footer={<ReadinessRing score={score} />}
@@ -115,7 +125,32 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       </div>
 
       {/* Schema relationships */}
-      <SchemaConstellation insights={primaryInsights} schema={primarySchema} title={`${primaryConnection?.name ?? "Workspace"} · schema relationships`} />
+      <SchemaConstellation
+        headerAction={
+          connections.length > 1 ? (
+            <div className="flex items-center gap-1.5">
+              <label className="sr-only" htmlFor="db-schema-select">
+                Select database
+              </label>
+              <select
+                id="db-schema-select"
+                className="cursor-pointer rounded-full border border-navy/15 bg-white px-3 py-1 text-[11px] font-semibold text-navy shadow-sm transition hover:border-navy/30 focus:outline-none focus:ring-1 focus:ring-teal"
+                onChange={(e) => setSelectedConnectionId(Number(e.target.value))}
+                value={activeConnection?.id ?? ""}
+              >
+                {connections.map((conn) => (
+                  <option key={conn.id} value={conn.id}>
+                    {conn.name} ({conn.db_type})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : undefined
+        }
+        insights={activeInsights}
+        schema={activeSchema}
+        title={`${activeConnection?.name ?? "Database"} · schema relationships`}
+      />
 
       {/* Activity logs */}
       <section className="card p-5 sm:p-6">

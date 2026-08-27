@@ -8,6 +8,7 @@ type Props = {
   schema?: DatabaseSchema | null;
   insights?: SchemaInsights | null;
   title?: string;
+  headerAction?: React.ReactNode;
 };
 
 
@@ -39,7 +40,7 @@ const KEY_BADGES: Record<string, { label: string; className: string }> = {
 const FK_BADGE = { label: "FK", className: "bg-amber-50 text-amber-500 ring-1 ring-amber-200/60" };
 
 
-export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships" }: Props) {
+export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships", headerAction }: Props) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
@@ -164,7 +165,8 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
           </span>
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {headerAction}
           <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-medium text-slate-500">
             {tables.length} tables · {edges.length} rel
           </span>

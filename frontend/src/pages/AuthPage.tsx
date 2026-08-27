@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowLeft, Loader2, LogIn, UserPlus } from "lucide-react";
+import { ArrowLeft, Loader2, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { LogoMark } from "../components/LogoMark";
 
@@ -146,6 +146,13 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </label>
+
+            {mode === "login" && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-navy/10 bg-cream/70 p-3 text-xs leading-5 text-navy-soft">
+                <ShieldCheck className="mt-0.5 shrink-0 text-teal" size={15} />
+                <span>Team member? Use the email where you received your workspace invitation.</span>
+              </div>
+            )}
 
             {error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>

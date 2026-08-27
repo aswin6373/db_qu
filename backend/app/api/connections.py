@@ -11,7 +11,7 @@ from app.connectors.base import DBConnector
 from app.connectors.mysql import MySQLConnector
 from app.connectors.postgres import PostgresConnector
 from app.db.session import get_db
-from app.models import DBConnection, QueryLog, User
+from app.models import ChatSession, DBConnection, QueryLog, User
 from app.schemas.dto import ConnectionCreate, ConnectionResponse, SchemaInsightsResponse
 from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.schema_insights import build_schema_insights
@@ -174,8 +174,16 @@ def refresh_connection(connection_id: int, user: User = Depends(get_current_user
 @router.delete("/{connection_id}", status_code=204)
 def delete_connection(connection_id: int, user: User = Depends(require_admin), db: Session = Depends(get_db)):
     connection = _get_org_connection(connection_id, user, db)
-    # Bulk UPDATE instead of loading every log row into ORM objects —
+    # Bulk UPDATE instead of loading every log/session row into ORM objects —
     # this endpoint must stay O(1) in result-set size.
+    db.execute(
+        update(ChatSession)
+        .where(
+            ChatSession.organization_id == user.organization_id,
+            ChatSession.connection_id == connection.id,
+        )
+        .values(connection_id=None)
+    )
     db.execute(
         update(QueryLog)
         .where(

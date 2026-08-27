@@ -360,7 +360,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[82%] sm:max-w-[75%] rounded-2xl bg-navy px-4.5 py-3 text-[13.5px] font-medium leading-relaxed text-white shadow-sm">
+        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-navy/10 bg-white px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-card">
           <p className="whitespace-pre-line">{message.content}</p>
         </div>
       </div>
@@ -376,7 +376,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
         <Bot size={15} />
       </span>
       <div
-        className={`relative min-w-0 flex-1 rounded-2xl border px-4 py-3 text-[13.5px] leading-relaxed shadow-card ${
+        className={`relative min-w-0 flex-1 rounded-2xl border px-5 py-3.5 text-[14px] leading-6 shadow-card ${
           isError
             ? "border-rose-200 bg-rose-50/90 text-rose-700"
             : isClarifying

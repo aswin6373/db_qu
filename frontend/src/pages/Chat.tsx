@@ -360,7 +360,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-brand-200 bg-teal-soft/85 px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-sm">
+        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-[#ded8cb] bg-[#ede8df] px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-sm">
           <p className="whitespace-pre-line">{message.content}</p>
         </div>
       </div>

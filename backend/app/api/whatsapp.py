@@ -558,20 +558,6 @@ async def connect_submit(request: Request, token: str = "") -> HTMLResponse:
         if chosen_conn is not None:
             session.connection_id = chosen_conn.id
         db.commit()
-
-        # Send greeting on WhatsApp
-        db_name_str = f"*{chosen_conn.name}* ({chosen_conn.db_type or 'database'})" if chosen_conn else "no database connected yet"
-        try:
-            _send_text(
-                wa_number,
-                f"✅ *WhatsApp connected to QueryMind!*\n"
-                f"Account: {email}\n"
-                f"Active Database: {db_name_str}\n\n"
-                f"Ask any question about your data or request charts anytime!\n"
-                f"Send *databases* anytime to view or switch databases."
-            )
-        except Exception:
-            logger.exception("whatsapp_pairing_welcome_send_failed")
     finally:
         db.close()
     logger.info("whatsapp_paired sender_tail=%s", wa_number[-4:])

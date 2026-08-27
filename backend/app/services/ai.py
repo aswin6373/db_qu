@@ -163,12 +163,12 @@ Ask a clarifying question ONLY when the latest message is genuinely unclear:
 
 Requests asking for charts, graphs, plots, diagrams, or visual representations of database data
 are EXECUTABLE data queries — QueryMind automatically converts the returned data into charts and images.
-Always answer {"can_execute": true} for chart/graph/diagram requests. NEVER decline or claim you cannot generate charts.
+Always answer {{"can_execute": true}} for chart/graph/diagram requests. NEVER decline or claim you cannot generate charts.
 
 Questions about the database itself (what tables exist, what columns a table has)
-are always clear — answer {"can_execute": true} for those.
+are always clear — answer {{"can_execute": true}} for those.
 
-If the request is clear enough to attempt, always answer {"can_execute": true}.
+If the request is clear enough to attempt, always answer {{"can_execute": true}}.
 Never refuse clear requests. Never ask about SQL syntax or about anything already
 visible in the schema. Ask at most one question.
 

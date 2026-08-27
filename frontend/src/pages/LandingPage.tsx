@@ -36,7 +36,7 @@ export function LandingPage({ onNavigateAuth }: Props) {
               <span className="rounded-md bg-teal-soft px-1.5 py-0.5 text-xs font-bold text-teal-dark">beta</span>
             </a>
             <button
-              className="btn-landing-primary !h-10 !px-4 !text-sm"
+              className="inline-flex items-center gap-2 rounded-xl border border-navy/15 bg-white px-3.5 py-1.5 text-sm font-semibold text-navy shadow-sm transition hover:-translate-y-0.5 hover:shadow"
               onClick={() => onNavigateAuth("login")}
               type="button"
             >

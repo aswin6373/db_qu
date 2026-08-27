@@ -154,6 +154,12 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               </div>
             )}
 
+            {mode === "register" && (
+              <p className="pt-1 text-center text-xs text-navy-soft/75">
+                Set up your team workspace in less than a minute.
+              </p>
+            )}
+
             {error && (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700" id="auth-error" role="alert">{error}</p>
             )}

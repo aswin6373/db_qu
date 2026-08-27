@@ -128,7 +128,7 @@ select {
     @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-navy/20 bg-white/60 px-6 text-[15px] font-semibold text-navy backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:translate-y-0;
   }
   .card-landing {
-    @apply rounded-2xl border border-navy/10 bg-white/70 p-5 shadow-sm backdrop-blur-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+    @apply rounded-2xl border border-navy/10 bg-white/85 p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
   }
 }
 

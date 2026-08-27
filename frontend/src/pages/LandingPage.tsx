@@ -36,18 +36,11 @@ export function LandingPage({ onNavigateAuth }: Props) {
               <span className="rounded-md bg-teal-soft px-1.5 py-0.5 text-xs font-bold text-teal-dark">beta</span>
             </a>
             <button
-              className="rounded-xl px-3.5 py-2 text-sm font-semibold text-navy-soft transition hover:bg-navy/5 hover:text-navy"
+              className="btn-landing-primary !h-10 !px-4 !text-sm"
               onClick={() => onNavigateAuth("login")}
               type="button"
             >
               Sign in
-            </button>
-            <button
-              className="btn-landing-primary !h-10 !px-4 !text-sm"
-              onClick={() => onNavigateAuth("register")}
-              type="button"
-            >
-              Get started <ArrowRight size={14} />
             </button>
           </div>
         </div>
@@ -62,27 +55,27 @@ export function LandingPage({ onNavigateAuth }: Props) {
             backgroundSize: "26px 26px"
           }}
         />
-        <div className="pointer-events-none absolute -left-32 top-24 h-80 w-80 rounded-[3rem] border border-rose-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(12deg)" }} />
-        <div className="pointer-events-none absolute -right-24 top-40 h-72 w-72 animate-float-slow rounded-[3rem] border border-teal-200/70 bg-white/40 backdrop-blur-sm" style={{ transform: "rotate(-10deg)" }} />
-        <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 animate-float rounded-[2.5rem] border border-amber-200/70 bg-white/30 backdrop-blur-sm" style={{ transform: "rotate(8deg)" }} />
+        <div className="pointer-events-none absolute -left-32 top-24 hidden h-80 w-80 rounded-[3rem] border border-rose-200/50 bg-white/30 sm:block" style={{ transform: "rotate(12deg)" }} />
+        <div className="pointer-events-none absolute -right-24 top-40 hidden h-72 w-72 animate-float-slow rounded-[3rem] border border-teal-200/50 bg-white/30 sm:block" style={{ transform: "rotate(-10deg)" }} />
+        <div className="pointer-events-none absolute -left-16 bottom-10 hidden h-64 w-64 animate-float rounded-[2.5rem] border border-amber-200/50 bg-white/20 sm:block" style={{ transform: "rotate(8deg)" }} />
 
         {/* Hero */}
-        <div className="relative mx-auto max-w-5xl px-5 pb-20 pt-16 text-center sm:px-8 lg:pt-24">
+        <div className="relative mx-auto max-w-5xl px-5 pb-16 pt-10 text-center sm:px-8 sm:pb-20 sm:pt-16 lg:pt-20">
           <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-soft px-3.5 py-1.5 text-[13px] font-semibold text-teal-dark">
             <Sparkles size={14} /> Now in public beta
           </p>
-          <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-navy sm:text-6xl lg:text-7xl">
+          <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-navy sm:text-6xl lg:text-7xl">
             The <TypewriterWord /> SQL Agent
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg font-medium text-navy-soft sm:text-xl">
+          <p className="mx-auto mt-5 max-w-2xl text-lg font-medium text-navy-soft sm:text-xl">
             Natural language <Dot /> Validated SQL <Dot /> Guarded writes <Dot /> WhatsApp <Dot /> AI charts
           </p>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-navy-soft/80 sm:text-lg">
+          <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-navy-soft/80 sm:text-lg">
             Let your team query the company database in plain English — every statement reviewed, every write
             confirmed before it runs.
           </p>
 
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
             <button
               className="btn-landing-primary"
               onClick={() => onNavigateAuth("register")}
@@ -96,11 +89,11 @@ export function LandingPage({ onNavigateAuth }: Props) {
           </div>
 
           {/* Social proof */}
-          <div className="mt-14 border-t border-navy/5 pt-10">
+          <div className="mt-12 border-t border-navy/5 pt-8">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-navy-soft/50">
               Works with the databases you already run
             </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
               {["MySQL", "PostgreSQL", "MariaDB", "TiDB", "PlanetScale", "Amazon RDS"].map((name) => (
                 <span className="text-[15px] font-bold tracking-tight text-navy/35 transition hover:text-navy/60" key={name}>
                   {name}
@@ -110,7 +103,7 @@ export function LandingPage({ onNavigateAuth }: Props) {
           </div>
 
           {/* Feature strip */}
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="features">
+          <div className="mt-12 sm:mt-16 grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3" id="features">
             <LandingFeature icon={<ShieldCheck size={18} />} title="Validated SQL" text="Every statement parsed and checked against your live schema before it runs." />
             <LandingFeature icon={<MessageCircle size={18} />} title="WhatsApp built in" text="Pair your WhatsApp and ask from your phone — answers and charts come back as images." />
             <LandingFeature icon={<BarChart3 size={18} />} title="AI-chosen charts" text="Ask for a trend or a total — QueryMind picks the right visualization automatically." />
@@ -121,7 +114,7 @@ export function LandingPage({ onNavigateAuth }: Props) {
         </div>
 
         {/* How it works */}
-        <section className="relative border-t border-navy/5 bg-white/50 px-5 py-16 backdrop-blur-sm sm:px-8" id="how">
+        <section className="relative border-t border-navy/5 bg-white/60 px-5 py-12 sm:py-16 sm:px-8" id="how">
           <div className="mx-auto max-w-6xl">
             <h2 className="text-center text-3xl font-extrabold tracking-tight text-navy sm:text-4xl">
               From question to safe query in seconds

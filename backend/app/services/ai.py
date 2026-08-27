@@ -161,10 +161,14 @@ Ask a clarifying question ONLY when the latest message is genuinely unclear:
   e.g. "Do you mean the customers table or the orders table?"),
 - or a write action (INSERT/UPDATE/DELETE) is missing required values.
 
-Questions about the database itself (what tables exist, what columns a table has)
-are always clear — answer {{"can_execute": true}} for those.
+Requests asking for charts, graphs, plots, diagrams, or visual representations of database data
+are EXECUTABLE data queries — QueryMind automatically converts the returned data into charts and images.
+Always answer {"can_execute": true} for chart/graph/diagram requests. NEVER decline or claim you cannot generate charts.
 
-If the request is clear enough to attempt, always answer {{"can_execute": true}}.
+Questions about the database itself (what tables exist, what columns a table has)
+are always clear — answer {"can_execute": true} for those.
+
+If the request is clear enough to attempt, always answer {"can_execute": true}.
 Never refuse clear requests. Never ask about SQL syntax or about anything already
 visible in the schema. Ask at most one question.
 
@@ -351,7 +355,7 @@ def _sanitize_summary(summary: str, query_type: str, row_count: int) -> str:
 
 
 READ_STARTER_RE = re.compile(
-    r"^\s*(?:select|show|list|find|get|display|fetch|count|how many|what|which|who)\b",
+    r"^\s*(?:select|show|list|find|get|display|fetch|count|how many|what|which|who|chart|graph|plot|diagram)\b",
     re.IGNORECASE,
 )
 STRONG_DDL_RE = re.compile(r"\b(drop|truncate|rename|alter)\b", re.IGNORECASE)
@@ -498,6 +502,10 @@ def _sql_prompt(question: str, schema: dict, history: list[dict] | None = None, 
     dialect = _dialect_label(db_type)
     return f"""
 You are QueryMind's SQL generator.
+
+If the latest request asks for a visual, chart, graph, diagram, plot, or table visualization,
+generate the single {dialect} query that fetches the necessary rows, grouped categories, or metrics.
+Do not decline or say you cannot draw — the platform renders the chart from your query data.
 
 If the latest request is about the database itself — what tables exist, what
 columns a table has, a table's structure — do NOT write SQL. Reply with a single

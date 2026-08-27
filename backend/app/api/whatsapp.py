@@ -558,10 +558,12 @@ async def connect_submit(request: Request, token: str = "") -> HTMLResponse:
         if chosen_conn is not None:
             session.connection_id = chosen_conn.id
         db.commit()
+        db_name = chosen_conn.name if chosen_conn else ""
+        db_type = (chosen_conn.db_type or "database") if chosen_conn else ""
     finally:
         db.close()
     logger.info("whatsapp_paired sender_tail=%s", wa_number[-4:])
-    db_info = f'<p class="ok">&#10003; Connected database: <b>{chosen_conn.name} ({chosen_conn.db_type or "database"})</b></p>' if chosen_conn else ""
+    db_info = f'<p class="ok">&#10003; Connected database: <b>{db_name} ({db_type})</b></p>' if db_name else ""
     return _page(
         "<h1>WhatsApp connected &#10003;</h1>"
         f"<p>Number <b>&middot;&middot;&middot;{wa_number[-4:]}</b> is now linked to "

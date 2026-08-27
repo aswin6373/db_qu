@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, User, X, XCircle } from "lucide-react";
+import { BarChart3, Bot, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, X, XCircle } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
 import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
@@ -210,23 +210,23 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   }
 
   return (
-    <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-white">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4 sm:px-6">
+    <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-canvas/40">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-navy/10 bg-cream/70 backdrop-blur px-4 sm:px-6">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-900">{activeSession?.title ?? "New chat"}</p>
+          <p className="truncate text-sm font-bold text-navy">{activeSession?.title ?? "New chat"}</p>
           {activeSession && (
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] font-medium text-navy-soft/70">
               {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}
             </p>
           )}
         </div>
         {activeSession && hasConnection && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5"
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-navy/10 bg-white/80 px-2.5 py-1.5 shadow-sm"
             title="This chat is linked to this database"
           >
-            <Database size={14} className="shrink-0 text-brand-600" />
-            <span className="max-w-36 truncate text-xs font-semibold text-slate-700">
+            <Database size={13} className="shrink-0 text-brand-600" />
+            <span className="max-w-36 truncate text-xs font-semibold text-navy">
               {selectedConnectionName || "No database"}
             </span>
           </span>
@@ -235,7 +235,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
       {/* Messages */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
           {messagesLoading ? (
             <div className="flex items-center justify-center py-16 text-slate-400">
               <Loader2 className="animate-spin" size={22} />
@@ -313,10 +313,10 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               <Database size={15} /> Choose a database to start this chat
             </button>
           )}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-lift focus-within:border-brand-300">
+          <div className="rounded-2xl border border-navy/15 bg-white shadow-lift focus-within:border-teal transition">
             <textarea
               aria-label="Ask your database a question"
-              className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400"
+              className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-navy outline-none placeholder:text-slate-400"
               disabled={isSending || !hasConnection || !activeSession}
               onChange={(event) => {
                 setQuestion(event.target.value);
@@ -334,19 +334,19 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               rows={1}
               value={question}
             />
-            <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2">
-              <span className="ml-1 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-400">
-                <Database size={12} className="shrink-0 text-brand-500" />
+            <div className="flex items-center gap-2 border-t border-navy/5 px-3 py-2 bg-slate-50/50 rounded-b-2xl">
+              <span className="ml-1 flex min-w-0 items-center gap-1.5 text-[11px] text-navy-soft/80 font-medium">
+                <Database size={12} className="shrink-0 text-teal" />
                 <span className="truncate">{selectedConnectionName || "No database selected"}</span>
-                <span className="hidden sm:inline">· Enter to send · Shift+Enter for a new line</span>
+                <span className="hidden sm:inline text-navy-soft/50">· Enter to send · Shift+Enter for a new line</span>
               </span>
               <button
-                className="btn-accent ml-auto h-9 w-9 !px-0"
+                className="btn-accent ml-auto h-8 w-8 sm:h-9 sm:w-9 !px-0 rounded-lg"
                 disabled={isSending || !question.trim() || !selectedConnectionId}
                 title="Send"
                 type="submit"
               >
-                {isSending ? <Loader2 className="animate-spin" size={16} /> : <Send size={15} />}
+                {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={14} />}
               </button>
             </div>
           </div>
@@ -359,13 +359,10 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 function MessageRow({ message, children }: { message: UiMessage; children?: ReactNode }) {
   if (message.role === "user") {
     return (
-      <div className="flex justify-end gap-3">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-gradient-to-br from-brand-600 to-brand-800 px-4 py-3 text-sm font-medium leading-6 text-white shadow-sm">
-          {message.content}
+      <div className="flex justify-end">
+        <div className="max-w-[82%] sm:max-w-[75%] rounded-2xl bg-navy px-4.5 py-3 text-[13.5px] font-medium leading-relaxed text-white shadow-sm">
+          <p className="whitespace-pre-line">{message.content}</p>
         </div>
-        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-800 text-white">
-          <User size={15} />
-        </span>
       </div>
     );
   }
@@ -375,16 +372,16 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
 
   return (
     <div className="flex gap-3">
-      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-sm shadow-brand-600/25">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft shadow-sm">
         <Bot size={15} />
       </span>
       <div
-        className={`relative min-w-0 flex-1 rounded-2xl rounded-tl-md border px-4 py-3 text-sm leading-6 ${
+        className={`relative min-w-0 flex-1 rounded-2xl border px-4 py-3 text-[13.5px] leading-relaxed shadow-card ${
           isError
-            ? "border-rose-200 bg-rose-50 text-rose-700"
+            ? "border-rose-200 bg-rose-50/90 text-rose-700"
             : isClarifying
-              ? "border-sky-200 bg-sky-50 text-sky-900"
-              : "border-slate-200 bg-white text-slate-700"
+              ? "border-sky-200 bg-sky-50/90 text-sky-900"
+              : "border-navy/10 bg-white text-slate-800"
         } ${message.content || children ? "" : "hidden"}`}
       >
         {isClarifying && (
@@ -418,10 +415,10 @@ function EmptyConversation({
 }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-navy text-teal-soft shadow-card">
         <Sparkles size={24} />
       </span>
-      <h2 className="mt-5 text-xl font-bold tracking-tight text-slate-900">
+      <h2 className="mt-5 text-xl font-bold tracking-tight text-navy">
         {hasConnection ? (needsDatabase ? "Pick a database for this chat" : "What do you want to know?") : "Connect a database to begin"}
       </h2>
       <p className="mt-2 max-w-md text-sm leading-6 text-navy-soft">
@@ -445,7 +442,7 @@ function EmptyConversation({
         <div className="mt-7 grid w-full max-w-xl gap-2 sm:grid-cols-2">
           {SUGGESTIONS.map((suggestion) => (
             <button
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-[13px] leading-5 text-slate-600 transition hover:border-brand-300 hover:bg-brand-50/50 hover:text-slate-900"
+              className="rounded-xl border border-navy/10 bg-white px-4 py-3 text-left text-[13px] leading-5 text-navy font-medium transition hover:border-teal/40 hover:bg-teal-soft/30 shadow-card"
               key={suggestion}
               onClick={() => onPick(suggestion)}
               type="button"

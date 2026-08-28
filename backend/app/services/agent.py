@@ -14,12 +14,10 @@ import httpx
 
 from app.services.ai import (
     AIConfig,
+    _ai_generate,
     _dialect_label,
     _effective_ai,
-    _gemini_generate,
     _history_block,
-    _ollama_generate,
-    _openai_generate,
     _schema_block,
 )
 from app.services.sql_validator import validate_sql
@@ -48,7 +46,8 @@ class AgentResult:
 
 
 def agent_supported(ai_config: AIConfig | None) -> bool:
-    return _effective_ai(ai_config).provider in {"gemini", "openai", "ollama"}
+    eff = _effective_ai(ai_config)
+    return bool(eff.api_key or eff.gemini_key or eff.openai_key or eff.provider == "ollama")
 
 
 def run_agent(
@@ -67,7 +66,7 @@ def run_agent(
     time budget is spent — the user gets an answer from the evidence gathered
     so far instead of a serverless timeout."""
     eff = _effective_ai(ai_config)
-    if eff.provider not in {"gemini", "openai", "ollama"}:
+    if not agent_supported(ai_config):
         raise AgentUnavailableError(f"Agent mode is not available for provider '{eff.provider}'")
 
     steps: list[dict] = []
@@ -222,13 +221,10 @@ def _forced_finish(
 
 
 def _agent_generate(prompt: str, eff) -> str:
-    if eff.provider == "gemini":
-        return _gemini_generate(prompt, eff)
-    if eff.provider == "openai":
-        return _openai_generate(prompt, eff)
-    if eff.provider == "ollama":
-        return _ollama_generate(prompt, eff)
-    raise AgentUnavailableError(f"Agent mode is not available for provider '{eff.provider}'")
+    try:
+        return _ai_generate(prompt, eff)
+    except Exception as exc:
+        raise AgentUnavailableError(f"Agent mode is not available for provider '{eff.provider}': {exc}") from exc
 
 
 def _parse_action(raw: str) -> dict | None:

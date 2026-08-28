@@ -52,23 +52,42 @@ class _EffectiveAI:
     openai_model: str
     ollama_url: str
     ollama_model: str
+    api_key: str = ""
+    model: str = ""
+    base_url: str = ""
+
+
+OPENAI_COMPATIBLE_PROVIDERS = {
+    "openai": ("https://api.openai.com/v1", "gpt-4o-mini"),
+    "deepseek": ("https://api.deepseek.com/v1", "deepseek-chat"),
+    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "mistral": ("https://api.mistral.ai/v1", "mistral-large-latest"),
+    "xai": ("https://api.x.ai/v1", "grok-2-latest"),
+    "openrouter": ("https://openrouter.ai/api/v1", "anthropic/claude-3.5-sonnet"),
+    "perplexity": ("https://api.perplexity.ai", "sonar"),
+    "together": ("https://api.together.xyz/v1", "meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+    "custom": ("", "default"),
+}
 
 
 def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     settings = get_settings()
-    provider = (config.provider if config else None) or settings.llm_provider
+    provider = ((config.provider if config else None) or settings.llm_provider).strip().lower()
     org_key = config.api_key if config else None
     org_model = config.model if config else None
     org_base_url = config.base_url if config else None
-    org_provider = config.provider if config else None
+    org_provider = (config.provider.strip().lower() if config else None)
     return _EffectiveAI(
         provider=provider,
         gemini_key=org_key if org_provider == "gemini" else getattr(settings, "gemini_api_key", ""),
-        gemini_model=org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", ""),
+        gemini_model=org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", "gemini-2.0-flash"),
         openai_key=org_key if org_provider == "openai" else getattr(settings, "openai_api_key", ""),
         openai_model=org_model if (org_provider == "openai" and org_model) else "gpt-4o-mini",
-        ollama_url=org_base_url if (org_provider == "ollama" and org_base_url) else getattr(settings, "ollama_base_url", ""),
-        ollama_model=org_model if (org_provider == "ollama" and org_model) else getattr(settings, "ollama_model", ""),
+        ollama_url=org_base_url if (org_provider == "ollama" and org_base_url) else getattr(settings, "ollama_base_url", "http://127.0.0.1:11434"),
+        ollama_model=org_model if (org_provider == "ollama" and org_model) else getattr(settings, "ollama_model", "qwen2.5-coder"),
+        api_key=org_key or "",
+        model=org_model or "",
+        base_url=org_base_url or "",
     )
 
 
@@ -96,17 +115,7 @@ def generate_sql(
         )
     if eff.provider == "gemini":
         try:
-            # The LLM can handle JOINs across multiple tables — no single-table restriction.
             sql = _generate_sql_with_gemini(question, schema, history, eff, db_type)
-        except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(
-                question, schema, history=history, eff=eff,
-                timeout=get_settings().ollama_fallback_timeout_seconds,
-                db_type=db_type,
-            )
-    elif eff.provider == "openai":
-        try:
-            sql = _generate_sql_with_openai(question, schema, history, eff, db_type)
         except (RuntimeError, httpx.HTTPError):
             sql = _generate_sql_with_ollama_or_fallback(
                 question, schema, history=history, eff=eff,
@@ -119,6 +128,19 @@ def generate_sql(
             timeout=get_settings().ollama_fallback_timeout_seconds,
             db_type=db_type,
         )
+    elif eff.provider in OPENAI_COMPATIBLE_PROVIDERS or eff.provider in {"anthropic", "custom"}:
+        try:
+            prompt = _sql_prompt(question, schema, history, db_type)
+            raw = _ai_generate(prompt, eff)
+            sql = _sql_from_model_response(raw)
+        except SchemaAnswer:
+            raise
+        except (RuntimeError, httpx.HTTPError):
+            sql = _generate_sql_with_ollama_or_fallback(
+                question, schema, history=history, eff=eff,
+                timeout=get_settings().ollama_fallback_timeout_seconds,
+                db_type=db_type,
+            )
     else:
         # Deterministic fallback can only target one table.
         table = _ensure_question_can_target_schema(question, schema)
@@ -190,16 +212,11 @@ def _call_intent(
     db_type: str,
 ) -> Intent:
     eff = _effective_ai(ai_config)
-    if eff.provider not in {"gemini", "openai", "ollama"} or not (schema.get("tables") or {}):
+    if not (schema.get("tables") or {}):
         return Intent()
     prompt = _intent_prompt(question, schema, history, db_type)
     try:
-        if eff.provider == "gemini":
-            raw = _gemini_generate(prompt, eff)
-        elif eff.provider == "openai":
-            raw = _openai_generate(prompt, eff)
-        else:
-            raw = _ollama_generate(prompt, eff)
+        raw = _ai_generate(prompt, eff)
     except (RuntimeError, httpx.HTTPError):
         return Intent()
     clarification, analytical = _parse_intent_response(raw)
@@ -323,6 +340,13 @@ def summarize_result(
             summary = _summarize_with_openai(question, columns, rows, eff)
         except (RuntimeError, httpx.HTTPError) as exc:
             logger.warning("summary_llm_failed provider=openai error=%s", exc)
+    elif eff.provider in OPENAI_COMPATIBLE_PROVIDERS or eff.provider in {"anthropic", "custom"}:
+        try:
+            preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
+            prompt = f"Summarize this database query result in one short, plain-English sentence.\n\nQuestion: {question}\nResult preview: {preview}"
+            summary = _ai_generate(prompt, eff).strip()
+        except (RuntimeError, httpx.HTTPError) as exc:
+            logger.warning("summary_llm_failed provider=%s error=%s", eff.provider, exc)
     if not summary and eff.provider in {"gemini", "openai", "ollama"}:
         # For gemini/openai this Ollama call is a rescue path — bound it tightly
         # so a missing local server cannot stretch the request.
@@ -657,9 +681,77 @@ def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
     return text
 
 
+def _anthropic_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
+    api_key = eff.api_key if eff else ""
+    model = (eff.model if eff and eff.model else "claude-3-5-sonnet-20241022")
+    if not api_key:
+        raise RuntimeError("Anthropic API key is not configured")
+
+    response = httpx.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1024,
+            "temperature": 0.1,
+        },
+        timeout=get_settings().llm_timeout_seconds,
+    )
+    response.raise_for_status()
+    data = response.json()
+    contents = data.get("content") or []
+    text = "".join(str(c.get("text", "")) for c in contents if c.get("type") == "text").strip()
+    if not text:
+        raise RuntimeError("Anthropic returned an empty response")
+    return text
+
+
+def _openai_compatible_generate(prompt: str, eff: _EffectiveAI) -> str:
+    provider = eff.provider
+    default_base, default_model = OPENAI_COMPATIBLE_PROVIDERS.get(provider, ("", "gpt-4o-mini"))
+    base_url = (eff.base_url or default_base).rstrip("/")
+    model = eff.model or default_model
+    api_key = eff.api_key or (eff.openai_key if provider == "openai" else "")
+    if not api_key and provider != "custom":
+        raise RuntimeError(f"{provider.title()} API key is not configured")
+
+    url = f"{base_url}/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    if provider == "openrouter":
+        headers["HTTP-Referer"] = "https://querymind.io"
+        headers["X-Title"] = "QueryMind"
+
+    response = httpx.post(
+        url,
+        headers=headers,
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+        },
+        timeout=get_settings().llm_timeout_seconds,
+    )
+    response.raise_for_status()
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError(f"{provider.title()} returned no choices")
+    text = str(choices[0].get("message", {}).get("content", "")).strip()
+    if not text:
+        raise RuntimeError(f"{provider.title()} returned an empty response")
+    return text
+
+
 def _openai_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
-    api_key = eff.openai_key if eff else get_settings().openai_api_key
-    model = eff.openai_model if eff else "gpt-4o-mini"
+    api_key = (eff.api_key or eff.openai_key) if eff else get_settings().openai_api_key
+    model = (eff.model or eff.openai_model) if eff else "gpt-4o-mini"
     if not api_key:
         raise RuntimeError("OpenAI API key is not configured")
 
@@ -686,8 +778,8 @@ def _openai_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
 
 def _ollama_generate(prompt: str, eff: _EffectiveAI | None = None, timeout: int | None = None) -> str:
     settings = get_settings()
-    base_url = eff.ollama_url if eff else settings.ollama_base_url
-    model = eff.ollama_model if eff else settings.ollama_model
+    base_url = (eff.base_url or eff.ollama_url) if eff else settings.ollama_base_url
+    model = (eff.model or eff.ollama_model) if eff else settings.ollama_model
     url = f"{base_url.rstrip('/')}/api/generate"
     response = httpx.post(
         url,
@@ -708,11 +800,13 @@ def _ai_generate(prompt: str, eff: _EffectiveAI) -> str:
     """Route a one-shot prompt to whichever provider is configured."""
     if eff.provider == "gemini":
         return _gemini_generate(prompt, eff)
-    if eff.provider == "openai":
-        return _openai_generate(prompt, eff)
+    if eff.provider == "anthropic":
+        return _anthropic_generate(prompt, eff)
     if eff.provider == "ollama":
         return _ollama_generate(prompt, eff)
-    raise RuntimeError(f"Provider '{eff.provider}' cannot answer free-form prompts")
+    if eff.provider in OPENAI_COMPATIBLE_PROVIDERS or eff.provider == "custom":
+        return _openai_compatible_generate(prompt, eff)
+    return _openai_generate(prompt, eff)
 
 
 def _as_number(value) -> float | None:

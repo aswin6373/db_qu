@@ -96,22 +96,20 @@ def get_integration(user: User = Depends(require_admin), db: Session = Depends(g
 @router.put("/integrations", response_model=IntegrationResponse)
 def update_integration(payload: IntegrationUpdate, user: User = Depends(require_admin), db: Session = Depends(get_db)):
     organization = db.get(Organization, user.organization_id)
-    needs_key = payload.provider in {"gemini", "openai"}
+    needs_key = payload.provider not in {"ollama"}
     if needs_key and not payload.api_key and not organization.encrypted_ai_key:
         raise HTTPException(status_code=400, detail="An API key is required for this provider")
     if payload.api_key:
         organization.encrypted_ai_key = encrypt_secret(payload.api_key.strip())
-    organization.ai_provider = payload.provider
+    organization.ai_provider = payload.provider.strip().lower()
     organization.ai_model = (payload.model or "").strip() or None
-    # A base URL only makes sense for self-hosted providers; switching away
-    # from Ollama must not leave a stale server address behind.
     organization.ai_base_url = (
         (payload.base_url or "").strip() or None
-        if payload.provider == "ollama"
+        if payload.provider in {"ollama", "custom"} or payload.base_url
         else None
     )
-    if payload.provider == "ollama" and not organization.ai_base_url:
-        raise HTTPException(status_code=400, detail="Ollama needs a base URL (e.g. http://your-server:11434)")
+    if payload.provider in {"ollama", "custom"} and not organization.ai_base_url:
+        raise HTTPException(status_code=400, detail=f"{payload.provider.title()} needs a server/base URL")
     db.commit()
     db.refresh(organization)
     return _integration_response(organization)

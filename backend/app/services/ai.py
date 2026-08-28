@@ -841,6 +841,21 @@ def _extract_sql(text: str) -> str:
 
 def _generate_sql_fallback(question: str, schema: dict) -> str:
     lowered = question.lower()
+
+    # Gracefully handle greetings and small talk if cloud LLM is unreachable
+    if any(re.search(rf"\b{word}\b", lowered) for word in ["hi", "hello", "hey", "thanks", "thank you", "good morning", "good evening"]):
+        raise SchemaAnswer("Hello! I'm QueryMind, your database assistant. Ask me to query, summarize, or chart any data from your database!")
+
+    # Gracefully handle schema/table inquiries if cloud LLM is unreachable
+    if any(term in lowered for term in ["what tables", "list tables", "show tables", "table structure", "schema", "tables exist", "what data", "structure"]):
+        tables = list((schema.get("tables") or {}).keys())
+        if not tables:
+            raise SchemaAnswer("No tables were discovered in the connected database yet.")
+        table_count = len(tables)
+        preview_tables = ", ".join(tables[:6])
+        more = f" and {table_count - 6} more" if table_count > 6 else ""
+        raise SchemaAnswer(f"Your database has {table_count} tables including: {preview_tables}{more}. Ask me to query or summarize any of them!")
+
     table = _target_table_from_question(question, schema)
 
     if any(word in lowered for word in ["delete", "remove"]):

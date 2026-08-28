@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, Sparkles, SquareSlash, Table2, X, XCircle } from "lucide-react";
+import { BarChart3, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, SquareSlash, Table2, X, XCircle } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
+import { LogoMark } from "../components/LogoMark";
 import { NewChatDialog } from "../components/NewChatDialog";
 import { buildChartSpec, QueryChart } from "../components/QueryChart";
 import { apiRequest } from "../lib/api";
@@ -25,13 +26,6 @@ const TYPING_ID = -999_999;
 // mutations bump a nonce so React re-renders.
 const confirmedWrites = new Set<number>();
 const dismissedWrites = new Set<number>();
-
-const SUGGESTIONS = [
-  "Show the 10 most recent rows from my biggest table",
-  "Count how many rows each table has",
-  "Insert a new record with today's date",
-  "Which columns look like they need an index?"
-];
 
 // Mirrors the backend's agent routing (_AGENT_HINT_RE / _WRITE_INTENT_RE in
 // query.py). Purely cosmetic: questions the backend hands to the multi-step
@@ -298,10 +292,6 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                   hasConnection={hasConnection}
                   needsDatabase={!activeSession}
                   onOpenConnections={onOpenConnections}
-                  onPick={(suggestion) => {
-                    setQuestion(suggestion);
-                    textareaRef.current?.focus();
-                  }}
                   onPickDatabase={() => setPickerOpen(true)}
                 />
               )}
@@ -412,19 +402,17 @@ function EmptyConversation({
   hasConnection,
   needsDatabase,
   onOpenConnections,
-  onPick,
   onPickDatabase
 }: {
   hasConnection: boolean;
   needsDatabase: boolean;
   onOpenConnections: () => void;
-  onPick: (suggestion: string) => void;
   onPickDatabase: () => void;
 }) {
   return (
     <div className="flex flex-col items-center py-14 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-navy text-teal-soft shadow-card">
-        <Sparkles size={24} />
+      <span className="grid h-16 w-16 place-items-center rounded-2xl bg-navy text-teal-soft shadow-card">
+        <LogoMark className="h-11 w-11" />
       </span>
       <h2 className="mt-5 text-xl font-bold tracking-tight text-navy">
         {hasConnection ? (needsDatabase ? "Pick a database for this chat" : "What do you want to know?") : "Connect a database to begin"}
@@ -445,20 +433,6 @@ function EmptyConversation({
         <button className="btn-accent mt-5" onClick={onPickDatabase} type="button">
           <Database size={16} /> Choose a database
         </button>
-      )}
-      {hasConnection && !needsDatabase && (
-        <div className="mt-7 grid w-full max-w-xl gap-2 sm:grid-cols-2">
-          {SUGGESTIONS.map((suggestion) => (
-            <button
-              className="rounded-xl border border-navy/10 bg-white px-4 py-3 text-left text-[13px] leading-5 text-navy font-medium transition hover:border-teal/40 hover:bg-teal-soft/30 shadow-card"
-              key={suggestion}
-              onClick={() => onPick(suggestion)}
-              type="button"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );

@@ -117,9 +117,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
             </svg>
           </button>
           <strong className="text-sm font-bold text-navy">{current?.label ?? (active === "chat" ? "AI Chat" : "QueryMind")}</strong>
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-navy text-teal-soft">
-            <Activity size={15} />
-          </span>
+          <div className="w-8" />
         </div>
       </header>
 

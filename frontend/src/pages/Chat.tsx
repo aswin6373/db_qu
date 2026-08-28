@@ -213,7 +213,18 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-canvas/40">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-navy/10 bg-cream/70 backdrop-blur px-4 sm:px-6">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-navy">{activeSession?.title ?? "New chat"}</p>
+          <div className="flex items-center gap-2">
+            {activeSession?.title?.toLowerCase().startsWith("whatsapp") && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-500/25">
+                WhatsApp
+              </span>
+            )}
+            <p className="truncate text-sm font-bold text-navy">
+              {activeSession?.title?.toLowerCase().startsWith("whatsapp")
+                ? activeSession.title.replace(/^whatsapp\s*[·:-]\s*/i, "").trim() || "WhatsApp Chat"
+                : (activeSession?.title ?? "New chat")}
+            </p>
+          </div>
           {activeSession && (
             <p className="text-[11px] font-medium text-navy-soft/70">
               {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}

@@ -720,9 +720,10 @@ def _process_message(sender: str, text: str) -> None:
         # so the web sidebar is self-explanatory. Manual renames in the web app
         # (any other title) are respected and never overwritten.
         if session.title.startswith("WhatsApp ···") or session.title == "WhatsApp":
+            sender_tail = _clean_number(sender)[-4:]
             first_question = " ".join(text.split())[:60]
             if first_question:
-                session.title = f"WhatsApp · {first_question}"
+                session.title = f"WhatsApp ···{sender_tail} · {first_question}"
                 db.commit()
 
         # Images are rendered BEFORE the text is sent, so the "coming next"
@@ -768,7 +769,6 @@ def _session_for(db: Session, organization_id: int, user_id: int, sender: str) -
         .where(
             ChatSession.organization_id == organization_id,
             ChatSession.user_id == user_id,
-            ChatSession.title.like("WhatsApp%"),
         )
         .order_by(ChatSession.updated_at.desc().nullslast(), ChatSession.id.desc())
         .limit(1)

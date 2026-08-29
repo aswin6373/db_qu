@@ -74,7 +74,7 @@ def enable_agent(monkeypatch):
     from app.api import query as query_api
     from app.services import agent as agent_service
 
-    monkeypatch.setattr(agent_service, "_effective_ai", lambda cfg: SimpleNamespace(provider="gemini"))
+    monkeypatch.setattr(agent_service, "_effective_ai", lambda cfg: SimpleNamespace(provider="gemini", gemini_key="test", api_key="", openai_key=""))
     monkeypatch.setattr(query_api, "agent_supported", lambda cfg: True)
 
 

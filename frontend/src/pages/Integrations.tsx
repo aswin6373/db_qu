@@ -469,7 +469,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
             {whatsapp.number && (
               <a
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
-                href={`https://wa.me/${whatsapp.number}?text=hi`}
+                href={`https://wa.me/${whatsapp.number.replace(/\D/g, "")}?text=hi`}
                 rel="noreferrer"
                 target="_blank"
               >

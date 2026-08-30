@@ -36,7 +36,7 @@ class OrganizationResponse(BaseModel):
 class MemberCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
-    role: Literal["member"] = "member"
+    role: Literal["admin", "member"] = "member"
 
 
 class MemberResponse(BaseModel):

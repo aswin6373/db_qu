@@ -7,10 +7,10 @@ def register_and_token(client, email: str, organization_name: str) -> str:
     return response.json()["access_token"]
 
 
-def add_member(client, admin_token: str, email: str, password: str = "memberpass1") -> dict:
+def add_member(client, admin_token: str, email: str, password: str = "memberpass1", role: str = "member") -> dict:
     response = client.post(
         "/organizations/members",
-        json={"email": email, "password": password},
+        json={"email": email, "password": password, "role": role},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 201
@@ -28,6 +28,28 @@ def test_admin_can_add_member_who_can_login(client):
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {member_token}"})
     assert me.status_code == 200
     assert me.json()["role"] == "member"
+
+
+def test_admin_can_add_another_admin(client):
+    admin_token = register_and_token(client, "admin1@example.com", "Multi Admin Org")
+    created = add_member(client, admin_token, "admin2@example.com", "adminpass123", role="admin")
+    assert created["role"] == "admin"
+    assert created["email"] == "admin2@example.com"
+
+    login = client.post("/auth/login", json={"email": "admin2@example.com", "password": "adminpass123"})
+    assert login.status_code == 200
+    admin2_token = login.json()["access_token"]
+
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {admin2_token}"})
+    assert me.status_code == 200
+    assert me.json()["role"] == "admin"
+
+    # Newly created admin can list members and manage the organization
+    members = client.get("/organizations/members", headers={"Authorization": f"Bearer {admin2_token}"})
+    assert members.status_code == 200
+    roles = {m["email"]: m["role"] for m in members.json()}
+    assert roles["admin1@example.com"] == "admin"
+    assert roles["admin2@example.com"] == "admin"
 
 
 def test_members_listing_is_admin_only(client):
@@ -79,7 +101,7 @@ def test_only_admin_can_manage_connections(client):
     assert removed.status_code == 403
 
 
-def test_admin_cannot_remove_self_or_other_admins(client):
+def test_admin_cannot_remove_self(client):
     admin_token = register_and_token(client, "admin-self@example.com", "Org Self")
 
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {admin_token}"})

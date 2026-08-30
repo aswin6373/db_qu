@@ -10,13 +10,20 @@ type Props = {
 };
 
 type Feedback = { kind: "success" | "error"; text: string };
+type MemberRole = "member" | "admin";
 
-const EMPTY_FORM = { email: "", password: "" };
+type MemberFormData = {
+  email: string;
+  password: string;
+  role: MemberRole;
+};
+
+const EMPTY_FORM: MemberFormData = { email: "", password: "", role: "member" };
 
 export function Members({ token, currentUserId }: Props) {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [form, setForm] = useState<MemberFormData>({ ...EMPTY_FORM });
   const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -58,9 +65,10 @@ export function Members({ token, currentUserId }: Props) {
       setMembers((items) => [...items, created]);
       setForm({ ...EMPTY_FORM });
       setShowPassword(false);
-      setFeedback({ kind: "success", text: `${created.email} can now sign in with the email and password you set.` });
+      const roleLabel = created.role === "admin" ? "Admin" : "Member";
+      setFeedback({ kind: "success", text: `${created.email} (${roleLabel}) can now sign in with the email and password you set.` });
     } catch (err) {
-      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Could not add the member" });
+      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Could not add the user" });
     } finally {
       setIsAdding(false);
     }
@@ -75,7 +83,7 @@ export function Members({ token, currentUserId }: Props) {
       setFeedback({ kind: "success", text: `${member.email} was removed from the workspace.` });
       setRemovingId(null);
     } catch (err) {
-      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Could not remove the member" });
+      setFeedback({ kind: "error", text: err instanceof Error ? err.message : "Could not remove the user" });
       setRemovingId(null);
     } finally {
       setIsRemoving(false);
@@ -87,7 +95,7 @@ export function Members({ token, currentUserId }: Props) {
       <PageHeader
         eyebrow="Team"
         title="Members"
-        description="Add colleagues to your workspace. They sign in with the email and password you set here, and can chat with the connected databases."
+        description="Add colleagues to your workspace. Set them as an Admin or Member, configure their password, and collaborate on database querying."
       />
       {feedback && <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />}
       <AddMemberCard form={form} isAdding={isAdding} showPassword={showPassword} onShowPassword={setShowPassword} onFieldChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onSubmit={addMember} />
@@ -136,11 +144,11 @@ function AddMemberCard({
   onFieldChange,
   onSubmit
 }: {
-  form: typeof EMPTY_FORM;
+  form: MemberFormData;
   isAdding: boolean;
   showPassword: boolean;
   onShowPassword: (visible: boolean) => void;
-  onFieldChange: <K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) => void;
+  onFieldChange: <K extends keyof MemberFormData>(key: K, value: MemberFormData[K]) => void;
   onSubmit: (event: FormEvent) => void;
 }) {
   return (
@@ -150,12 +158,12 @@ function AddMemberCard({
           <UserPlus size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">Add a member</h2>
-          <p className="text-xs text-slate-500">You choose their password — share it with them securely.</p>
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Add a workspace user</h2>
+          <p className="text-xs text-slate-500">Choose their role and password — share their login details securely.</p>
         </div>
       </div>
 
-      <div className="grid gap-x-5 gap-y-4 p-6 sm:grid-cols-2">
+      <div className="grid gap-x-5 gap-y-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
         <label className="block">
           <span className="label">Email</span>
           <input
@@ -169,6 +177,17 @@ function AddMemberCard({
           />
         </label>
         <label className="block">
+          <span className="label">Role</span>
+          <select
+            className="field"
+            value={form.role}
+            onChange={(event) => onFieldChange("role", event.target.value as MemberRole)}
+          >
+            <option value="member">Member (Queries & Data Exploration)</option>
+            <option value="admin">Admin (Full Workspace Management)</option>
+          </select>
+        </label>
+        <label className="block sm:col-span-2 lg:col-span-1">
           <span className="label">Password</span>
           <span className="relative block">
             <input
@@ -193,10 +212,15 @@ function AddMemberCard({
         </label>
       </div>
 
-      <div className="flex justify-end border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+        <p className="hidden text-xs text-slate-500 sm:block">
+          {form.role === "admin"
+            ? "Admins can add databases, integrations, and manage other workspace members."
+            : "Members can run queries and explore schemas, but cannot modify workspace settings."}
+        </p>
         <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isAdding} type="submit">
           {isAdding ? <Loader2 className="animate-spin" size={15} /> : <UserPlus size={15} />}
-          {isAdding ? "Adding…" : "Add member"}
+          {isAdding ? "Adding…" : form.role === "admin" ? "Add admin" : "Add member"}
         </button>
       </div>
     </form>
@@ -223,9 +247,9 @@ function MemberList({
   return (
     <div className="card animate-fade-up overflow-hidden">
       <div className="border-b border-slate-100 px-6 py-5">
-        <h2 className="text-lg font-bold tracking-tight text-slate-900">Workspace members</h2>
+        <h2 className="text-lg font-bold tracking-tight text-slate-900">Workspace users</h2>
         <p className="text-xs text-slate-500">
-          {members.length} user{members.length === 1 ? "" : "s"} · members can chat and explore data, but only you manage databases and the team.
+          {members.length} user{members.length === 1 ? "" : "s"} · Admins manage databases, integrations, and users; members can chat and explore data.
         </p>
       </div>
 
@@ -250,41 +274,46 @@ function MemberList({
                     {isSelf ? " · you" : ""}
                   </span>
                 </span>
-                {member.role === "admin" ? (
-                  <span className="status-pill pill-info shrink-0">
-                    admin
-                  </span>
-                ) : isConfirming ? (
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-xs font-medium text-rose-600">Remove?</span>
+                <span
+                  className={`status-pill shrink-0 ${
+                    member.role === "admin" ? "pill-info" : ""
+                  }`}
+                >
+                  {member.role === "admin" ? "admin" : "member"}
+                </span>
+                {!isSelf && (
+                  isConfirming ? (
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <span className="text-xs font-medium text-rose-600">Remove?</span>
+                      <button
+                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                        disabled={isRemoving}
+                        onClick={() => onRemove(member)}
+                        title="Confirm remove"
+                        type="button"
+                      >
+                        {isRemoving ? <Loader2 className="animate-spin" size={13} /> : <CheckCircle2 size={13} />}
+                      </button>
+                      <button
+                        aria-label="Keep member"
+                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        onClick={() => onRemoveRequest(null)}
+                        type="button"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ) : (
                     <button
-                      className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
-                      disabled={isRemoving}
-                      onClick={() => onRemove(member)}
-                      title="Confirm remove"
+                      aria-label={`Remove ${member.email}`}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                      onClick={() => onRemoveRequest(member.id)}
+                      title={member.role === "admin" ? "Remove admin" : "Remove member"}
                       type="button"
                     >
-                      {isRemoving ? <Loader2 className="animate-spin" size={13} /> : <CheckCircle2 size={13} />}
+                      <Trash2 size={14} />
                     </button>
-                    <button
-                      aria-label="Keep member"
-                      className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                      onClick={() => onRemoveRequest(null)}
-                      type="button"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    aria-label={`Remove ${member.email}`}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-                    onClick={() => onRemoveRequest(member.id)}
-                    title="Remove member"
-                    type="button"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  )
                 )}
               </li>
             );

@@ -152,7 +152,7 @@ def add_member(payload: MemberCreate, user: User = Depends(require_admin), db: S
         organization_id=user.organization_id,
         email=email,
         hashed_password=hash_password(payload.password),
-        role="member",
+        role=payload.role,
     )
     db.add(member)
     db.commit()
@@ -172,8 +172,6 @@ def remove_member(member_id: int, user: User = Depends(require_admin), db: Sessi
         raise HTTPException(status_code=404, detail="Member not found")
     if member.id == user.id:
         raise HTTPException(status_code=400, detail="You cannot remove yourself")
-    if member.role == "admin":
-        raise HTTPException(status_code=400, detail="Admins cannot be removed")
 
     # Keep the organization's query history, but drop the member's personal chats.
     # Their logs keep user_id=None — history is never silently re-attributed

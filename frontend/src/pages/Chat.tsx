@@ -638,9 +638,19 @@ function ResultBlock({
               <tbody>
                 {result.rows.map((row, index) => (
                   <tr className="transition-colors hover:bg-brand-50/40" key={index}>
-                    {result.columns.map((column, columnIndex) => (
-                      <td className="px-3.5 py-2.5 text-slate-700" key={`${column}-${columnIndex}`}>{String(row[column] ?? "")}</td>
-                    ))}
+                    {result.columns.map((column, columnIndex) => {
+                      const val = row[column];
+                      const isNull = val === null || val === undefined || val === "";
+                      return (
+                        <td className="px-3.5 py-2.5 text-slate-700" key={`${column}-${columnIndex}`}>
+                          {isNull ? (
+                            <span className="select-none font-mono text-xs italic text-slate-400">—</span>
+                          ) : (
+                            String(val)
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

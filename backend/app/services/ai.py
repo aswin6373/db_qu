@@ -501,7 +501,7 @@ SQL_RULES = """
 - Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
 - Do not generate multiple statements.
 - Never query system tables (information_schema, performance_schema, pg_catalog, sqlite_master) — answer those questions with a META: line instead.
-- For INSERT requests, use the actual values from the user's request. Do not invent generic values like 'New item'.
+- For INSERT requests, use the actual values provided by the user. For unspecified columns that represent numeric balances, counters, or totals (such as total_spent, balance, count), provide 0 or 0.00 as appropriate rather than NULL or leaving them undefined, unless the user explicitly requested otherwise.
 - Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
 - Use the recent conversation to resolve short follow-up answers like "yes" or "the customers one".
 """

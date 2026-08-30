@@ -38,6 +38,21 @@ const STATUS_STYLES: Record<string, { classes: string; label: string; icon: Reac
     label: "Awaiting confirmation",
     icon: <Clock size={12} />,
   },
+  expired: {
+    classes: "bg-slate-100 text-slate-500 border border-slate-200",
+    label: "Expired (auto-cancelled)",
+    icon: <Clock size={12} />,
+  },
+  confirmation_expired: {
+    classes: "bg-slate-100 text-slate-500 border border-slate-200",
+    label: "Expired (auto-cancelled)",
+    icon: <Clock size={12} />,
+  },
+  cancelled: {
+    classes: "bg-slate-100 text-slate-600",
+    label: "Cancelled",
+    icon: <XCircle size={12} />,
+  },
   executing: {
     classes: "bg-slate-100 text-slate-600",
     label: "Running",

@@ -12,7 +12,7 @@ from app.connectors.mysql import MySQLConnector
 from app.connectors.postgres import PostgresConnector
 from app.db.session import get_db
 from app.models import ChatSession, DBConnection, QueryLog, User
-from app.schemas.dto import ConnectionCreate, ConnectionResponse, SchemaInsightsResponse
+from app.schemas.dto import ConnectionCreate, ConnectionResponse, ConnectionUpdate, SchemaInsightsResponse
 from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.schema_insights import build_schema_insights
 
@@ -125,6 +125,89 @@ def create_connection(payload: ConnectionCreate, user: User = Depends(require_ad
         schema_cache=json.dumps(schema),
     )
     db.add(connection)
+    db.commit()
+    db.refresh(connection)
+    return connection
+
+
+@router.put("/{connection_id}", response_model=ConnectionResponse)
+def update_connection(
+    connection_id: int,
+    payload: ConnectionUpdate,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    connection = _get_org_connection(connection_id, user, db)
+
+    db_type = payload.db_type or connection.db_type or "mysql"
+    host = payload.host if payload.host is not None else connection.host
+    port = payload.port if payload.port is not None else connection.port
+    username = payload.username if payload.username is not None else connection.username
+    password = payload.password if payload.password is not None else decrypt_secret(connection.encrypted_password)
+    database_name = payload.database_name if payload.database_name is not None else connection.database_name
+    ssl_mode = payload.ssl_mode if payload.ssl_mode is not None else (connection.ssl_mode or "PREFERRED")
+    ssh_host = payload.ssh_host if payload.ssh_host is not None else connection.ssh_host
+    ssh_port = payload.ssh_port if payload.ssh_port is not None else (connection.ssh_port or 22)
+    ssh_username = payload.ssh_username if payload.ssh_username is not None else connection.ssh_username
+    ssh_password = (
+        payload.ssh_password
+        if payload.ssh_password is not None
+        else (decrypt_secret(connection.encrypted_ssh_password) if connection.encrypted_ssh_password else None)
+    )
+
+    # Mandatory Live Verification: Test the credentials before committing to DB
+    schema = _safe_json(connection.schema_cache)
+    if payload.test_live:
+        connector = _build_connector_for(
+            db_type,
+            host,
+            port,
+            username,
+            password,
+            database_name,
+            ssl_mode=ssl_mode,
+            ssh_host=ssh_host,
+            ssh_port=ssh_port,
+            ssh_username=ssh_username,
+            ssh_password=ssh_password,
+        )
+        try:
+            connector.connect()
+            schema = connector.get_schema()
+        except Exception as exc:
+            logger.warning(
+                "connection_update_test_failed connection_id=%s host=%s error=%s",
+                connection_id,
+                host,
+                exc,
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Could not connect to the database with the updated credentials. Check host, port, username, password, and SSL mode. The previous credentials have been kept.",
+            ) from exc
+        finally:
+            connector.close()
+
+    # Apply verified updates
+    if payload.name:
+        connection.name = payload.name
+    connection.db_type = db_type
+    connection.host = host
+    connection.port = port
+    connection.username = username
+    connection.encrypted_password = encrypt_secret(password)
+    connection.database_name = database_name
+    connection.ssl_mode = ssl_mode
+    connection.ssh_host = ssh_host
+    connection.ssh_port = ssh_port
+    connection.ssh_username = ssh_username
+    if ssh_password:
+        connection.encrypted_ssh_password = encrypt_secret(ssh_password)
+    elif payload.ssh_host is not None and not payload.ssh_host:
+        connection.encrypted_ssh_password = None
+    connection.schema_cache = json.dumps(schema)
+
     db.commit()
     db.refresh(connection)
     return connection

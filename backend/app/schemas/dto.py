@@ -77,6 +77,22 @@ class ConnectionCreate(BaseModel):
     ssh_password: str | None = None  # Can be private key or password
 
 
+class ConnectionUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    db_type: Literal["mysql", "postgres"] | None = None
+    host: str | None = None
+    port: int | None = None
+    username: str | None = None
+    password: str | None = None
+    database_name: str | None = None
+    ssl_mode: Literal["PREFERRED", "REQUIRED", "DISABLED"] | None = None
+    test_live: bool = True
+    ssh_host: str | None = None
+    ssh_port: int | None = None
+    ssh_username: str | None = None
+    ssh_password: str | None = None
+
+
 class ConnectionResponse(BaseModel):
     id: int
     name: str
@@ -110,6 +126,8 @@ class QueryGenerateResponse(BaseModel):
     steps: list[dict] = []
     # AI-decided presentation for the result: "chart", "table" or "text".
     visualization: str = "table"
+    conflict_warning: dict | None = None
+    expires_at: str | None = None
 
 
 class ChangeLogEntry(BaseModel):

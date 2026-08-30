@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { BarChart3, Check, CircleHelp, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, SquareSlash, Table2, X, XCircle } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, CircleHelp, Clock, Copy, Database, FileDown, Loader2, PlugZap, Search, Send, SquareSlash, Table2, X, XCircle } from "lucide-react";
 import { useChatSessions } from "../components/ChatSessionsContext";
 import { LogoMark } from "../components/LogoMark";
 import { NewChatDialog } from "../components/NewChatDialog";
@@ -471,6 +471,25 @@ function ResultBlock({
   const [exportError, setExportError] = useState<string | null>(null);
   const chartRef = useRef<HTMLDivElement>(null);
 
+  const [isTimedOut, setIsTimedOut] = useState(() => {
+    if (!result.expires_at) return false;
+    return new Date(result.expires_at).getTime() <= Date.now();
+  });
+
+  useEffect(() => {
+    if (!result.expires_at || isConfirmed || isCancelled) return;
+    const expiryTime = new Date(result.expires_at).getTime();
+    const remaining = expiryTime - Date.now();
+    if (remaining <= 0) {
+      setIsTimedOut(true);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setIsTimedOut(true);
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [result.expires_at, isConfirmed, isCancelled]);
+
   async function copySql() {
     try {
       await navigator.clipboard.writeText(result.sql);
@@ -550,6 +569,16 @@ function ResultBlock({
         </div>
       )}
 
+      {result.conflict_warning?.has_conflict && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          <AlertTriangle className="mt-0.5 shrink-0 text-rose-600" size={16} />
+          <div>
+            <p className="font-semibold text-rose-900">Duplicate Key Conflict Detected</p>
+            <p className="mt-0.5 text-rose-700">{result.conflict_warning.message}</p>
+          </div>
+        </div>
+      )}
+
       <div className="group/sql relative">
         <code className="code-block pr-12">{result.sql}</code>
         <button
@@ -563,13 +592,24 @@ function ResultBlock({
         </button>
       </div>
 
-      {result.requires_confirmation && !isConfirmed && !isCancelled && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <p className="min-w-0 flex-1 text-xs font-medium leading-5 text-amber-800">
-            This query modifies data. Run it only if the SQL above looks right.
+      {result.requires_confirmation && !isConfirmed && !isCancelled && !isTimedOut && (
+        <div className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+          result.conflict_warning?.has_conflict ? "border-rose-200 bg-rose-50/70" : "border-amber-200 bg-amber-50"
+        }`}>
+          <p className={`min-w-0 flex-1 text-xs font-medium leading-5 ${
+            result.conflict_warning?.has_conflict ? "text-rose-800" : "text-amber-800"
+          }`}>
+            {result.conflict_warning?.has_conflict
+              ? "Cannot run: A duplicate key conflict was found. Modify the value or table data first."
+              : "This query modifies data. Run it only if the SQL above looks right."}
           </p>
           <span className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
-            <button className="btn-primary h-9 min-w-28" disabled={isConfirming} onClick={() => onConfirm(result.query_id)} type="button">
+            <button
+              className="btn-primary h-9 min-w-28"
+              disabled={isConfirming || Boolean(result.conflict_warning?.has_conflict)}
+              onClick={() => onConfirm(result.query_id)}
+              type="button"
+            >
               {isConfirming ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />}
               {isConfirming ? "Running" : "Confirm & run"}
             </button>
@@ -577,6 +617,13 @@ function ResultBlock({
               <X size={15} /> Cancel
             </button>
           </span>
+        </div>
+      )}
+
+      {result.requires_confirmation && !isConfirmed && !isCancelled && isTimedOut && (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 p-3 text-xs font-medium text-slate-600">
+          <Clock className="text-slate-400" size={15} />
+          <span>Confirmation request expired after 15 minutes and was automatically cancelled.</span>
         </div>
       )}
 

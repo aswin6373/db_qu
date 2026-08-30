@@ -71,6 +71,20 @@ def _session_response(
 @router.post("/sessions", response_model=ChatSessionResponse)
 def create_session(payload: ChatSessionCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     connection = _org_connection(payload.connection_id, user, db)
+    if connection:
+        from app.api.connections import build_connector
+        from app.core.config import get_settings
+        if get_settings().environment == "production":
+            connector = build_connector(connection)
+            try:
+                connector.connect()
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot start chat: Database '{connection.name}' is unreachable with its configured credentials. Please check connection settings.",
+                ) from exc
+            finally:
+                connector.close()
     title = payload.title.strip() or "New chat"
     session = ChatSession(
         organization_id=user.organization_id,

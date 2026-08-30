@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -330,6 +330,101 @@ DEMO_SCHEMA = {
 }
 
 
+def _check_unique_conflict(sql: str, schema: dict, connector) -> dict | None:
+    """Pre-flight check for unique/primary key conflicts before user confirms a write query."""
+    try:
+        tables = schema.get("tables") or {}
+        cleaned_sql = sql.strip()
+        upper_sql = cleaned_sql.upper()
+
+        if upper_sql.startswith("INSERT"):
+            match_table = re.search(r"INSERT\s+INTO\s+[`\"']?([a-zA-Z_]\w*)[`\"']?", cleaned_sql, re.IGNORECASE)
+            if not match_table:
+                return None
+            target_table = match_table.group(1)
+            table_meta = tables.get(target_table) or {}
+            columns_meta = table_meta.get("columns", [])
+            unique_cols = {
+                col.get("name"): col
+                for col in columns_meta
+                if col.get("key") in {"PRI", "UNI"} or col.get("unique") is True
+            }
+            if not unique_cols:
+                return None
+
+            col_match = re.search(r"\((.*?)\)\s*VALUES\s*\((.*?)\)", cleaned_sql, re.IGNORECASE | re.DOTALL)
+            if not col_match:
+                return None
+            raw_cols = [c.strip("`\"' ") for c in col_match.group(1).split(",")]
+            raw_vals = [v.strip() for v in re.split(r",\s*(?=(?:[^']*'[^']*')*[^']*$)", col_match.group(2))]
+            col_val_map = dict(zip(raw_cols, raw_vals))
+
+            for u_col in unique_cols:
+                if u_col in col_val_map:
+                    val = col_val_map[u_col].strip()
+                    if val.upper() in {"NULL", "DEFAULT", "''", '""'}:
+                        continue
+                    clean_val = val.strip("'\"")
+                    check_sql = f"SELECT 1 FROM `{target_table}` WHERE `{u_col}` = '{clean_val}' LIMIT 1"
+                    try:
+                        _, rows = connector.execute(check_sql)
+                        if rows:
+                            return {
+                                "has_conflict": True,
+                                "table": target_table,
+                                "column": u_col,
+                                "value": clean_val,
+                                "message": f"A record with {u_col} '{clean_val}' already exists in '{target_table}'. Executing this will cause a duplicate key error.",
+                            }
+                    except Exception:
+                        pass
+
+        elif upper_sql.startswith("UPDATE"):
+            match_table = re.search(r"UPDATE\s+[`\"']?([a-zA-Z_]\w*)[`\"']?", cleaned_sql, re.IGNORECASE)
+            if not match_table:
+                return None
+            target_table = match_table.group(1)
+            table_meta = tables.get(target_table) or {}
+            columns_meta = table_meta.get("columns", [])
+            unique_cols = {
+                col.get("name"): col
+                for col in columns_meta
+                if col.get("key") in {"PRI", "UNI"} or col.get("unique") is True
+            }
+            if not unique_cols:
+                return None
+
+            set_match = re.search(r"SET\s+(.*?)(?:\s+WHERE\s+(.*))?$", cleaned_sql, re.IGNORECASE | re.DOTALL)
+            if not set_match:
+                return None
+            set_clause = set_match.group(1)
+            where_clause = set_match.group(2) or "1=0"
+
+            for u_col in unique_cols:
+                col_pattern = re.search(rf"\b{re.escape(u_col)}\b\s*=\s*([^,]+)", set_clause, re.IGNORECASE)
+                if col_pattern:
+                    val = col_pattern.group(1).strip()
+                    if val.upper() in {"NULL", "DEFAULT"}:
+                        continue
+                    clean_val = val.strip("'\"")
+                    check_sql = f"SELECT 1 FROM `{target_table}` WHERE `{u_col}` = '{clean_val}' AND NOT ({where_clause}) LIMIT 1"
+                    try:
+                        _, rows = connector.execute(check_sql)
+                        if rows:
+                            return {
+                                "has_conflict": True,
+                                "table": target_table,
+                                "column": u_col,
+                                "value": clean_val,
+                                "message": f"A record with {u_col} '{clean_val}' already exists in '{target_table}'. Executing this will cause a duplicate key error.",
+                            }
+                    except Exception:
+                        pass
+    except Exception as exc:
+        logger.warning("unique_conflict_check_error error=%s", exc)
+    return None
+
+
 @router.post("/generate", response_model=QueryGenerateResponse)
 def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     settings = get_settings()
@@ -557,6 +652,19 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     db.add(log)
     db.commit()
     db.refresh(log)
+    conflict_warning = None
+    expires_at = None
+    if validation.requires_confirmation:
+        expires_at = (_utcnow() + timedelta(minutes=settings.confirmation_ttl_minutes)).isoformat()
+        try:
+            connector = build_connector(connection)
+            try:
+                conflict_warning = _check_unique_conflict(sql, schema, connector)
+            finally:
+                connector.close()
+        except Exception:
+            conflict_warning = None
+
     visualization = (
         decide_visualization(payload.question, columns, rows, ai_config, deadline)
         if not validation.requires_confirmation
@@ -571,6 +679,8 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
         columns=columns,
         rows=rows,
         visualization=visualization,
+        conflict_warning=conflict_warning,
+        expires_at=expires_at,
     )
     if payload.session_id is not None:
         chat_session = _org_chat_session(payload.session_id, user, db)

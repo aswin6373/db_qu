@@ -85,6 +85,14 @@ export type QueryResponse = {
   steps?: AgentStep[];
   // AI-decided presentation: opens the result as a chart or table by default.
   visualization?: "chart" | "table" | "text";
+  conflict_warning?: {
+    has_conflict: boolean;
+    table: string;
+    column: string;
+    value: string;
+    message: string;
+  } | null;
+  expires_at?: string | null;
 };
 
 export type Dashboard = {

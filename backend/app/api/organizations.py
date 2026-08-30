@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, aliased
 
 from app.api.dependencies import get_current_user, require_admin
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models import ChatSession, DBConnection, Message, Organization, QueryLog, User
@@ -217,11 +218,18 @@ def change_log(
         return account.email.split("@", 1)[0]
 
     entries: list[ChangeLogEntry] = []
+    ttl_seconds = get_settings().confirmation_ttl_minutes * 60
+    now = datetime.now(timezone.utc)
     for log, author, confirmed_by_account, connection_name in rows:
         try:
             tables = json.loads(log.affected_tables or "[]")
         except (json.JSONDecodeError, TypeError):
             tables = []
+        status = log.status
+        if status == "pending_confirmation" and log.created_at is not None:
+            created = log.created_at if log.created_at.tzinfo else log.created_at.replace(tzinfo=timezone.utc)
+            if (now - created).total_seconds() > ttl_seconds:
+                status = "expired"
         entries.append(
             ChangeLogEntry(
                 id=log.id,
@@ -230,7 +238,7 @@ def change_log(
                 question=log.natural_language,
                 sql=log.generated_sql,
                 query_type=log.query_type,
-                status=log.status,
+                status=status,
                 tables=tables if isinstance(tables, list) else [],
                 connection_name=connection_name,
                 confirmed_at=_iso_utc(log.confirmed_at),

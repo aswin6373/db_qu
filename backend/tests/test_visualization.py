@@ -27,6 +27,7 @@ def test_chart_shape_ok_respects_max_rows():
     assert not chart_shape_ok(["label", "value"], rows[:1])  # single row: nothing to draw
 
 
-def test_compress_history_without_ai_returns_none():
-    # fallback provider cannot compress; caller keeps the previous summary.
+def test_compress_history_without_ai_returns_none(monkeypatch):
+    from app.services import ai
+    monkeypatch.setattr(ai, "_gemini_generate", lambda prompt, eff=None: (_ for _ in ()).throw(RuntimeError("no ai")))
     assert compress_history(None, [{"role": "user", "content": "hello"}]) is None

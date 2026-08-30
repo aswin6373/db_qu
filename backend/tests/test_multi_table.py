@@ -68,10 +68,11 @@ def test_multi_table_question_reaches_llm_without_single_table_block(monkeypatch
     assert "customers" in captured["prompt"]
 
 
-def test_multi_table_question_still_blocked_in_fallback_mode():
+def test_unconfigured_ai_fails_safely(monkeypatch):
+    monkeypatch.setattr(ai, "_gemini_generate", lambda prompt, eff=None: (_ for _ in ()).throw(RuntimeError("Gemini API key is not configured")))
     with pytest.raises(QueryUnderstandingError) as exc:
         generate_sql("tell me the customer name and product name", MULTI_SCHEMA)
-    assert "multiple possible tables" in str(exc.value)
+    assert "Gemini API key is not configured" in str(exc.value)
 
 
 def test_join_sql_still_validated_against_schema(monkeypatch):

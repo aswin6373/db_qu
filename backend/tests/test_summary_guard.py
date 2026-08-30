@@ -17,7 +17,9 @@ def test_real_write_summary_is_kept():
     assert "inserted" in out.lower()
 
 
-def test_normal_select_summary_is_untouched():
+def test_normal_select_summary_is_untouched(monkeypatch):
+    from app.services import ai
+    monkeypatch.setattr(ai, "_gemini_generate", lambda prompt, eff=None: (_ for _ in ()).throw(RuntimeError("no llm")))
     summary = summarize_result(
         "show all customers",
         ["name"],

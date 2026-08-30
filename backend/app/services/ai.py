@@ -113,43 +113,28 @@ def generate_sql(
         raise QueryUnderstandingError(
             "I could not find any discovered tables for this connection. Re-test the database connection so QueryMind can read the schema."
         )
-    if eff.provider == "gemini":
-        try:
-            sql = _generate_sql_with_gemini(question, schema, history, eff, db_type)
-        except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(
-                question, schema, history=history, eff=eff,
-                timeout=get_settings().ollama_fallback_timeout_seconds,
-                db_type=db_type,
-            )
-    elif eff.provider == "ollama":
-        sql = _generate_sql_with_ollama_or_fallback(
-            question, schema, history, eff,
-            timeout=get_settings().ollama_fallback_timeout_seconds,
-            db_type=db_type,
-        )
-    elif eff.provider in OPENAI_COMPATIBLE_PROVIDERS or eff.provider in {"anthropic", "custom"}:
-        try:
-            prompt = _sql_prompt(question, schema, history, db_type)
-            raw = _ai_generate(prompt, eff)
-            sql = _sql_from_model_response(raw)
-        except SchemaAnswer:
-            raise
-        except (RuntimeError, httpx.HTTPError):
-            sql = _generate_sql_with_ollama_or_fallback(
-                question, schema, history=history, eff=eff,
-                timeout=get_settings().ollama_fallback_timeout_seconds,
-                db_type=db_type,
-            )
-    else:
-        # Deterministic fallback can only target one table.
-        table = _ensure_question_can_target_schema(question, schema)
-        _ensure_insert_has_enough_details(question, schema, table)
-        sql = _generate_sql_fallback(question, schema)
+
+    prompt = _sql_prompt(question, schema, history, db_type)
+    try:
+        raw = _ai_generate(prompt, eff)
+        sql = _sql_from_model_response(raw)
+    except SchemaAnswer:
+        raise
+    except RuntimeError as exc:
+        raise QueryUnderstandingError(str(exc))
+    except httpx.HTTPStatusError as exc:
+        raise QueryUnderstandingError(f"AI provider returned an error ({exc.response.status_code}): {exc.response.text[:200]}")
+    except httpx.HTTPError as exc:
+        raise QueryUnderstandingError(f"Could not reach AI provider ({eff.provider or 'unknown'}): {exc}")
+    except QueryUnderstandingError:
+        raise
+    except Exception as exc:
+        raise QueryUnderstandingError(f"AI query generation failed: {exc}")
+
     # System tables are off-limits — schema questions are answered directly.
     if re.search(r"\b(?:information_schema|performance_schema|pg_catalog|sqlite_master)\b|\bmysql\.", sql, re.IGNORECASE):
         raise QueryUnderstandingError(
-            "I can't query MySQL's internal system tables. I already know your schema — "
+            "I can't query system tables. I already know your schema — "
             'just ask "what tables do I have" or "what columns does products have" and I\'ll answer directly.'
         )
     # Hallucinated tables/columns from an LLM must never leave this layer.
@@ -592,20 +577,6 @@ def _generate_sql_with_ollama(question: str, schema: dict, history: list[dict] |
     return _sql_from_model_response(_ollama_generate(_sql_prompt(question, schema, history, db_type), eff))
 
 
-def _generate_sql_with_ollama_or_fallback(
-    question: str,
-    schema: dict,
-    history: list[dict] | None = None,
-    eff: _EffectiveAI | None = None,
-    timeout: int | None = None,
-    db_type: str = "mysql",
-) -> str:
-    try:
-        return _ollama_generate(_sql_prompt(question, schema, history, db_type), eff, timeout=timeout)
-    except (RuntimeError, httpx.HTTPError):
-        return _generate_sql_fallback(question, schema)
-
-
 def _summarize_with_gemini(question: str, columns: list[str], rows: list[dict], eff: _EffectiveAI | None = None) -> str:
     preview = json.dumps({"columns": columns, "rows": rows[:10]}, default=str)
     prompt = f"""
@@ -931,107 +902,6 @@ def _extract_sql(text: str) -> str:
     if ";" in sql:
         sql = sql.split(";", 1)[0]
     return sql
-
-
-def _generate_sql_fallback(question: str, schema: dict) -> str:
-    lowered = question.lower()
-
-    # Gracefully handle greetings and small talk if cloud LLM is unreachable
-    if any(re.search(rf"\b{word}\b", lowered) for word in ["hi", "hello", "hey", "thanks", "thank you", "good morning", "good evening"]):
-        raise SchemaAnswer("Hello! I'm QueryMind, your database assistant. Ask me to query, summarize, or chart any data from your database!")
-
-    # Gracefully handle schema/table inquiries if cloud LLM is unreachable
-    if any(term in lowered for term in ["what tables", "list tables", "show tables", "table structure", "schema", "tables exist", "what data", "structure"]):
-        tables = list((schema.get("tables") or {}).keys())
-        if not tables:
-            raise SchemaAnswer("No tables were discovered in the connected database yet.")
-        table_count = len(tables)
-        preview_tables = ", ".join(tables[:6])
-        more = f" and {table_count - 6} more" if table_count > 6 else ""
-        raise SchemaAnswer(f"Your database has {table_count} tables including: {preview_tables}{more}. Ask me to query or summarize any of them!")
-
-    table = _target_table_from_question(question, schema)
-
-    if any(word in lowered for word in ["delete", "remove"]):
-        return f"DELETE FROM {table} WHERE id = 1"
-    if any(word in lowered for word in ["update", "change", "set"]):
-        return f"UPDATE {table} SET name = 'Updated' WHERE id = 1"
-    if any(word in lowered for word in ["insert", "add", "create"]):
-        values = _insert_values_from_question(question, schema, table)
-        columns = ", ".join(values.keys())
-        escaped_values = ", ".join(
-            "'" + value.replace("'", "''") + "'" for value in values.values()
-        )
-        return f"INSERT INTO {table} ({columns}) VALUES ({escaped_values})"
-    return f"SELECT * FROM {table} LIMIT 50"
-
-
-def _ensure_question_can_target_schema(question: str, schema: dict) -> str:
-    if not (schema.get("tables") or {}):
-        raise QueryUnderstandingError(
-            "I could not find any discovered tables for this connection. Re-test the database connection so QueryMind can read the schema."
-        )
-    return _target_table_from_question(question, schema)
-
-
-def _ensure_insert_has_enough_details(question: str, schema: dict, table: str) -> None:
-    lowered = question.lower()
-    if not any(word in lowered for word in ["insert", "add", "create"]):
-        return
-
-    insert_columns = _insertable_columns(schema, table)
-    if not insert_columns:
-        raise QueryUnderstandingError(
-            f"I can see the {table} table, but I could not find any columns that should be filled for a new record."
-        )
-
-    values = _insert_values_from_question(question, schema, table)
-    missing = [column for column in insert_columns if column not in values]
-    if missing:
-        provided = ", ".join(f"{column}={value}" for column, value in values.items()) or "no field values"
-        needed = ", ".join(missing)
-        raise QueryUnderstandingError(
-            f"I need more details before creating a new row in {table}. I understood {provided}. "
-            f"Please provide: {needed}."
-        )
-
-
-def _insertable_columns(schema: dict, table: str) -> list[str]:
-    columns = schema.get("tables", {}).get(table, {}).get("columns", [])
-    insertable = []
-    for column in columns:
-        name = str(column.get("name", ""))
-        if not name:
-            continue
-        key = str(column.get("key", "")).upper()
-        extra = str(column.get("extra", "")).lower()
-        has_default = "default" in column and column.get("default") is not None
-        nullable = bool(column.get("nullable", False))
-        if key == "PRI" or "auto_increment" in extra or name.lower() in {"id", "created_at", "updated_at"}:
-            continue
-        if nullable or has_default:
-            continue
-        insertable.append(name)
-    if not insertable:
-        for column in columns:
-            name = str(column.get("name", ""))
-            key = str(column.get("key", "")).upper()
-            if name and key != "PRI" and name.lower() not in {"id", "created_at", "updated_at"}:
-                insertable.append(name)
-    return insertable
-
-
-def _insert_values_from_question(question: str, schema: dict, table: str) -> dict[str, str]:
-    values: dict[str, str] = {}
-    insertable_columns = _insertable_columns(schema, table)
-    column_terms = "|".join(re.escape(column.replace("_", " ")) for column in insertable_columns)
-    for column in insertable_columns:
-        column_text = re.escape(column.replace("_", " "))
-        pattern = rf"\b{column_text}\b\s*(?:is|=|:)\s*['\"]?(.+?)(?=(?:['\"]?\s*(?:,|;)\s*)|\s+\b(?:{column_terms})\b\s*(?:is|=|:)|$)"
-        match = re.search(pattern, question, flags=re.IGNORECASE)
-        if match:
-            values[column] = match.group(1).strip().strip("'\"")
-    return values
 
 
 def _target_table_from_question(question: str, schema: dict) -> str:

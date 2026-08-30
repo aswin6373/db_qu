@@ -43,9 +43,9 @@ def test_create_table_request_is_rejected_with_explanation():
 
 
 def test_add_row_request_is_not_treated_as_schema_change():
-    with pytest.raises(QueryUnderstandingError) as exc:
-        generate_sql("add a customer named Rahul", SCHEMA)
-    assert "ALTER TABLE" not in str(exc.value)
+    sql = generate_sql("add a customer named Rahul", SCHEMA)
+    assert "ALTER TABLE" not in sql.upper()
+    assert "customers" in sql.lower()
 
 
 def test_natural_phrasing_put_a_column_is_understood():
@@ -87,6 +87,5 @@ def test_misspelled_add_column_still_detected():
 def test_casual_read_with_table_word_is_not_a_schema_change():
     """Regression: 'i want the top biggest table ... 10 rows' is a read, but the
     weak verb 'want' + the noun 'table' used to trip the generic DDL block."""
-    with pytest.raises(QueryUnderstandingError) as exc:
-        generate_sql("i mean i want the top biggest table in the database 10 rows", SCHEMA)
-    assert "Schema changes" not in str(exc.value)
+    sql = generate_sql("i mean i want the top biggest table in the database 10 rows", SCHEMA)
+    assert sql.upper().startswith("SELECT")

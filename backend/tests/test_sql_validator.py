@@ -119,3 +119,57 @@ def test_valid_insert_with_column_list_requires_confirmation():
     assert result.ok is True
     assert result.query_type == "insert"
     assert result.requires_confirmation is True
+
+
+def test_derived_subqueries_with_aliases_pass():
+    multi_schema = {
+        "tables": {
+            "customers": {
+                "columns": [{"name": "id"}, {"name": "name"}, {"name": "city"}]
+            },
+            "orders": {
+                "columns": [{"name": "id"}, {"name": "customer_id"}, {"name": "total"}]
+            },
+            "order_items": {
+                "columns": [{"name": "id"}, {"name": "order_id"}, {"name": "product_id"}, {"name": "quantity"}]
+            },
+            "products": {
+                "columns": [{"name": "id"}, {"name": "name"}, {"name": "price"}]
+            },
+        }
+    }
+    sql = """
+    SELECT * FROM (
+        SELECT 'customer' AS category, c.name AS name, SUM(oi.quantity) AS total_quantity
+        FROM customers c
+        JOIN orders o ON c.id = o.customer_id
+        JOIN order_items oi ON o.id = oi.order_id
+        GROUP BY c.id, c.name
+        ORDER BY total_quantity DESC
+        LIMIT 1
+    ) AS cust
+    UNION ALL
+    SELECT * FROM (
+        SELECT 'product' AS category, p.name, SUM(oi.quantity) AS total_quantity
+        FROM products p
+        JOIN order_items oi ON p.id = oi.product_id
+        GROUP BY p.id, p.name
+        ORDER BY total_quantity DESC
+        LIMIT 1
+    ) AS prod
+    """
+    result = validate_sql(sql, multi_schema)
+    assert result.ok is True, result.error
+
+
+def test_cte_query_passes():
+    schema = {
+        "tables": {
+            "customers": {
+                "columns": [{"name": "id"}, {"name": "name"}]
+            }
+        }
+    }
+    sql = "WITH top_cust AS (SELECT id, name FROM customers) SELECT * FROM top_cust"
+    result = validate_sql(sql, schema)
+    assert result.ok is True, result.error

@@ -145,27 +145,112 @@ def extract_table_names(sql: str) -> list[str]:
         return []
 
 
-def _extract_table_names(statement, dml: str) -> set[str]:
+def _extract_table_names(statement, dml: str = "") -> set[str]:
     names: set[str] = set()
-    expect_next = False
-    for token in statement.tokens:
+    cte_names: set[str] = set()
+
+    # Collect CTE names if any (WITH cte_name AS (...))
+    expect_cte = False
+    for token in getattr(statement, "tokens", []):
         if token.is_whitespace:
             continue
-        value = token.value.upper()
-        if expect_next:
-            names.update(_identifier_names(token))
-            expect_next = False
-        if value in {"FROM", "JOIN", "INTO"} or (dml == "UPDATE" and token.ttype is DML):
-            expect_next = True
-    return {name for name in names if name}
+        val = token.value.upper()
+        if val == "WITH":
+            expect_cte = True
+            continue
+        if expect_cte:
+            if isinstance(token, IdentifierList):
+                for id_tok in token.get_identifiers():
+                    if isinstance(id_tok, Identifier):
+                        cte_names.add(_clean_identifier_name(id_tok.get_real_name() or id_tok.value).lower())
+            elif isinstance(token, Identifier):
+                cte_names.add(_clean_identifier_name(token.get_real_name() or token.value).lower())
+            expect_cte = False
+
+    def walk_statement(node, node_dml=""):
+        expect_next = False
+        for token in getattr(node, "tokens", []):
+            if token.is_whitespace:
+                continue
+            val = token.value.upper()
+
+            # Recurse into parenthesis or subqueries
+            if isinstance(token, Parenthesis):
+                walk_statement(token, node_dml="SELECT")
+
+            if expect_next:
+                _process_from_target(token, names)
+                expect_next = False
+
+            if val in {"FROM", "JOIN", "INTO"} or (node_dml == "UPDATE" and token.ttype is DML):
+                expect_next = True
+            elif hasattr(token, "tokens") and not isinstance(token, (Identifier, IdentifierList)):
+                walk_statement(token, node_dml=node_dml if val == "UPDATE" else "")
+
+    walk_statement(statement, dml)
+    return {name for name in names if name and name.lower() not in cte_names}
 
 
-def _identifier_names(token) -> set[str]:
+def _process_from_target(token, names: set[str]) -> None:
     if isinstance(token, IdentifierList):
-        return {_clean_identifier_name(identifier.get_real_name() or identifier.value) for identifier in token.get_identifiers()}
-    if isinstance(token, Identifier):
-        return {_clean_identifier_name(token.get_real_name() or token.value)}
-    return {_clean_identifier_name(token.value)}
+        for id_tok in token.get_identifiers():
+            _process_single_from_target(id_tok, names)
+    else:
+        _process_single_from_target(token, names)
+
+
+def _is_subquery_node(node) -> bool:
+    if not isinstance(node, Parenthesis):
+        return False
+    return any(t.value.upper() == "SELECT" for t in node.flatten() if not t.is_whitespace)
+
+
+def _process_single_from_target(token, names: set[str]) -> None:
+    # If the target contains a subquery parenthesis (e.g. `(SELECT ...) AS cust`)
+    has_subquery = False
+    for sub in getattr(token, "tokens", []):
+        if _is_subquery_node(sub):
+            has_subquery = True
+            _extract_subquery_tables(sub, "SELECT", names)
+
+    if _is_subquery_node(token):
+        has_subquery = True
+        _extract_subquery_tables(token, "SELECT", names)
+
+    if not has_subquery:
+        real_name = None
+        if isinstance(token, Identifier):
+            real_name = token.get_real_name()
+            if not real_name:
+                val = token.value.strip()
+                parts = re.split(r"\s+(?:AS\s+)?", val, maxsplit=1, flags=re.IGNORECASE)
+                real_name = parts[0]
+        elif getattr(token, "ttype", None) is not None or hasattr(token, "value"):
+            val = str(token.value).strip()
+            parts = re.split(r"\s+(?:AS\s+)?", val, maxsplit=1, flags=re.IGNORECASE)
+            real_name = parts[0]
+
+        if real_name:
+            cleaned = _clean_identifier_name(real_name)
+            if cleaned and not cleaned.startswith("("):
+                names.add(cleaned)
+
+
+def _extract_subquery_tables(parenthesis_node, dml: str, names: set[str]) -> None:
+    expect_next = False
+    for token in getattr(parenthesis_node, "tokens", []):
+        if token.is_whitespace:
+            continue
+        val = token.value.upper()
+        if _is_subquery_node(token):
+            _extract_subquery_tables(token, "SELECT", names)
+        if expect_next:
+            _process_from_target(token, names)
+            expect_next = False
+        if val in {"FROM", "JOIN", "INTO"} or (dml == "UPDATE" and token.ttype is DML):
+            expect_next = True
+        elif hasattr(token, "tokens") and not isinstance(token, (Identifier, IdentifierList)):
+            _extract_subquery_tables(token, dml, names)
 
 
 def _clean_identifier_name(value: str) -> str:
@@ -200,7 +285,13 @@ def _collect_aliases(statement) -> set[str]:
             if isinstance(child, Identifier):
                 alias = child.get_alias()
                 if alias:
-                    aliases.add(alias.lower())
+                    aliases.add(alias.strip("`\" ").lower())
+            elif isinstance(child, IdentifierList):
+                for id_tok in child.get_identifiers():
+                    if isinstance(id_tok, Identifier):
+                        alias = id_tok.get_alias()
+                        if alias:
+                            aliases.add(alias.strip("`\" ").lower())
             walk(child)
 
     walk(statement)

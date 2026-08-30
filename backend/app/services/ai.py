@@ -73,7 +73,7 @@ OPENAI_COMPATIBLE_PROVIDERS = {
 def _normalize_gemini_model(model: str | None) -> str:
     m = (model or "").strip()
     if not m or m.lower() == "default":
-        return get_settings().gemini_model or "gemini-3.5-flash-lite"
+        return get_settings().gemini_model or "gemini-3.6-flash"
     return m
 
 
@@ -87,7 +87,7 @@ def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     return _EffectiveAI(
         provider=provider,
         gemini_key=org_key if org_provider == "gemini" else getattr(settings, "gemini_api_key", ""),
-        gemini_model=_normalize_gemini_model(org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", "gemini-3.5-flash-lite")),
+        gemini_model=_normalize_gemini_model(org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", "gemini-3.6-flash")),
         openai_key=org_key if org_provider == "openai" else getattr(settings, "openai_api_key", ""),
         openai_model=org_model if (org_provider == "openai" and org_model) else "gpt-4o-mini",
         ollama_url=org_base_url if (org_provider == "ollama" and org_base_url) else getattr(settings, "ollama_base_url", "http://127.0.0.1:11434"),

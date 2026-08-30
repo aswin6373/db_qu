@@ -70,6 +70,13 @@ OPENAI_COMPATIBLE_PROVIDERS = {
 }
 
 
+def _normalize_gemini_model(model: str | None) -> str:
+    m = (model or "").strip().lower()
+    if not m or m in {"gemini-3.5-flash-lite", "gemini-3.5", "default"}:
+        return "gemini-2.0-flash"
+    return model.strip()
+
+
 def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     settings = get_settings()
     provider = ((config.provider if config else None) or settings.llm_provider).strip().lower()
@@ -80,7 +87,7 @@ def _effective_ai(config: AIConfig | None) -> _EffectiveAI:
     return _EffectiveAI(
         provider=provider,
         gemini_key=org_key if org_provider == "gemini" else getattr(settings, "gemini_api_key", ""),
-        gemini_model=org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", "gemini-2.0-flash"),
+        gemini_model=_normalize_gemini_model(org_model if (org_provider == "gemini" and org_model) else getattr(settings, "gemini_model", "gemini-2.0-flash")),
         openai_key=org_key if org_provider == "openai" else getattr(settings, "openai_api_key", ""),
         openai_model=org_model if (org_provider == "openai" and org_model) else "gpt-4o-mini",
         ollama_url=org_base_url if (org_provider == "ollama" and org_base_url) else getattr(settings, "ollama_base_url", "http://127.0.0.1:11434"),
@@ -616,9 +623,20 @@ Result preview: {preview}
     return _ollama_generate(prompt, eff, timeout=timeout).strip()
 
 
+_HTTP_CLIENT: httpx.Client | None = None
+
+
+def _get_http_client(timeout: float | None = None) -> httpx.Client:
+    global _HTTP_CLIENT
+    to = timeout or float(get_settings().llm_timeout_seconds)
+    if _HTTP_CLIENT is None or _HTTP_CLIENT.is_closed:
+        _HTTP_CLIENT = httpx.Client(timeout=to, follow_redirects=True)
+    return _HTTP_CLIENT
+
+
 def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
     api_key = eff.gemini_key if eff else get_settings().gemini_api_key
-    model = eff.gemini_model if eff else get_settings().gemini_model
+    model = _normalize_gemini_model(eff.gemini_model if eff else get_settings().gemini_model)
     if not api_key:
         raise RuntimeError("Gemini API key is not configured")
 
@@ -626,7 +644,8 @@ def _gemini_generate(prompt: str, eff: _EffectiveAI | None = None) -> str:
         "https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent"
     )
-    response = httpx.post(
+    client = _get_http_client(timeout=float(get_settings().llm_timeout_seconds))
+    response = client.post(
         url,
         # The key travels in a header, never in the URL, so it cannot leak
         # into proxy logs or access logs.

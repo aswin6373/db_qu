@@ -279,7 +279,9 @@ def _mentions_known_schema(question: str, schema: dict) -> bool:
     tables = schema.get("tables") or {}
     for table, meta in tables.items():
         name = str(table).lower()
-        variants = {name, name.rstrip("s"), name.replace("_", " ")}
+        variants = {name, name.rstrip("s"), name.replace("_", " "), name.rstrip("s").replace("_", " ")}
+        if name.startswith("custom"):
+            variants.update({"cutomer", "cutomers", "custmer", "custmers"})
         if any(variant and re.search(rf"\b{re.escape(variant)}\b", lowered) for variant in variants):
             return True
         for column in meta.get("columns", []):

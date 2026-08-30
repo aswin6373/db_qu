@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     llm_provider: str = "gemini"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_model: str = "gemini-2.0-flash"
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:8b"
     openai_api_key: str = ""
@@ -30,10 +30,9 @@ class Settings(BaseSettings):
     postgres_connect_timeout: int = 5
     postgres_statement_timeout_ms: int = 30000
     max_result_rows: int = 500
-    # Per-LLM-call cap. Kept low so one stalled call cannot eat the whole
-    # request budget: deadline check (45s) + this overshoot stays under the
-    # 60s Vercel maxDuration, so the answer always reaches the browser.
-    llm_timeout_seconds: int = 12
+    # Per-LLM-call cap. Set to 25s so cloud providers (Gemini, OpenAI, Claude)
+    # have adequate time to respond without timing out prematurely on latency spikes.
+    llm_timeout_seconds: int = 25
     # Wall-clock budget for one /query/generate request. Optional LLM stages
     # (clarity check, summary, agent rescue) are skipped once it is spent so
     # the request always answers within serverless limits (Vercel maxDuration).

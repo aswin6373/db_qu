@@ -173,7 +173,8 @@ Ask a clarifying question ONLY when the latest message is genuinely unclear:
 - it does not clearly reference any existing table or column from the schema,
 - it is ambiguous between several tables or columns (offer the options in your question,
   e.g. "Do you mean the customers table or the orders table?"),
-- or a write action (INSERT/UPDATE/DELETE) is missing required values.
+- or a write action (INSERT/UPDATE/DELETE) is missing the target table or entity entirely.
+  For INSERT/UPDATE, if the user provides the entity name or core values (e.g. "insert Albin in customers" or "insert Albin"), do NOT ask for missing optional columns; answer {{"can_execute": true}} and let the SQL generator supply default values ('', 0, or NULL).
 
 Requests asking for charts, graphs, plots, diagrams, or visual representations of database data
 are EXECUTABLE data queries — QueryMind automatically converts the returned data into charts and images.
@@ -508,7 +509,7 @@ SQL_RULES = """
 - Do not generate CREATE, DROP, ALTER, TRUNCATE, GRANT, or REVOKE.
 - Do not generate multiple statements.
 - Never query system tables (information_schema, performance_schema, pg_catalog, sqlite_master) — answer those questions with a META: line instead.
-- For INSERT requests, use the actual values provided by the user. For unspecified columns that represent numeric balances, counters, or totals (such as total_spent, balance, count), provide 0 or 0.00 as appropriate rather than NULL or leaving them undefined, unless the user explicitly requested otherwise.
+- For INSERT requests, generate a complete and valid INSERT statement even if the user only provides partial column values (e.g. only a name). Use the provided values, and provide sensible defaults (empty string '' for text/email/city, 0 or 0.00 for numeric balances/totals, NULL for optional foreign keys) for all other columns unless they are auto-increment. Never decline an INSERT or demand additional columns if defaults can be used.
 - Add LIMIT 50 to broad SELECT queries when the user does not request a limit.
 - Use the recent conversation to resolve short follow-up answers like "yes" or "the customers one".
 """

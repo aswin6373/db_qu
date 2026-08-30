@@ -43,6 +43,14 @@ const AGENT_HINT_RE = new RegExp(
 );
 const WRITE_INTENT_RE = /\b(?:insert|update|delete|drop|create|remove|modify|alter|truncate|rename)\b/i;
 
+function parseUtcDate(dateStr: string | null | undefined): number {
+  if (!dateStr) return 0;
+  // Ensure the string is treated as UTC even if the backend returned without a timezone suffix
+  const normalized = dateStr.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(dateStr) ? dateStr : `${dateStr}Z`;
+  const time = new Date(normalized).getTime();
+  return isNaN(time) ? 0 : time;
+}
+
 function looksLikeAgentQuestion(question: string): boolean {
   return AGENT_HINT_RE.test(question) && !WRITE_INTENT_RE.test(question);
 }
@@ -473,12 +481,14 @@ function ResultBlock({
 
   const [isTimedOut, setIsTimedOut] = useState(() => {
     if (!result.expires_at) return false;
-    return new Date(result.expires_at).getTime() <= Date.now();
+    const expiryTime = parseUtcDate(result.expires_at);
+    return expiryTime > 0 && expiryTime <= Date.now();
   });
 
   useEffect(() => {
     if (!result.expires_at || isConfirmed || isCancelled) return;
-    const expiryTime = new Date(result.expires_at).getTime();
+    const expiryTime = parseUtcDate(result.expires_at);
+    if (expiryTime <= 0) return;
     const remaining = expiryTime - Date.now();
     if (remaining <= 0) {
       setIsTimedOut(true);

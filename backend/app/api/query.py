@@ -655,7 +655,7 @@ def generate(payload: QueryGenerateRequest, user: User = Depends(get_current_use
     conflict_warning = None
     expires_at = None
     if validation.requires_confirmation:
-        expires_at = (_utcnow() + timedelta(minutes=settings.confirmation_ttl_minutes)).isoformat()
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=settings.confirmation_ttl_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
         try:
             connector = build_connector(connection)
             try:

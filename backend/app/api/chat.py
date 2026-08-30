@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.db.session import get_db
-from app.models import ChatSession, DBConnection, Message, User
+from app.models import ChatSession, DBConnection, Message, QueryLog, User
 from app.schemas.dto import (
     ChatMessageResponse,
     ChatSessionCreate,
@@ -135,18 +135,46 @@ def session_messages(
         .order_by(Message.created_at, Message.id)
         .limit(limit)
     ).all()
-    return [
-        ChatMessageResponse(
-            id=message.id,
-            role=message.role,
-            content=message.content,
-            sql=message.sql,
-            query_id=message.query_id,
-            result=json.loads(message.result_json) if message.result_json else None,
-            created_at=message.created_at,
+
+    query_ids = [m.query_id for m in messages if m.query_id is not None]
+    status_by_query_id: dict[int, str] = {}
+    if query_ids:
+        query_logs = db.scalars(
+            select(QueryLog).where(QueryLog.id.in_(query_ids), QueryLog.organization_id == user.organization_id)
+        ).all()
+        status_by_query_id = {log.id: log.status for log in query_logs}
+
+    response_items: list[ChatMessageResponse] = []
+    for message in messages:
+        res = None
+        if message.result_json:
+            try:
+                res = json.loads(message.result_json)
+            except Exception:
+                res = None
+        if res and message.query_id and message.query_id in status_by_query_id:
+            log_status = status_by_query_id[message.query_id]
+            if log_status == "cancelled":
+                res["is_cancelled"] = True
+                res["requires_confirmation"] = False
+            elif log_status == "executed":
+                res["is_confirmed"] = True
+                res["requires_confirmation"] = False
+            elif log_status in ("expired", "confirmation_expired"):
+                res["is_expired"] = True
+                res["requires_confirmation"] = False
+        response_items.append(
+            ChatMessageResponse(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                sql=message.sql,
+                query_id=message.query_id,
+                result=res,
+                created_at=message.created_at,
+            )
         )
-        for message in messages
-    ]
+    return response_items
 
 
 @router.patch("/sessions/{session_id}", response_model=ChatSessionResponse)

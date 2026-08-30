@@ -802,6 +802,49 @@ def confirm(query_id: int, user: User = Depends(get_current_user), db: Session =
     return response
 
 
+@router.post("/{query_id}/cancel", response_model=QueryGenerateResponse)
+def cancel_query(query_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    log = db.scalar(
+        select(QueryLog).where(
+            QueryLog.id == query_id,
+            QueryLog.organization_id == user.organization_id,
+            QueryLog.user_id == user.id,
+        )
+    )
+    if log is None:
+        raise HTTPException(status_code=404, detail="Query not found")
+    if log.status == "pending_confirmation":
+        log.status = "cancelled"
+        db.commit()
+
+    # Update associated assistant message in chat session if present
+    pending = db.scalar(
+        select(Message)
+        .join(ChatSession, Message.session_id == ChatSession.id)
+        .where(Message.query_id == query_id, ChatSession.organization_id == user.organization_id)
+        .order_by(Message.id.desc())
+    )
+    if pending is not None:
+        try:
+            curr_payload = json.loads(pending.result_json or "{}")
+        except Exception:
+            curr_payload = {}
+        curr_payload["requires_confirmation"] = False
+        curr_payload["is_cancelled"] = True
+        curr_payload["summary"] = "Cancelled — nothing was executed"
+        pending.result_json = json.dumps(curr_payload, default=str)
+        db.commit()
+
+    return QueryGenerateResponse(
+        query_id=log.id,
+        sql=log.generated_sql,
+        query_type=log.query_type,
+        requires_confirmation=False,
+        is_cancelled=True,
+        summary="Cancelled — nothing was executed",
+    )
+
+
 def _release_claim(db: Session, query_id: int) -> None:
     """Return a claimed ('executing') log to pending after a failed execution."""
     db.execute(

@@ -93,6 +93,8 @@ export type QueryResponse = {
     message: string;
   } | null;
   expires_at?: string | null;
+  is_cancelled?: boolean;
+  is_confirmed?: boolean;
 };
 
 export type Dashboard = {

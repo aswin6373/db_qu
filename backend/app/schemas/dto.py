@@ -128,6 +128,7 @@ class QueryGenerateResponse(BaseModel):
     visualization: str = "table"
     conflict_warning: dict | None = None
     expires_at: str | None = None
+    is_cancelled: bool = False
 
 
 class ChangeLogEntry(BaseModel):

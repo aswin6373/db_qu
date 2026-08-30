@@ -167,3 +167,42 @@ def test_confirm_records_who_and_when(client):
     assert entry["status"] == "executed"
     assert entry["confirmed_by"] == "confirmer"
     assert entry["confirmed_at"] is not None
+
+
+def test_cancel_records_cancelled_and_shows_on_changes_page(client):
+    db = TestingSessionLocal()
+    org = Organization(name="Cancel Org")
+    db.add(org)
+    db.flush()
+    user = User(
+        organization_id=org.id, email="canceller@example.com", hashed_password="x", role="admin"
+    )
+    db.add(user)
+    db.flush()
+    db.add(
+        QueryLog(
+            organization_id=org.id,
+            user_id=user.id,
+            natural_language="insert item",
+            generated_sql="INSERT INTO items (name) VALUES ('item1')",
+            query_type="insert",
+            status="pending_confirmation",
+        )
+    )
+    db.commit()
+    log_id = db.scalar(select(QueryLog.id).order_by(QueryLog.id.desc()))
+    user_id = user.id
+    db.close()
+
+    token = create_access_token(str(user_id))
+    response = client.post(
+        f"/query/{log_id}/cancel", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert response.json()["is_cancelled"] is True
+
+    changes = client.get(
+        "/organizations/changes", headers={"Authorization": f"Bearer {token}"}
+    ).json()
+    entry = next(item for item in changes if item["id"] == log_id)
+    assert entry["status"] == "cancelled"

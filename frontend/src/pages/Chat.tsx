@@ -206,9 +206,15 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     }
   }
 
-  function cancelWrite(queryId: number) {
+  async function cancelWrite(queryId: number) {
     dismissedWrites.add(queryId);
     setDecisionNonce((nonce) => nonce + 1);
+    try {
+      await apiRequest<QueryResponse>(`/query/${queryId}/cancel`, { method: "POST" }, token);
+      onActivity();
+    } catch {
+      // already recorded in local UI state
+    }
   }
 
   return (
@@ -263,7 +269,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                       connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
                       dismissedQueryIds={dismissedWrites}
                       decisionNonce={decisionNonce}
-                      isConfirmed={confirmedWrites.has(message.result.query_id) || !message.result.requires_confirmation}
+                      isConfirmed={confirmedWrites.has(message.result.query_id) || message.result.is_confirmed === true || !message.result.requires_confirmation}
                       onCancel={cancelWrite}
                       onConfirm={confirmWrite}
                       result={message.result}
@@ -467,7 +473,7 @@ function ResultBlock({
 }) {
   void decisionNonce; // decision sets are mutated in place — nonce drives the re-render
   const isConfirming = confirmingQueryId === result.query_id;
-  const isCancelled = dismissedQueryIds.has(result.query_id);
+  const isCancelled = dismissedQueryIds.has(result.query_id) || result.is_cancelled === true;
   const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
   // The AI decides whether a result opens as a chart or a table ("text" and
   // unparseable shapes fall back to the table). The user can still toggle.

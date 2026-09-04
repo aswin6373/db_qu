@@ -202,7 +202,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                     className={`reveal-touch grid h-8 w-8 place-items-center rounded-md transition ${
                       copiedId === item.id
                         ? "text-emerald-400"
-                        : "text-ink-faint hover:bg-white/5 hover:text-ink group-hover:opacity-100"
+                        : "text-ink-faint hover:bg-white/5 hover:text-ink"
                     }`}
                     onClick={() => copySql(item.id, item.sql)}
                     title="Copy SQL"

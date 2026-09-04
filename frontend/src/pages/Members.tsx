@@ -174,11 +174,11 @@ function AddMemberCard({
             value={form.role}
             onChange={(event) => onFieldChange("role", event.target.value as MemberRole)}
           >
-            <option value="member">Member (Queries & Data Exploration)</option>
-            <option value="admin">Admin (Full Workspace Management)</option>
+            <option value="member">Member</option>
+            <option value="admin">Admin</option>
           </select>
         </label>
-        <label className="block sm:col-span-2 lg:col-span-1">
+        <label className="block">
           <span className="label">Password</span>
           <span className="relative block">
             <input
@@ -203,7 +203,7 @@ function AddMemberCard({
         </label>
       </div>
 
-      <div className="flex justify-end border-t border-line px-6 py-4">
+      <div className="flex justify-end border-t border-line px-4 py-4 sm:px-6">
         <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isAdding} type="submit">
           {isAdding ? <Loader2 className="animate-spin" size={15} /> : <UserPlus size={15} />}
           {isAdding ? "Adding…" : form.role === "admin" ? "Add admin" : "Add member"}
@@ -232,7 +232,7 @@ function MemberList({
 }) {
   return (
     <div className="card animate-fade-up overflow-hidden">
-      <div className="border-b border-line px-6 py-4">
+      <div className="border-b border-line px-4 py-3.5 sm:px-6">
         <h2 className="text-sm font-semibold text-ink">
           Workspace users
           <span className="ml-2 text-xs font-normal text-ink-faint">{members.length}</span>
@@ -249,7 +249,7 @@ function MemberList({
             const isSelf = member.id === currentUserId;
             const isConfirming = removingId === member.id;
             return (
-              <li className="flex items-center gap-3 px-6 py-3.5" key={member.id}>
+              <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3.5 sm:px-6" key={member.id}>
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500/10 text-xs font-bold uppercase text-brand-300">
                   {member.email.slice(0, 2)}
                 </span>

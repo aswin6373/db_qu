@@ -392,7 +392,7 @@ function SidebarContent({
                               aria-haspopup="menu"
                               aria-label={`Options for ${session.title}`}
                               className={`mr-1 grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink ${
-                                menu?.id === session.id ? "bg-white/10 text-ink opacity-100" : "opacity-0 group-hover:opacity-100"
+                                menu?.id === session.id ? "bg-white/10 text-ink opacity-100" : "reveal-touch"
                               }`}
                               data-chat-menu=""
                               onClick={(event) => toggleMenu(session.id, event.currentTarget)}

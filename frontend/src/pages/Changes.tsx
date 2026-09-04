@@ -139,7 +139,7 @@ export function Changes({ token }: Props) {
             const status = statusStyle(entry.status);
             const initials = entry.user_name.slice(0, 1).toUpperCase();
             return (
-              <article key={entry.id} className="card animate-fade-up p-5">
+              <article key={entry.id} className="card animate-fade-up p-4 sm:p-5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-300">
                     {initials}

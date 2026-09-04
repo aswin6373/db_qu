@@ -235,8 +235,8 @@ function ConnectionCard({
       } ${isDeleting ? "opacity-60" : ""}`}
       onClick={onSelect}
     >
-      <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-400">
             <Database size={18} />
           </span>
@@ -303,7 +303,7 @@ function ConnectionCard({
         </div>
       </div>
 
-      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 p-4 sm:gap-3 sm:p-5 lg:grid-cols-4">
         <DetailField label="Host" value={connection.host} />
         <DetailField label="Port" value={String(connection.port)} />
         <DetailField label="Database" value={connection.database_name} />
@@ -363,7 +363,7 @@ function ConnectionForm({
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <section>
           <h3 className="eyebrow mb-3 text-ink-faint">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
@@ -586,7 +586,7 @@ function ConnectionForm({
         </label>
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-line px-6 py-4 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-line px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
         <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
           Cancel
         </button>

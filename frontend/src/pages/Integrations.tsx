@@ -351,7 +351,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
 
       {/* Current AI Provider status - Admins only */}
       {isAdmin && (
-        <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
+        <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
           <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
             <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
               <Cpu size={20} />
@@ -378,7 +378,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
             </div>
           </div>
           {current?.provider && (
-            <div className="flex shrink-0 items-center gap-2 pl-14 sm:pl-0">
+            <div className="flex shrink-0 items-center gap-2 sm:pl-0">
               {confirmingRemove ? (
                 <>
                   <span className="text-xs font-medium text-rose-300">Disconnect?</span>
@@ -415,7 +415,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
       )}
 
       {/* WhatsApp AI chat - Available to all members */}
-      <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
+      <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
         <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
           <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-500/90 text-white">
             <MessageCircle size={20} />
@@ -456,7 +456,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
           </div>
         </div>
         {whatsapp !== null && botReady && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 pl-14 sm:pl-0">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pl-0">
             {whatsapp.number && (
               <a
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600/90 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
@@ -597,7 +597,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
             </div>
           </div>
 
-          <div className="flex justify-end border-t border-line px-6 py-4">
+          <div className="flex justify-end border-t border-line px-4 py-4 sm:px-6">
             <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
               {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
               {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}

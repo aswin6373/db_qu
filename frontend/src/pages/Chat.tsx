@@ -229,7 +229,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
             title="This chat is linked to this database"
           >
             <Database size={12} className="shrink-0 text-brand-400" />
-            <span className="max-w-40 truncate text-ink">{selectedConnectionName || "No database"}</span>
+            <span className="max-w-[9rem] truncate text-ink sm:max-w-40">{selectedConnectionName || "No database"}</span>
           </span>
         )}
       </header>
@@ -301,7 +301,11 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
       {/* Composer — pinned to the bottom edge, only when a chat is open */}
       {showComposer && (
-        <form className="mt-auto shrink-0 px-4 py-3 sm:px-6" onSubmit={submit}>
+        <form
+          className="mt-auto shrink-0 px-4 pt-3 sm:px-6"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          onSubmit={submit}
+        >
           <div className="mx-auto w-full max-w-3xl">
             <div className="rounded-[26px] border border-line-strong bg-raise shadow-composer transition focus-within:border-white/25">
               <textarea

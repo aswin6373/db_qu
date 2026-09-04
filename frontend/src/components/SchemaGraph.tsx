@@ -39,7 +39,7 @@ export function SchemaGraph({ schema, insights }: Props) {
   }
 
   return (
-    <section className="card p-6">
+    <section className="card p-4 sm:p-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">

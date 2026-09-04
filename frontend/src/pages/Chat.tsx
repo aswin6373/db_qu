@@ -219,7 +219,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
   return (
     <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-canvas/40">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-navy/10 bg-cream/70 backdrop-blur px-4 sm:px-6">
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-navy/10 bg-cream/75 backdrop-blur px-4 sm:px-6">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {activeSession?.title?.toLowerCase().startsWith("whatsapp") && (
@@ -253,10 +253,10 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
       </header>
 
       {/* Messages */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto dot-grid">
         <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
           {messagesLoading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400">
+            <div className="flex items-center justify-center py-16 text-navy-soft/50">
               <Loader2 className="animate-spin" size={22} />
             </div>
           ) : (
@@ -282,16 +282,16 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                 <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
                   {isAgentWorking ? (
                     <div className="space-y-1">
-                      <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                      <p className="flex items-center gap-2 text-sm font-medium text-navy-soft">
                         Agent is analyzing your database
                         <span className="flex gap-1">
                           <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
                         </span>
                       </p>
-                      <p className="text-xs text-slate-400">Running queries step by step to build your answer…</p>
+                      <p className="text-xs text-navy-soft/60">Running queries step by step to build your answer…</p>
                     </div>
                   ) : (
-                    <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                    <p className="flex items-center gap-2 text-sm font-medium text-navy-soft">
                       Working through your question
                       <span className="flex gap-1">
                         <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
@@ -328,7 +328,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               <Database size={15} /> Choose a database to start this chat
             </button>
           )}
-          <div className="rounded-2xl border border-navy/15 bg-white shadow-lift focus-within:border-teal transition">
+          <div className="rounded-2xl border border-navy/15 bg-white shadow-card transition focus-within:border-brand-400 focus-within:shadow-lift">
             <textarea
               aria-label="Ask your database a question"
               className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-navy outline-none placeholder:text-slate-400"
@@ -349,7 +349,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               rows={1}
               value={question}
             />
-            <div className="flex items-center gap-2 border-t border-navy/5 px-3 py-2 bg-slate-50/50 rounded-b-2xl">
+            <div className="flex items-center gap-2 border-t border-navy/5 px-3 py-2 bg-cream/70 rounded-b-2xl">
               <span className="ml-1 flex min-w-0 items-center gap-1.5 text-[11px] text-navy-soft/80 font-medium">
                 <Database size={12} className="shrink-0 text-teal" />
                 <span className="truncate">{selectedConnectionName || "No database selected"}</span>
@@ -375,7 +375,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl border border-[#ded8cb] bg-[#ede8df] px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-sm">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md border border-sand-dark bg-sand px-5 py-3 text-[14px] font-medium leading-6 text-navy shadow-sm sm:max-w-[75%]">
           <p className="whitespace-pre-line">{message.content}</p>
         </div>
       </div>
@@ -388,7 +388,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   return (
     <div className="flex justify-start">
       <div
-        className={`relative w-full rounded-2xl border px-5 py-4 text-[14px] leading-6 shadow-card ${
+        className={`relative w-full rounded-2xl rounded-tl-md border px-5 py-4 text-[14px] leading-6 shadow-card ${
           isError
             ? "border-rose-200 bg-rose-50/90 text-rose-700"
             : isClarifying

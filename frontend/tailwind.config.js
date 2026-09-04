@@ -22,6 +22,10 @@ export default {
         },
         canvas: "#f7f4ec",
         cream: "#f7f4ec",
+        sand: {
+          DEFAULT: "#ede8df",
+          dark: "#ded8cb"
+        },
         navy: {
           DEFAULT: "#16324f",
           soft: "#41586e"

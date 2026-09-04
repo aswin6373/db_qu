@@ -47,7 +47,15 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
   const isRegister = mode === "register";
 
   return (
-    <div className="grid min-h-screen bg-canvas text-ink lg:grid-cols-[56fr_44fr] lg:overflow-hidden lg:h-screen">
+    <div className="relative grid min-h-screen bg-canvas text-ink lg:grid-cols-[56fr_44fr] lg:h-screen lg:overflow-hidden">
+      {/* Back to website — top-right corner of the whole page */}
+      <button
+        className="absolute right-5 top-5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft transition hover:text-ink sm:right-10 sm:top-8"
+        onClick={onBack}
+        type="button"
+      >
+        <ArrowLeft size={14} /> Back to website
+      </button>
       {/* ============ LEFT — brand + product story ============ */}
       <aside
         className="relative hidden flex-col overflow-y-auto no-scrollbar border-r border-line bg-side lg:flex"
@@ -120,7 +128,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </ul>
 
           {/* Workflow demo panel */}
-          <div className="hidden max-w-2xl rounded-2xl border border-line bg-white/[0.02] p-3.5 shadow-[0_0_40px_rgba(47,158,151,0.05)] xl:block">
+          <div className="hidden max-w-2xl rounded-2xl border border-line bg-white/[0.02] p-3.5 shadow-[0_0_40px_rgba(47,158,151,0.05)] [@media(min-width:1280px)and(min-height:860px)]:block">
             <div className="flex items-stretch gap-3">
               <WorkflowColumn icon={<MessageSquare size={12} />} label="You ask in plain English">
                 <div className="rounded-lg border border-line bg-white/[0.04] p-2.5 text-[12px] leading-5 text-ink">
@@ -175,7 +183,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </div>
 
           {/* Metrics */}
-          <div className="hidden max-w-2xl grid-cols-4 divide-x divide-line rounded-2xl border border-line bg-white/[0.02] sm:grid">
+          <div className="hidden max-w-2xl grid-cols-4 divide-x divide-line rounded-2xl border border-line bg-white/[0.02] [@media(min-width:640px)and(min-height:740px)]:grid">
             {[
               { icon: <Zap size={13} />, value: "10K+", label: "Queries processed" },
               { icon: <Sparkles size={13} />, value: "99.9%", label: "Query accuracy" },
@@ -198,8 +206,8 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
       {/* ============ RIGHT — auth card ============ */}
       <main className="relative flex flex-col overflow-y-auto no-scrollbar px-5 py-6 sm:px-10">
-        <div className="relative z-10 flex items-center justify-between">
-          <span className="flex items-center gap-2.5 lg:hidden">
+        <div className="relative z-10 flex items-center lg:hidden">
+          <span className="flex items-center gap-2.5">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
               <LogoMark className="h-5 w-5" />
             </span>
@@ -207,13 +215,6 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               Query<span className="text-brand-400">Mind</span>
             </span>
           </span>
-          <button
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft transition hover:text-ink"
-            onClick={onBack}
-            type="button"
-          >
-            <ArrowLeft size={14} /> Back to website
-          </button>
         </div>
 
         <div className="relative z-10 mx-auto flex w-full max-w-[470px] flex-1 flex-col justify-center py-8">

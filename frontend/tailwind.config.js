@@ -9,22 +9,21 @@ export default {
         display: ["Source Serif 4", "Georgia", "ui-serif", "serif"]
       },
       colors: {
-        /* Flat dark surfaces — sidebar darker than canvas, cards barely
-           lighter than canvas, borders barely visible. */
-        /* Pitch black base with just enough warmth to separate surfaces. */
-        side: "#0a0a0c",
-        canvas: "#0f0f11",
-        raise: "#161619",
-        surface: "#1c1c20",
+        /* Pitch black base — definition comes from hairline borders, not
+           grey surfaces. Neutral (no blue tint) so nothing reads grey. */
+        side: "#000000",
+        canvas: "#000000",
+        raise: "#0d0d0f",
+        surface: "#141416",
         sand: {
-          DEFAULT: "#1e1e22",
-          dark: "#2b2b31"
+          DEFAULT: "#161619",
+          dark: "#242429"
         },
         ink: "#ececee",
-        "ink-soft": "#a8abb3",
-        "ink-faint": "#787c86",
+        "ink-soft": "#a6a9b0",
+        "ink-faint": "#71757e",
         line: "rgba(255,255,255,0.07)",
-        "line-strong": "rgba(255,255,255,0.14)",
+        "line-strong": "rgba(255,255,255,0.15)",
         brand: {
           50: "#12312e",
           100: "#17403c",
@@ -38,10 +37,10 @@ export default {
           900: "#17544f"
         },
         navy: {
-          DEFAULT: "#10141a",
-          soft: "#a8abb3"
+          DEFAULT: "#0d0d0f",
+          soft: "#a6a9b0"
         },
-        cream: "#282a2f",
+        cream: "#0d0d0f",
         teal: {
           DEFAULT: "#2f9e97",
           dark: "#7fd4cc",

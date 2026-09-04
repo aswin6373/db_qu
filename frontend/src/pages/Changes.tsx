@@ -189,7 +189,7 @@ export function Changes({ token }: Props) {
                   )}
                 </div>
 
-                <div className="mt-3 overflow-hidden rounded-xl border border-line bg-[#0b0c0e]">
+                <div className="mt-3 overflow-hidden rounded-xl border border-line bg-black">
                   <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
                     <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">SQL</span>
                     <button

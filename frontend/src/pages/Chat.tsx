@@ -516,7 +516,7 @@ function ResultBlock({
   return (
     <div className="mt-2 space-y-3 pb-1">
       {/* SQL + actions live in one quiet rail under the answer */}
-      <div className="overflow-hidden rounded-xl border border-line bg-[#0b0c0e]">
+      <div className="overflow-hidden rounded-xl border border-line bg-black">
         <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
             SQL

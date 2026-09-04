@@ -104,12 +104,11 @@ export function Changes({ token }: Props) {
   }
 
   return (
-    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="space-y-7">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
+      <section className="space-y-5">
       <PageHeader
         eyebrow="Audit"
         title="Changes"
-        description="Every data change made through QueryMind — from chat or the web app — with who asked, when, what ran, and which tables were touched. Read-only record; nothing here can be deleted."
       />
 
       {error && (
@@ -127,15 +126,11 @@ export function Changes({ token }: Props) {
           <Loader2 className="animate-spin text-ink-faint" size={18} /> Loading change history…
         </div>
       ) : entries.length === 0 && !error ? (
-        <div className="card animate-fade-up p-8 text-center">
-          <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-white/10 text-ink-faint">
-            <FilePenLine size={20} />
+        <div className="card animate-fade-up p-10 text-center">
+          <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-white/5 text-ink-faint">
+            <FilePenLine size={18} />
           </span>
-          <p className="text-sm font-semibold text-ink">No data changes yet</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-ink-soft">
-            When you or your members ask QueryMind to insert, update, or delete data — from the web
-            app or WhatsApp — every change is recorded here with who made it and when.
-          </p>
+          <p className="text-sm font-medium text-ink">No data changes yet</p>
         </div>
       ) : (
         <div className="space-y-3">

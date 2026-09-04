@@ -54,8 +54,8 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
   };
 
   return (
-    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="space-y-7">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:py-10">
+      <section className="space-y-6">
         <PageHeader
           eyebrow={dashboard?.organization.name ?? "Workspace"}
           title="Dashboard"

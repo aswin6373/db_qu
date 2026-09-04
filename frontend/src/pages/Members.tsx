@@ -91,12 +91,11 @@ export function Members({ token, currentUserId }: Props) {
   }
 
   return (
-    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="space-y-7">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
+      <section className="space-y-5">
       <PageHeader
         eyebrow="Team"
         title="Members"
-        description="Add colleagues to your workspace. Set them as an Admin or Member, configure their password, and collaborate on database querying."
       />
       {feedback && <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />}
       <AddMemberCard form={form} isAdding={isAdding} showPassword={showPassword} onShowPassword={setShowPassword} onFieldChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onSubmit={addMember} />
@@ -155,17 +154,7 @@ function AddMemberCard({
 }) {
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-line p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
-          <UserPlus size={20} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Add a workspace user</h2>
-          <p className="text-xs text-ink-soft">Choose their role and password — share their login details securely.</p>
-        </div>
-      </div>
-
-      <div className="grid gap-x-5 gap-y-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-x-5 gap-y-4 p-6">
         <label className="block">
           <span className="label">Email</span>
           <input
@@ -214,12 +203,7 @@ function AddMemberCard({
         </label>
       </div>
 
-      <div className="flex items-center justify-between border-t border-line bg-white/[0.03] px-6 py-4">
-        <p className="hidden text-xs text-ink-soft sm:block">
-          {form.role === "admin"
-            ? "Admins can add databases, integrations, and manage other workspace members."
-            : "Members can run queries and explore schemas, but cannot modify workspace settings."}
-        </p>
+      <div className="flex justify-end border-t border-line px-6 py-4">
         <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isAdding} type="submit">
           {isAdding ? <Loader2 className="animate-spin" size={15} /> : <UserPlus size={15} />}
           {isAdding ? "Adding…" : form.role === "admin" ? "Add admin" : "Add member"}
@@ -248,11 +232,11 @@ function MemberList({
 }) {
   return (
     <div className="card animate-fade-up overflow-hidden">
-      <div className="border-b border-line px-6 py-5">
-        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Workspace users</h2>
-        <p className="text-xs text-ink-soft">
-          {members.length} user{members.length === 1 ? "" : "s"} · Admins manage databases, integrations, and users; members can chat and explore data.
-        </p>
+      <div className="border-b border-line px-6 py-4">
+        <h2 className="text-sm font-semibold text-ink">
+          Workspace users
+          <span className="ml-2 text-xs font-normal text-ink-faint">{members.length}</span>
+        </h2>
       </div>
 
       {isLoading ? (

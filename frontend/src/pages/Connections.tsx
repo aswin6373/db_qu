@@ -133,12 +133,18 @@ export function Connections({ token, connections, insights, schemas, onRefresh, 
   }
 
   return (
-    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="space-y-7">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
+      <section className="space-y-5">
         <PageHeader
           eyebrow="Data sources"
           title="Connections"
-          description={`Connect every MySQL or PostgreSQL database your workspace uses, and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
+          action={
+            isAdmin ? (
+              <button className="btn-primary !h-9 shrink-0 !px-3.5" onClick={startAdd} type="button">
+                <Plus size={15} /> Add database
+              </button>
+            ) : undefined
+          }
         />
 
         {feedback && (
@@ -160,19 +166,6 @@ export function Connections({ token, connections, insights, schemas, onRefresh, 
           <EmptyState isAdmin={isAdmin} onAdd={startAdd} />
         ) : (
           <>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-ink-soft">
-                {connections.length} database{connections.length === 1 ? "" : "s"} connected
-                <span className="ml-2 text-xs text-ink-faint">Click a card to view its schema below</span>
-              </p>
-              {isAdmin ? (
-                <button className="btn-primary !h-9 shrink-0 !px-3.5" onClick={startAdd} type="button">
-                  <Plus size={15} /> Add database
-                </button>
-              ) : (
-                <span className="shrink-0 text-xs text-ink-faint">Only the admin can manage databases</span>
-              )}
-            </div>
             <div className="space-y-3">
               {connections.map((connection) => (
                 <ConnectionCard
@@ -327,10 +320,8 @@ function EmptyState({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void })
         <Database size={24} />
       </span>
       <h2 className="mt-5 font-display text-lg font-semibold tracking-tight text-ink">No databases connected yet</h2>
-      <p className="mt-1.5 max-w-md text-sm leading-6 text-ink-soft">
-        {isAdmin
-          ? "Connect as many MySQL or PostgreSQL databases as your workspace needs — AI chat lets you pick one per conversation."
-          : "Ask your workspace admin to connect a database. Once it's added, you can start asking questions right away."}
+      <p className="mt-1.5 text-sm text-ink-soft">
+        {isAdmin ? "Add your first MySQL or PostgreSQL database." : "Ask your workspace admin to connect a database."}
       </p>
       {isAdmin && (
         <button className="btn-primary mt-6" onClick={onAdd} type="button">
@@ -372,17 +363,7 @@ function ConnectionForm({
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-line p-6">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-400">
-          <Database size={20} />
-        </span>
-        <div className="min-w-0">
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Connect a new database</h2>
-          <p className="text-xs text-ink-faint">Credentials are encrypted before they touch the platform database.</p>
-        </div>
-      </div>
-
-      <div className="space-y-6 p-6 sm:p-7">
+      <div className="space-y-6 p-6">
         <section>
           <h3 className="eyebrow mb-3 text-ink-faint">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
@@ -420,11 +401,6 @@ function ConnectionForm({
                 value={form.host}
                 onChange={(event) => onFieldChange("host", event.target.value)}
               />
-              {showSshTunnel && (
-                <span className="mt-1.5 block text-xs text-ink-faint">
-                  Database address as seen from the SSH server — use 127.0.0.1 if the database runs on the bastion itself.
-                </span>
-              )}
             </label>
             <label className="block">
               <span className="label">Port</span>
@@ -505,9 +481,6 @@ function ConnectionForm({
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-faint" size={16} />
               </span>
-              <span className="mt-1.5 block text-xs text-ink-faint">
-                Aiven, PlanetScale, Supabase, Neon, RDS, and TiDB usually require SSL.
-              </span>
             </label>
           </div>
         </section>
@@ -527,9 +500,6 @@ function ConnectionForm({
             <span>
               <span className="flex items-center gap-1.5 font-medium text-ink">
                 <ShieldCheck size={15} /> SSH Tunnel
-              </span>
-              <span className="mt-0.5 block text-xs text-ink-faint">
-                Connect through a bastion/jump host when your database is not publicly reachable.
               </span>
             </span>
           </label>
@@ -598,9 +568,6 @@ function ConnectionForm({
                     {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </span>
-                <span className="mt-1.5 block text-xs text-ink-faint">
-                  Password stays hidden; a private key (-----BEGIN…) opens a larger box and is detected automatically. Encrypted at rest like your database password.
-                </span>
               </label>
             </div>
           )}
@@ -613,13 +580,8 @@ function ConnectionForm({
             onChange={(event) => onFieldChange("test_live", event.target.checked)}
             type="checkbox"
           />
-          <span>
-            <span className="flex items-center gap-1.5 font-medium text-ink">
-              <ShieldCheck size={15} /> Test live connection before saving
-            </span>
-            <span className="mt-0.5 block text-xs text-ink-faint">
-              Recommended — verifies credentials and loads schema metadata immediately.
-            </span>
+          <span className="flex items-center gap-1.5 font-medium text-ink">
+            <ShieldCheck size={15} /> Test live connection before saving
           </span>
         </label>
       </div>

@@ -294,14 +294,14 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                 )}
               </>
             )}
-            <div ref={bottomRef} className="h-6" />
+            <div ref={bottomRef} />
           </div>
         </div>
       )}
 
-      {/* Composer — only when a chat with a database is actually open */}
+      {/* Composer — pinned to the bottom edge, only when a chat is open */}
       {showComposer && (
-        <form className="shrink-0 px-4 pb-3 pt-1 sm:px-6" onSubmit={submit}>
+        <form className="mt-auto shrink-0 px-4 py-3 sm:px-6" onSubmit={submit}>
           <div className="mx-auto w-full max-w-3xl">
             <div className="rounded-[26px] border border-line-strong bg-raise shadow-composer transition focus-within:border-white/25">
               <textarea

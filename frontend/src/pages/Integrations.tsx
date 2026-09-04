@@ -320,16 +320,11 @@ export function Integrations({ token, isAdmin = false }: Props) {
   }
 
   return (
-    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <section className="space-y-7">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-10">
+      <section className="space-y-5">
       <PageHeader
         eyebrow={isAdmin ? "Settings" : "Apps & Services"}
         title="Integrations"
-        description={
-          isAdmin
-            ? "Bring your own AI key. Connect the provider that powers SQL generation for this workspace — your key stays encrypted and is never shared with other workspaces."
-            : "Connect external services to your QueryMind workspace. Link your WhatsApp account to ask database questions directly from your phone."
-        }
       />
 
       {feedback && (
@@ -377,7 +372,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
               ) : (
                 <>
                   <p className="text-sm font-semibold text-ink">Using the platform default AI</p>
-                  <p className="text-xs text-ink-soft">Connect your own key below to control the provider, model, and billing yourself.</p>
+                  <p className="text-xs text-ink-faint">Connect your own key below.</p>
                 </>
               )}
             </div>
@@ -431,35 +426,30 @@ export function Integrations({ token, isAdmin = false }: Props) {
             ) : !botReady ? (
               <>
                 <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
-                <p className="text-xs text-ink-soft">
-                  {isAdmin
-                    ? "Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta Cloud API access token, phone number ID, verify token, app secret) and point the Meta webhook at /whatsapp/webhook."
-                    : "WhatsApp AI chat is currently not configured for this workspace. Please ask an admin to enable it."}
+                <p className="text-xs text-ink-faint">
+                  {isAdmin ? "Not configured on the server yet." : "Not enabled for this workspace — ask an admin."}
                 </p>
               </>
             ) : personallyPaired ? (
               <>
                 <p className="text-sm font-semibold text-ink">
-                  WhatsApp AI chat is live
+                  WhatsApp AI chat
+                  <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                    connected{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""}
+                  </span>
                   {whatsapp.charts ? (
-                    <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                    <span className="ml-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
                       charts on
                     </span>
                   ) : null}
                 </p>
-                <p className="text-xs text-ink-soft">
-                  Your number{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""} is linked —
-                  ask questions about the connected database and answers arrive as chat messages
-                  with tables and charts. Say "help" in the chat for examples.
-                </p>
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold text-ink">WhatsApp AI chat is available</p>
-                <p className="text-xs text-ink-soft">
-                  Your WhatsApp number isn't linked to your account yet. Tap "Open WhatsApp", send{" "}
-                  <span className="font-mono">hi</span> to the bot, and you'll get a one-time login
-                  link that connects this account.
+                <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
+                <p className="text-xs text-ink-faint">
+                  Not linked yet — open WhatsApp and send{" "}
+                  <span className="font-mono">hi</span> to the bot to connect your account.
                 </p>
               </>
             )}
@@ -498,26 +488,13 @@ export function Integrations({ token, isAdmin = false }: Props) {
       {/* Connect AI form - Admins only */}
       {isAdmin && (
         <form className="card animate-fade-up overflow-hidden" onSubmit={save}>
-          <div className="flex items-center gap-3 border-b border-line p-6">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
-              <Plug size={20} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Connect an AI provider</h2>
-              <p className="text-xs text-ink-soft">You create the key on the provider's website — we never see your provider account.</p>
-            </div>
-          </div>
-
-          <div className="space-y-6 p-6 sm:p-7">
+          <div className="space-y-6 p-6">
             {/* Selection Box for AI Provider */}
             <div className="space-y-3">
               <label className="block">
-                <span className="label flex items-center justify-between">
-                  <span>Select AI Provider</span>
-                  <span className="text-[11px] font-normal text-ink-faint">{PROVIDERS.length} providers supported</span>
-                </span>
+                <span className="label">AI provider</span>
                 <select
-                  className="field cursor-pointer font-semibold text-ink bg-surface"
+                  className="field cursor-pointer font-medium text-ink"
                   value={form.provider}
                   onChange={(e) => {
                     const nextProvider = e.target.value as Provider;
@@ -546,7 +523,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
               <div className="rounded-xl border border-line bg-white/[0.03] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <strong className="text-sm font-bold text-ink">{activeProvider.name}</strong>
+                    <strong className="text-sm font-semibold text-ink">{activeProvider.name}</strong>
                     {activeProvider.badge && (
                       <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-300">
                         {activeProvider.badge}
@@ -596,14 +573,13 @@ export function Integrations({ token, isAdmin = false }: Props) {
               </label>
 
               <label className="block">
-                <span className="label">Model (Optional)</span>
+                <span className="label">Model (optional)</span>
                 <input
                   className="field font-mono"
                   placeholder={activeProvider.modelPlaceholder}
                   value={form.model}
                   onChange={(event) => setForm({ ...form, model: event.target.value })}
                 />
-                <span className="mt-1.5 block text-xs text-ink-faint">Placeholder: {activeProvider.modelPlaceholder}</span>
               </label>
 
               {activeProvider.needsBaseUrl && (
@@ -619,17 +595,9 @@ export function Integrations({ token, isAdmin = false }: Props) {
                 </label>
               )}
             </div>
-
-            <label className="flex items-start gap-3 rounded-xl border border-line bg-white/[0.03] px-4 py-3.5 text-sm">
-              <ShieldCheck className="mt-0.5 shrink-0 text-brand-400" size={16} />
-              <span className="text-xs leading-5 text-ink-soft">
-                Your key is encrypted before storage and used only for this workspace's AI requests. Members never see it —
-                they just chat normally. Disconnect anytime to fall back to the platform default.
-              </span>
-            </label>
           </div>
 
-          <div className="flex justify-end border-t border-line bg-white/[0.03] px-6 py-4">
+          <div className="flex justify-end border-t border-line px-6 py-4">
             <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
               {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
               {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}

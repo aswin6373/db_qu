@@ -184,7 +184,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                   <MessageSquare size={14} />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-ink">
+                  <p className="truncate text-sm font-semibold text-white">
                     {item.question}
                     <span className="ml-2 text-xs font-normal text-ink-faint">{item.created_at ? timeAgo(item.created_at) : ""}</span>
                   </p>

@@ -84,21 +84,23 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-canvas px-4 py-10 sm:px-6">
-      <div className="mx-auto max-w-xl">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
-              <LogoMark className="h-5 w-5" />
-            </span>
-            <span className="font-display text-[15px] font-semibold tracking-tight text-ink">QueryMind</span>
-          </div>
-          <p className="text-sm text-ink-faint">
-            {step > 2 ? "All set" : `Step ${step} of 2`}
-          </p>
+    <div className="min-h-screen bg-canvas px-4 py-6 sm:px-6 sm:py-10">
+      {/* Sticky brand bar — logo always on top, any screen size */}
+      <header className="sticky top-0 z-30 -mx-4 mb-6 flex items-center justify-between border-b border-line bg-canvas/90 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
+            <LogoMark className="h-5 w-5" />
+          </span>
+          <span className="font-display text-[15px] font-semibold tracking-tight text-ink">
+            Query<span className="text-brand-400">Mind</span>
+          </span>
         </div>
+        <p className="text-[13px] text-ink-faint">
+          {step > 2 ? "All set" : `Step ${step} of 2`}
+        </p>
+      </header>
 
+      <div className="mx-auto max-w-xl">
         {/* Progress */}
         <ol className="mb-8 flex items-center gap-2">
           {STEPS.map((item, index) => {

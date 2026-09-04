@@ -48,9 +48,28 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
   return (
     <div className="relative grid min-h-screen bg-canvas text-ink lg:grid-cols-[56fr_44fr] lg:h-screen lg:overflow-hidden">
-      {/* Back to website — top-right corner of the whole page */}
+      {/* Mobile sticky brand bar — logo always on top */}
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-canvas/90 px-5 py-3 backdrop-blur lg:hidden">
+        <span className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
+            <LogoMark className="h-5 w-5" />
+          </span>
+          <span className="font-display text-[15px] font-semibold tracking-tight text-ink">
+            Query<span className="text-brand-400">Mind</span>
+          </span>
+        </span>
+        <button
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-ink-soft transition hover:text-ink"
+          onClick={onBack}
+          type="button"
+        >
+          <ArrowLeft size={13} /> Website
+        </button>
+      </header>
+
+      {/* Back to website — top-right corner of the whole page (desktop) */}
       <button
-        className="absolute right-5 top-5 z-20 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft transition hover:text-ink sm:right-10 sm:top-8"
+        className="absolute right-5 top-5 z-20 hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft transition hover:text-ink sm:right-10 sm:top-8 lg:flex"
         onClick={onBack}
         type="button"
       >
@@ -219,18 +238,6 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
       {/* ============ RIGHT — auth panel, full height, no outer gaps ============ */}
       <main className="relative flex flex-col overflow-y-auto no-scrollbar bg-raise/60 lg:border-l lg:border-line">
         <div className="relative z-10 mx-auto flex w-full flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 xl:px-20">
-          {/* Mobile brand */}
-          <div className="relative z-10 mb-8 flex items-center lg:hidden">
-            <span className="flex items-center gap-2.5">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
-                <LogoMark className="h-5 w-5" />
-              </span>
-              <span className="font-display text-[15px] font-semibold tracking-tight text-ink">
-                Query<span className="text-brand-400">Mind</span>
-              </span>
-            </span>
-          </div>
-
           <div className="relative z-10 mx-auto w-full max-w-[440px]">
             {/* Mode switch */}
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-line bg-black/40 p-1">

@@ -69,11 +69,11 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
       />
 
       {connections.length === 0 && (
-        <section className="card animate-fade-up border-brand-200 bg-gradient-to-br from-brand-50 via-white to-cream p-6 sm:p-8">
+        <section className="card animate-fade-up border-brand-500/40 bg-gradient-to-br from-brand-500/10 via-transparent to-transparent p-6 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-md">
-              <h2 className="text-lg font-bold text-slate-900">Connect your first database</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <h2 className="text-lg font-bold text-ink">Connect your first database</h2>
+              <p className="mt-1 text-sm leading-6 text-ink-soft">
                 QueryMind needs a live MySQL or PostgreSQL connection before the console comes alive.
               </p>
             </div>
@@ -84,10 +84,10 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                 { step: "03", label: "Ask", detail: "Chat in plain English" }
               ].map((item) => (
                 <li className="inset-tile flex min-w-[150px] flex-1 items-center gap-3 px-3.5 py-3" key={item.step}>
-                  <span className="font-mono text-xs font-bold text-brand-600">{item.step}</span>
+                  <span className="font-mono text-xs font-bold text-brand-400">{item.step}</span>
                   <span>
-                    <strong className="block text-[13px] font-semibold text-slate-800">{item.label}</strong>
-                    <span className="block text-[11px] text-slate-500">{item.detail}</span>
+                    <strong className="block text-[13px] font-semibold text-ink">{item.label}</strong>
+                    <span className="block text-[11px] text-ink-soft">{item.detail}</span>
                   </span>
                 </li>
               ))}
@@ -134,7 +134,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
               </label>
               <select
                 id="db-schema-select"
-                className="cursor-pointer rounded-full border border-navy/15 bg-white px-3 py-1 text-[11px] font-semibold text-navy shadow-sm transition hover:border-navy/30 focus:outline-none focus:ring-1 focus:ring-teal"
+                className="cursor-pointer rounded-full border border-line-strong bg-surface px-3 py-1 text-[11px] font-semibold text-ink shadow-sm transition hover:border-line-strong focus:outline-none focus:ring-1 focus:ring-brand-400"
                 onChange={(e) => setSelectedConnectionId(Number(e.target.value))}
                 value={activeConnection?.id ?? ""}
               >
@@ -162,8 +162,8 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                 <button
                   className={`rounded-full border px-3 py-1 text-[11px] font-semibold capitalize transition ${
                     statusFilter === status
-                      ? "border-brand-200 bg-brand-50 text-brand-700"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                      ? "border-brand-500/40 bg-brand-500/10 text-brand-300"
+                      : "border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink"
                   }`}
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -175,23 +175,23 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             </div>
           )}
         </div>
-        <div className="mt-4 divide-y divide-slate-100">
+        <div className="mt-4 divide-y divide-line">
           {visibleActivity.map((item) => (
-            <div className="group flex flex-col gap-2 py-3.5 transition first:pt-0 last:pb-0 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between" key={item.id}>
+            <div className="group flex flex-col gap-2 py-3.5 transition first:pt-0 last:pb-0 hover:bg-raise sm:flex-row sm:items-center sm:justify-between" key={item.id}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium text-slate-800">{item.question}</p>
+                  <p className="truncate text-sm font-medium text-ink">{item.question}</p>
                   {item.created_at && (
-                    <span className="shrink-0 font-mono text-[11px] text-slate-500">{timeAgo(item.created_at)}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-ink-soft">{timeAgo(item.created_at)}</span>
                   )}
                 </div>
-                <code className="mt-1 block max-w-xl truncate rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">
+                <code className="mt-1 block max-w-xl truncate rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
                   {item.sql}
                 </code>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {item.rows_returned != null && (
-                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-500">
+                  <span className="rounded-md border border-line bg-raise px-2 py-0.5 font-mono text-[11px] font-medium text-ink-soft">
                     {item.rows_returned} rows
                   </span>
                 )}
@@ -200,8 +200,8 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                   aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
                   className={`reveal-touch grid h-8 w-8 place-items-center rounded-md border transition ${
                     copiedId === item.id
-                      ? "border-brand-200 bg-brand-50 text-brand-700"
-                      : "border-transparent text-slate-500 hover:border-slate-200 hover:text-slate-600 group-hover:opacity-100"
+                      ? "border-brand-500/40 bg-brand-500/10 text-brand-300"
+                      : "border-transparent text-ink-soft hover:border-line hover:text-ink-soft group-hover:opacity-100"
                   }`}
                   onClick={() => copySql(item.id, item.sql)}
                   title="Copy SQL"
@@ -213,7 +213,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
             </div>
           ))}
           {visibleActivity.length === 0 && (
-            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-dashed border-line bg-white/[0.03] px-4 py-8 text-center text-sm text-ink-soft">
               No query activity yet. Start a conversation in AI Chat.
             </p>
           )}
@@ -270,16 +270,16 @@ function KpiCard({
   const shown = useCountUp(isNumber ? (value as number) : 0);
   return (
     <div className="card card-hover group relative animate-fade-up overflow-hidden p-5">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal/70 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-400/70 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-2">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-50 text-brand-600">{icon}</span>
-        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
+        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</span>
       </div>
-      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-ink tabular-nums">
         {isNumber ? shown.toLocaleString() : value}
-        {suffix && <span className="ml-0.5 text-sm font-semibold text-slate-400">{suffix}</span>}
+        {suffix && <span className="ml-0.5 text-sm font-semibold text-ink-faint">{suffix}</span>}
       </strong>
-      {caption && <p className="mt-1.5 truncate text-[11px] font-medium text-slate-500">{caption}</p>}
+      {caption && <p className="mt-1.5 truncate text-[11px] font-medium text-ink-soft">{caption}</p>}
       {footer && <div className="mt-2">{footer}</div>}
     </div>
   );
@@ -298,7 +298,7 @@ function ReadinessRing({ score }: { score: number }) {
   const stroke = clamped >= 70 ? "#34d399" : clamped >= 40 ? "#fbbf24" : "#fb7185";
   return (
     <svg height="44" viewBox="0 0 40 40" width="44">
-      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(148,163,184,0.3)" strokeWidth="3.6" />
+      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(255,255,255,0.14)" strokeWidth="3.6" />
       <circle
         cx="20"
         cy="20"
@@ -311,7 +311,7 @@ function ReadinessRing({ score }: { score: number }) {
         strokeWidth="3.6"
         style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%", transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1), stroke 300ms" }}
       />
-      <text dominantBaseline="central" fill="#334155" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
+      <text dominantBaseline="central" fill="#e8ebee" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
         {clamped}
       </text>
     </svg>
@@ -322,10 +322,10 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
   return (
     <div>
       <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">{icon}</span>
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-ink">{title}</h2>
       </div>
-      {subtitle && <p className="mt-1.5 pl-[42px] text-[13px] leading-5 text-slate-500">{subtitle}</p>}
+      {subtitle && <p className="mt-1.5 pl-[42px] text-[13px] leading-5 text-ink-soft">{subtitle}</p>}
     </div>
   );
 }
@@ -347,7 +347,7 @@ export function StatusPill({ status }: { status: string }) {
     pending_confirmation: "pill-warn",
     executing: "pill-info",
     confirmation_expired: "pill-warn",
-    failed: "bg-rose-50 text-rose-700 border-rose-200"
+    failed: "bg-rose-500/10 text-rose-300 border-rose-500/25"
   };
   const label = status.replace(/_/g, " ");
   return <span className={`status-pill shrink-0 capitalize ${map[status] ?? ""}`}>{label}</span>;

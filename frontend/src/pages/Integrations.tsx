@@ -335,8 +335,8 @@ export function Integrations({ token, isAdmin = false }: Props) {
         <div
           className={`animate-fade-up flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${
             feedback.kind === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-rose-200 bg-rose-50 text-rose-700"
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+              : "border-rose-500/25 bg-rose-500/10 text-rose-300"
           }`}
           role={feedback.kind === "error" ? "alert" : "status"}
         >
@@ -357,26 +357,26 @@ export function Integrations({ token, isAdmin = false }: Props) {
       {isAdmin && (
         <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
           <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-            <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+            <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
               <Cpu size={20} />
             </span>
             <div className="min-w-0 flex-1">
               {isLoading ? (
-                <Loader2 className="animate-spin text-slate-400" size={18} />
+                <Loader2 className="animate-spin text-ink-faint" size={18} />
               ) : current?.provider ? (
                 <>
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-ink">
                     Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
-                    {current.key_hint ? <span className="ml-2 font-mono text-xs text-slate-400">{current.key_hint}</span> : null}
+                    {current.key_hint ? <span className="ml-2 font-mono text-xs text-ink-faint">{current.key_hint}</span> : null}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-ink-soft">
                     All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-semibold text-slate-900">Using the platform default AI</p>
-                  <p className="text-xs text-slate-500">Connect your own key below to control the provider, model, and billing yourself.</p>
+                  <p className="text-sm font-semibold text-ink">Using the platform default AI</p>
+                  <p className="text-xs text-ink-soft">Connect your own key below to control the provider, model, and billing yourself.</p>
                 </>
               )}
             </div>
@@ -385,9 +385,9 @@ export function Integrations({ token, isAdmin = false }: Props) {
             <div className="flex shrink-0 items-center gap-2 pl-14 sm:pl-0">
               {confirmingRemove ? (
                 <>
-                  <span className="text-xs font-medium text-rose-600">Disconnect?</span>
+                  <span className="text-xs font-medium text-rose-300">Disconnect?</span>
                   <button
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
+                    className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-500 disabled:opacity-60"
                     disabled={isRemoving}
                     onClick={remove}
                     title="Confirm disconnect"
@@ -397,7 +397,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
                   </button>
                   <button
                     aria-label="Cancel"
-                    className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                     onClick={() => setConfirmingRemove(false)}
                     type="button"
                   >
@@ -406,7 +406,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
                 </>
               ) : (
                 <button
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
                   onClick={() => setConfirmingRemove(true)}
                   type="button"
                 >
@@ -421,16 +421,16 @@ export function Integrations({ token, isAdmin = false }: Props) {
       {/* WhatsApp AI chat - Available to all members */}
       <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
         <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-          <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-500 text-white">
+          <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-500/90 text-white">
             <MessageCircle size={20} />
           </span>
           <div className="min-w-0 flex-1">
             {whatsapp === null ? (
-              <Loader2 className="animate-spin text-slate-400" size={18} />
+              <Loader2 className="animate-spin text-ink-faint" size={18} />
             ) : !botReady ? (
               <>
-                <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
+                <p className="text-xs text-ink-soft">
                   {isAdmin
                     ? "Not connected yet. Set the WHATSAPP_* environment variables on the backend (Meta Cloud API access token, phone number ID, verify token, app secret) and point the Meta webhook at /whatsapp/webhook."
                     : "WhatsApp AI chat is currently not configured for this workspace. Please ask an admin to enable it."}
@@ -438,15 +438,15 @@ export function Integrations({ token, isAdmin = false }: Props) {
               </>
             ) : personallyPaired ? (
               <>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-ink">
                   WhatsApp AI chat is live
                   {whatsapp.charts ? (
-                    <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
                       charts on
                     </span>
                   ) : null}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-soft">
                   Your number{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""} is linked —
                   ask questions about the connected database and answers arrive as chat messages
                   with tables and charts. Say "help" in the chat for examples.
@@ -454,8 +454,8 @@ export function Integrations({ token, isAdmin = false }: Props) {
               </>
             ) : (
               <>
-                <p className="text-sm font-semibold text-slate-900">WhatsApp AI chat is available</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-semibold text-ink">WhatsApp AI chat is available</p>
+                <p className="text-xs text-ink-soft">
                   Your WhatsApp number isn't linked to your account yet. Tap "Open WhatsApp", send{" "}
                   <span className="font-mono">hi</span> to the bot, and you'll get a one-time login
                   link that connects this account.
@@ -468,7 +468,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
           <div className="flex shrink-0 flex-wrap items-center gap-2 pl-14 sm:pl-0">
             {whatsapp.number && (
               <a
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700"
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600/90 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
                 href={`https://wa.me/${whatsapp.number.replace(/\D/g, "")}?text=hi`}
                 rel="noreferrer"
                 target="_blank"
@@ -479,7 +479,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
             {pairing !== null && (
               <span
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                  personallyPaired ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                  personallyPaired ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"
                 }`}
               >
                 <span
@@ -497,13 +497,13 @@ export function Integrations({ token, isAdmin = false }: Props) {
       {/* Connect AI form - Admins only */}
       {isAdmin && (
         <form className="card animate-fade-up overflow-hidden" onSubmit={save}>
-          <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+          <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-6">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
               <Plug size={20} />
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">Connect an AI provider</h2>
-              <p className="text-xs text-slate-500">You create the key on the provider's website — we never see your provider account.</p>
+              <h2 className="text-lg font-bold tracking-tight text-ink">Connect an AI provider</h2>
+              <p className="text-xs text-ink-soft">You create the key on the provider's website — we never see your provider account.</p>
             </div>
           </div>
 
@@ -513,10 +513,10 @@ export function Integrations({ token, isAdmin = false }: Props) {
               <label className="block">
                 <span className="label flex items-center justify-between">
                   <span>Select AI Provider</span>
-                  <span className="text-[11px] font-normal text-slate-400">{PROVIDERS.length} providers supported</span>
+                  <span className="text-[11px] font-normal text-ink-faint">{PROVIDERS.length} providers supported</span>
                 </span>
                 <select
-                  className="field cursor-pointer font-semibold text-slate-800 bg-white"
+                  className="field cursor-pointer font-semibold text-ink bg-surface"
                   value={form.provider}
                   onChange={(e) => {
                     const nextProvider = e.target.value as Provider;
@@ -542,21 +542,21 @@ export function Integrations({ token, isAdmin = false }: Props) {
               </label>
 
               {/* Selected Provider Overview Banner */}
-              <div className="rounded-xl border border-navy/10 bg-cream/60 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="rounded-xl border border-line bg-white/[0.03] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <strong className="text-sm font-bold text-navy">{activeProvider.name}</strong>
+                    <strong className="text-sm font-bold text-ink">{activeProvider.name}</strong>
                     {activeProvider.badge && (
-                      <span className="rounded-full bg-teal-soft px-2 py-0.5 text-[10px] font-semibold text-teal-dark">
+                      <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-300">
                         {activeProvider.badge}
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-navy-soft">{activeProvider.blurb}</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">{activeProvider.blurb}</p>
                 </div>
                 {activeProvider.keyUrl && (
                   <a
-                    className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-teal hover:underline"
+                    className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-400 hover:underline"
                     href={activeProvider.keyUrl}
                     rel="noreferrer"
                     target="_blank"
@@ -582,7 +582,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
                   />
                   <button
                     aria-label={showKey ? "Hide key" : "Show key"}
-                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                     onClick={() => setShowKey((visible) => !visible)}
                     type="button"
                   >
@@ -590,7 +590,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
                   </button>
                 </span>
                 {!activeProvider.needsKey && (
-                  <span className="mt-1.5 block text-xs text-slate-400">Leave empty for {activeProvider.name}.</span>
+                  <span className="mt-1.5 block text-xs text-ink-faint">Leave empty for {activeProvider.name}.</span>
                 )}
               </label>
 
@@ -602,7 +602,7 @@ export function Integrations({ token, isAdmin = false }: Props) {
                   value={form.model}
                   onChange={(event) => setForm({ ...form, model: event.target.value })}
                 />
-                <span className="mt-1.5 block text-xs text-slate-400">Placeholder: {activeProvider.modelPlaceholder}</span>
+                <span className="mt-1.5 block text-xs text-ink-faint">Placeholder: {activeProvider.modelPlaceholder}</span>
               </label>
 
               {activeProvider.needsBaseUrl && (
@@ -619,16 +619,16 @@ export function Integrations({ token, isAdmin = false }: Props) {
               )}
             </div>
 
-            <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm">
-              <ShieldCheck className="mt-0.5 shrink-0 text-brand-600" size={16} />
-              <span className="text-xs leading-5 text-slate-500">
+            <label className="flex items-start gap-3 rounded-xl border border-line bg-white/[0.03] px-4 py-3.5 text-sm">
+              <ShieldCheck className="mt-0.5 shrink-0 text-brand-400" size={16} />
+              <span className="text-xs leading-5 text-ink-soft">
                 Your key is encrypted before storage and used only for this workspace's AI requests. Members never see it —
                 they just chat normally. Disconnect anytime to fall back to the platform default.
               </span>
             </label>
           </div>
 
-          <div className="flex justify-end border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+          <div className="flex justify-end border-t border-line bg-white/[0.03] px-6 py-4">
             <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
               {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
               {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}

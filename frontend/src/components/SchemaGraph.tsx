@@ -42,18 +42,18 @@ export function SchemaGraph({ schema, insights }: Props) {
     <section className="card p-6">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">
             <Link2 size={16} />
           </span>
-          <h2 className="text-base font-bold tracking-tight text-slate-900">Entity relationships</h2>
+          <h2 className="text-base font-bold tracking-tight text-ink">Entity relationships</h2>
         </div>
-        <span className="text-[11px] font-medium text-slate-400">
+        <span className="text-[11px] font-medium text-ink-faint">
           {edges.length} link{edges.length === 1 ? "" : "s"} · hover or click a table to trace its relationships
         </span>
       </div>
 
       {tables.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-dashed border-line bg-white/[0.03] px-6 py-10 text-center text-sm text-ink-soft">
           No schema discovered yet. Save a live database connection to load tables and columns.
         </div>
       ) : (
@@ -73,10 +73,10 @@ export function SchemaGraph({ schema, insights }: Props) {
                       d={link.path}
                       fill="none"
                       strokeWidth={activeTable && isRelated ? 2.5 : 1.5}
-                      className={activeTable && isRelated ? "stroke-brand-500" : "stroke-slate-400/60"}
+                      className={activeTable && isRelated ? "stroke-brand-400" : "stroke-white/20"}
                     />
-                    <circle cx={link.from.x} cy={link.from.y} r={3.5} className={activeTable && isRelated ? "fill-brand-600" : "fill-brand-500"} />
-                    <circle cx={link.to.x} cy={link.to.y} r={3.5} className={activeTable && isRelated ? "fill-brand-600" : "fill-brand-500"} />
+                    <circle cx={link.from.x} cy={link.from.y} r={3.5} className={activeTable && isRelated ? "fill-brand-400" : "fill-brand-400"} />
+                    <circle cx={link.to.x} cy={link.to.y} r={3.5} className={activeTable && isRelated ? "fill-brand-400" : "fill-brand-400"} />
                   </g>
                 );
               })}
@@ -86,12 +86,12 @@ export function SchemaGraph({ schema, insights }: Props) {
               const isRelated = !activeTable || relatedTables.has(node.name);
               return (
                 <article
-                  className={`absolute cursor-pointer rounded-xl border bg-white transition hover:shadow-md ${
+                  className={`absolute cursor-pointer rounded-xl border bg-surface transition hover:shadow-md ${
                     isSelected
-                      ? "z-10 border-brand-400 shadow-lg ring-2 ring-brand-200"
+                      ? "z-10 border-brand-400 shadow-lg ring-2 ring-brand-500/25"
                       : node.degree > 0 && isRelated
-                        ? "border-brand-200 ring-1 ring-brand-100"
-                        : "border-slate-200"
+                        ? "border-brand-500/40 ring-1 ring-brand-500/15"
+                        : "border-line"
                   } ${isRelated ? "" : "opacity-30"}`}
                   key={node.name}
                   onClick={(event) => {
@@ -103,20 +103,20 @@ export function SchemaGraph({ schema, insights }: Props) {
                   style={{ left: node.rect.x, top: node.rect.y, width: node.rect.w, height: node.rect.h }}
                 >
                 <header
-                  className="flex items-center justify-between gap-2 rounded-t-xl border-b border-slate-100 bg-gradient-to-r from-brand-50/80 to-white px-3"
+                  className="flex items-center justify-between gap-2 rounded-t-xl border-b border-line bg-gradient-to-r from-brand-500/10 to-transparent px-3"
                   style={{ height: HEADER_H }}
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <Table2 className="shrink-0 text-brand-600" size={13} />
-                    <strong className="truncate font-mono text-[12px] text-slate-800" title={node.name}>{node.name}</strong>
+                    <Table2 className="shrink-0 text-brand-400" size={13} />
+                    <strong className="truncate font-mono text-[12px] text-ink" title={node.name}>{node.name}</strong>
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
                     {node.degree > 0 && (
-                      <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                      <span className="rounded-full bg-brand-500/20 px-1.5 py-0.5 text-[10px] font-bold text-brand-300">
                         {node.degree} link{node.degree === 1 ? "" : "s"}
                       </span>
                     )}
-                    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                    <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-ink-soft">
                       {node.columns.length} col{node.columns.length === 1 ? "" : "s"}
                     </span>
                   </span>
@@ -128,16 +128,16 @@ export function SchemaGraph({ schema, insights }: Props) {
                       key={column.name}
                       style={{ height: ROW_H }}
                     >
-                      <span className="truncate font-mono text-[11px] text-slate-600" title={column.name}>{column.name}</span>
+                      <span className="truncate font-mono text-[11px] text-ink-soft" title={column.name}>{column.name}</span>
                       <span className="flex shrink-0 items-center gap-1">
-                        <span className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[9px] text-slate-500">{column.type}</span>
+                        <span className="rounded bg-white/10 px-1 py-0.5 font-mono text-[9px] text-ink-soft">{column.type}</span>
                         {node.foreignKeyColumns.has(column.name) && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-brand-50 px-1 py-0.5 text-[9px] font-bold text-brand-600">
+                          <span className="inline-flex items-center gap-0.5 rounded bg-brand-500/10 px-1 py-0.5 text-[9px] font-bold text-brand-400">
                             <ArrowRight size={8} /> FK
                           </span>
                         )}
                         {column.key === "PRI" && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1 py-0.5 text-[9px] font-bold text-amber-600">
+                          <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/10 px-1 py-0.5 text-[9px] font-bold text-amber-300">
                             <KeyRound size={8} /> PK
                           </span>
                         )}
@@ -154,8 +154,8 @@ export function SchemaGraph({ schema, insights }: Props) {
               const isRelated = !activeTable || relatedEdgeKeys.has(key);
               return (
                 <span
-                  className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-1.5 py-0.5 font-mono text-[9px] font-medium shadow-sm ${
-                    activeTable && isRelated ? "border-brand-300 text-brand-700" : "border-slate-200 text-slate-500"
+                  className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-surface px-1.5 py-0.5 font-mono text-[9px] font-medium shadow-sm ${
+                    activeTable && isRelated ? "border-brand-500/60 text-brand-300" : "border-line text-ink-soft"
                   } ${isRelated ? "" : "opacity-20"}`}
                   key={`label-${key}`}
                   style={{ left: mid.x, top: mid.y }}
@@ -166,7 +166,7 @@ export function SchemaGraph({ schema, insights }: Props) {
             })}
           </div>
           {edges.length === 0 && (
-            <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs leading-5 text-slate-400">
+            <p className="mt-3 rounded-lg border border-dashed border-line bg-surface px-4 py-6 text-center text-xs leading-5 text-ink-faint">
               No relationships inferred yet. Columns ending in <code className="font-mono">_id</code> create the links
               between tables.
             </p>

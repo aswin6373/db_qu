@@ -243,7 +243,7 @@ export function App() {
 
 function BootSplash() {
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-950">
+    <div className="grid min-h-screen place-items-center bg-canvas">
       <div className="flex flex-col items-center gap-5">
         <span className="grid h-14 w-14 animate-pulse-soft place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-xl shadow-brand-600/30">
           <svg fill="none" height="26" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="26">
@@ -252,7 +252,7 @@ function BootSplash() {
             <path d="M3 12A9 3 0 0 0 21 12" />
           </svg>
         </span>
-        <p className="text-sm font-medium text-slate-400">Preparing your workspace…</p>
+        <p className="text-sm font-medium text-ink-faint">Preparing your workspace…</p>
       </div>
     </div>
   );

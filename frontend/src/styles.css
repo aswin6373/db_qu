@@ -9,8 +9,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  color: #0f172a;
-  background: #f4f6fa;
+  color: #e8ebee;
+  background: #15171c;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -22,8 +22,15 @@ select {
   font: inherit;
 }
 
+/* Native form controls pick up the dark surfaces too. */
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
 ::selection {
-  background: rgba(47, 158, 151, 0.18);
+  background: rgba(47, 158, 151, 0.35);
 }
 
 /* Slim, unobtrusive scrollbars */
@@ -32,8 +39,11 @@ select {
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 *::-webkit-scrollbar-track {
   background: transparent;
@@ -46,95 +56,95 @@ select {
 
   /* Surfaces */
   .card {
-    @apply rounded-xl border border-slate-200/80 bg-white shadow-card;
+    @apply rounded-xl border border-line bg-surface shadow-card;
   }
   .card-hover {
     @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
   }
   .panel-soft {
-    @apply rounded-xl border border-slate-200/80 bg-slate-50/70;
+    @apply rounded-xl border border-line bg-raise;
   }
   .inset-tile {
-    @apply rounded-lg border border-slate-200 bg-white;
+    @apply rounded-lg border border-line bg-raise/70;
   }
 
   /* Buttons */
   .btn-primary {
-    @apply focus-ring inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 active:bg-brand-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-white/90;
+    @apply focus-ring inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-500 active:bg-brand-700 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-ink-faint;
   }
   .btn-accent {
-    @apply btn-primary bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-700 hover:to-brand-900;
+    @apply btn-primary bg-gradient-to-r from-brand-600 to-brand-800 hover:from-brand-500 hover:to-brand-700;
   }
   .btn-secondary {
-    @apply focus-ring inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply focus-ring inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-line bg-white/5 px-3.5 text-sm font-medium text-ink transition hover:border-line-strong hover:bg-white/10 active:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-ghost {
-    @apply focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-ink-soft transition hover:bg-white/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   /* Forms */
   .field {
-    @apply focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100;
+    @apply focus-ring h-11 w-full rounded-lg border border-line bg-raise px-3.5 text-sm text-ink placeholder:text-ink-faint disabled:bg-white/5;
   }
   .label {
-    @apply mb-1.5 block text-[13px] font-medium text-slate-600;
+    @apply mb-1.5 block text-[13px] font-medium text-ink-soft;
   }
 
   /* Code */
   .code-block {
-    @apply block overflow-x-auto rounded-lg border border-navy/60 bg-navy px-4 py-3 font-mono text-[13px] leading-6 text-teal-soft;
+    @apply block overflow-x-auto rounded-lg border border-line bg-[#0d0f13] px-4 py-3 font-mono text-[13px] leading-6 text-[#a7ded7];
   }
 
   /* Pills & badges */
   .status-pill {
-    @apply inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600;
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-white/5 px-2.5 py-1 text-xs font-medium text-ink-soft;
   }
   .pill-success {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-700;
+    @apply border-emerald-500/25 bg-emerald-500/10 text-emerald-300;
   }
   .pill-warn {
-    @apply border-amber-200 bg-amber-50 text-amber-700;
+    @apply border-amber-500/25 bg-amber-500/10 text-amber-300;
   }
   .pill-info {
-    @apply border-brand-200 bg-brand-50 text-brand-700;
+    @apply border-brand-500/25 bg-brand-500/10 text-brand-300;
   }
 
   /* Sidebar navigation item */
   .nav-item {
-    @apply focus-ring relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-navy-soft transition;
+    @apply focus-ring relative flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-ink-soft transition;
   }
   /* Hover must not override the active state, otherwise the highlight only
      settles after the cursor leaves the item. */
   .nav-item:not(.nav-item-active):hover {
-    @apply bg-navy/5 text-navy;
+    @apply bg-white/5 text-ink;
   }
   .nav-item-active {
-    @apply bg-white text-navy shadow-sm;
+    @apply bg-white/10 text-ink;
   }
   .nav-item-active::before {
     content: "";
-    @apply absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-teal;
+    @apply absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-400;
   }
 
   .eyebrow {
     @apply text-xs font-semibold uppercase tracking-[0.14em];
   }
 
-  /* Landing page (Vanna-style) */
+  /* Landing page */
   .btn-landing-primary {
-    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal px-6 text-[15px] font-semibold text-white shadow-lg shadow-teal/25 transition hover:-translate-y-0.5 hover:bg-teal-dark active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 text-[15px] font-semibold text-white shadow-lg shadow-brand-500/25 transition hover:-translate-y-0.5 hover:bg-brand-400 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-landing-outline {
-    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-navy/20 bg-white/60 px-6 text-[15px] font-semibold text-navy backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:translate-y-0;
+    @apply focus-ring inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-line-strong bg-white/5 px-6 text-[15px] font-semibold text-ink backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/10 active:translate-y-0;
   }
   .card-landing {
-    @apply rounded-2xl border border-navy/10 bg-white/85 p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+    @apply rounded-2xl border border-line bg-surface/80 p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-lift;
   }
 }
 
-/* Dot grid backdrop for the app canvas (Vanna-style) */
+/* Dot grid backdrop for the app canvas */
 .dot-grid {
-  background-image: radial-gradient(circle, rgba(22, 50, 79, 0.055) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
   background-size: 26px 26px;
 }
 
@@ -178,8 +188,8 @@ select {
 
 /* 3D schema constellation */
 .floor-grid {
-  background-image: linear-gradient(rgba(47, 158, 151, 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(47, 158, 151, 0.14) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(47, 158, 151, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 158, 151, 0.16) 1px, transparent 1px);
   background-size: 36px 36px;
 }
 @keyframes node-float {

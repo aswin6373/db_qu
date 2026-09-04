@@ -114,8 +114,8 @@ export function Members({ token, currentUserId }: Props) {
 
 function FeedbackBanner({ feedback, onDismiss }: { feedback: Feedback; onDismiss: () => void }) {
   const styles = feedback.kind === "success"
-    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-    : "border-rose-200 bg-rose-50 text-rose-700";
+    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+    : "border-rose-500/25 bg-rose-500/10 text-rose-300";
   const icon = feedback.kind === "success" ? <CheckCircle2 size={16} /> : <XCircle size={16} />;
   return (
     <div
@@ -153,13 +153,13 @@ function AddMemberCard({
 }) {
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-6">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
           <UserPlus size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">Add a workspace user</h2>
-          <p className="text-xs text-slate-500">Choose their role and password — share their login details securely.</p>
+          <h2 className="text-lg font-bold tracking-tight text-ink">Add a workspace user</h2>
+          <p className="text-xs text-ink-soft">Choose their role and password — share their login details securely.</p>
         </div>
       </div>
 
@@ -202,7 +202,7 @@ function AddMemberCard({
             />
             <button
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
               onClick={() => onShowPassword(!showPassword)}
               type="button"
             >
@@ -212,8 +212,8 @@ function AddMemberCard({
         </label>
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-6 py-4">
-        <p className="hidden text-xs text-slate-500 sm:block">
+      <div className="flex items-center justify-between border-t border-line bg-white/[0.03] px-6 py-4">
+        <p className="hidden text-xs text-ink-soft sm:block">
           {form.role === "admin"
             ? "Admins can add databases, integrations, and manage other workspace members."
             : "Members can run queries and explore schemas, but cannot modify workspace settings."}
@@ -246,30 +246,30 @@ function MemberList({
 }) {
   return (
     <div className="card animate-fade-up overflow-hidden">
-      <div className="border-b border-slate-100 px-6 py-5">
-        <h2 className="text-lg font-bold tracking-tight text-slate-900">Workspace users</h2>
-        <p className="text-xs text-slate-500">
+      <div className="border-b border-line px-6 py-5">
+        <h2 className="text-lg font-bold tracking-tight text-ink">Workspace users</h2>
+        <p className="text-xs text-ink-soft">
           {members.length} user{members.length === 1 ? "" : "s"} · Admins manage databases, integrations, and users; members can chat and explore data.
         </p>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12 text-slate-400">
+        <div className="flex justify-center py-12 text-ink-faint">
           <Loader2 className="animate-spin" size={20} />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {members.map((member) => {
             const isSelf = member.id === currentUserId;
             const isConfirming = removingId === member.id;
             return (
               <li className="flex items-center gap-3 px-6 py-3.5" key={member.id}>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-bold uppercase text-brand-700">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500/10 text-xs font-bold uppercase text-brand-300">
                   {member.email.slice(0, 2)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-slate-800">{member.email}</span>
-                  <span className="block text-[11px] text-slate-400">
+                  <span className="block truncate text-sm font-semibold text-ink">{member.email}</span>
+                  <span className="block text-[11px] text-ink-faint">
                     {member.role === "admin" ? "Admin" : "Member"}
                     {isSelf ? " · you" : ""}
                   </span>
@@ -284,9 +284,9 @@ function MemberList({
                 {!isSelf && (
                   isConfirming ? (
                     <span className="flex shrink-0 items-center gap-1.5">
-                      <span className="text-xs font-medium text-rose-600">Remove?</span>
+                      <span className="text-xs font-medium text-rose-300">Remove?</span>
                       <button
-                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-500"
                         disabled={isRemoving}
                         onClick={() => onRemove(member)}
                         title="Confirm remove"
@@ -296,7 +296,7 @@ function MemberList({
                       </button>
                       <button
                         aria-label="Keep member"
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                        className="grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                         onClick={() => onRemoveRequest(null)}
                         type="button"
                       >
@@ -306,7 +306,7 @@ function MemberList({
                   ) : (
                     <button
                       aria-label={`Remove ${member.email}`}
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-line text-ink-faint transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
                       onClick={() => onRemoveRequest(member.id)}
                       title={member.role === "admin" ? "Remove admin" : "Remove member"}
                       type="button"

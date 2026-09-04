@@ -33,11 +33,11 @@ const DB_H = 114;
 
 
 const KEY_BADGES: Record<string, { label: string; className: string }> = {
-  PRI: { label: "PK", className: "bg-amber-100 text-amber-600 ring-1 ring-amber-200/70" },
-  UNI: { label: "UQ", className: "bg-violet-100 text-violet-700 ring-1 ring-violet-200/70" },
-  MUL: { label: "IX", className: "bg-brand-50 text-brand-700 ring-1 ring-brand-200/70" }
+  PRI: { label: "PK", className: "bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30" },
+  UNI: { label: "UQ", className: "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30" },
+  MUL: { label: "IX", className: "bg-brand-500/10 text-brand-300 ring-1 ring-brand-500/30" }
 };
-const FK_BADGE = { label: "FK", className: "bg-amber-50 text-amber-500 ring-1 ring-amber-200/60" };
+const FK_BADGE = { label: "FK", className: "bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/25" };
 
 
 export function SchemaConstellation({ schema, insights, title = "Primary schema & database relationships", headerAction }: Props) {
@@ -160,20 +160,20 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
     <section className="card flex flex-col overflow-hidden p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50 text-brand-600">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">
             <DatabaseZap size={16} />
           </span>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">{title}</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-ink">{title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {headerAction}
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-[11px] font-medium text-slate-500">
+          <span className="rounded-full border border-line bg-raise px-2.5 py-1 font-mono text-[11px] font-medium text-ink-soft">
             {tables.length} tables · {edges.length} rel
           </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-[11px] font-semibold text-brand-700">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/40 bg-brand-500/10 px-3 py-1 text-[11px] font-semibold text-brand-300">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-teal" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
             </span>
             Live schema
           </span>
@@ -190,7 +190,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
         onMouseMove={handleMove}
       >
         {/* clipping wrapper only — never put overflow on the 3D chain itself */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-white via-brand-50/40 to-cream/70">
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-line bg-gradient-to-br from-raise via-surface to-canvas">
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -202,7 +202,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
 
           {tables.length === 0 ? (
             <div className="grid h-full place-items-center px-6 text-center">
-              <p className="max-w-xs text-sm leading-6 text-slate-500">
+              <p className="max-w-xs text-sm leading-6 text-ink-soft">
                 No schema discovered yet. Connect a database and QueryMind will map its tables and relationships here.
               </p>
             </div>
@@ -226,7 +226,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                   <div className="floor-grid absolute inset-[-35%] opacity-70" />
                   <div
                     className="pointer-events-none absolute inset-[-35%]"
-                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 34%, rgba(255,255,255,0.88) 80%)" }}
+                    style={{ background: "radial-gradient(circle at 50% 50%, transparent 34%, rgba(13,15,19,0.9) 80%)" }}
                   />
 
 
@@ -370,27 +370,27 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                               className="absolute inset-0 rounded-xl"
                               style={{
                                 transform: "translate(-6px, 7px)",
-                                background: "linear-gradient(150deg, #b6c5cd 0%, #93a5b0 55%, #7e919d 100%)"
+                                background: "linear-gradient(150deg, #101318 0%, #1a1f26 55%, #232932 100%)"
                               }}
                             />
                             <span
                               aria-hidden
                               className="absolute inset-0 rounded-xl"
-                              style={{ transform: "translate(-3px, 3.5px)", background: "linear-gradient(150deg, #e6edf2 0%, #b9c8d0 100%)" }}
+                              style={{ transform: "translate(-3px, 3.5px)", background: "linear-gradient(150deg, #2a303a 0%, #161a20 100%)" }}
                             />
                             <div
-                              className={`relative h-full w-full overflow-hidden rounded-xl border bg-white px-2.5 pb-1 pt-1.5 transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:scale-[1.08] group-hover/node:shadow-[0_14px_30px_rgba(23,93,85,0.18),0_0_24px_rgba(47,158,151,0.25)] ${
-                                focused ? "-translate-y-1.5 scale-[1.08] border-brand-300 shadow-[0_16px_34px_rgba(23,93,85,0.20),0_0_26px_rgba(47,158,151,0.28)]" : "border-slate-200/90 shadow-[0_10px_22px_rgba(23,93,85,0.10)]"
+                              className={`relative h-full w-full overflow-hidden rounded-xl border bg-surface px-2.5 pb-1 pt-1.5 transition-all duration-200 group-hover/node:-translate-y-1 group-hover/node:scale-[1.08] group-hover/node:shadow-[0_14px_30px_rgba(23,93,85,0.18),0_0_24px_rgba(47,158,151,0.25)] ${
+                                focused ? "-translate-y-1.5 scale-[1.08] border-brand-500/60 shadow-[0_16px_34px_rgba(23,93,85,0.20),0_0_26px_rgba(47,158,151,0.28)]" : "border-line shadow-[0_10px_22px_rgba(23,93,85,0.10)]"
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
+                              <div className="flex items-center justify-between gap-1 border-b border-line pb-1">
                                 <span className="flex min-w-0 items-center gap-1.5">
-                                  <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-brand-50 text-brand-600">
+                                  <span className="grid h-4 w-4 shrink-0 place-items-center rounded bg-brand-500/10 text-brand-400">
                                     <Table2 size={10} />
                                   </span>
-                                  <strong className="truncate text-[11px] font-bold text-slate-800">{tableName}</strong>
+                                  <strong className="truncate text-[11px] font-bold text-ink">{tableName}</strong>
                                 </span>
-                                {pkCount > 0 && <KeyRound className="shrink-0 text-amber-400" size={11} />}
+                                {pkCount > 0 && <KeyRound className="shrink-0 text-amber-300" size={11} />}
                               </div>
                               <ul className="space-y-0.5 py-1">
                                 {table.columns.slice(0, 4).map((column) => {
@@ -400,10 +400,10 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                                   const dataType = column.type.split("(")[0].toLowerCase();
                                   return (
                                     <li className="flex items-center justify-between gap-1 leading-4" key={column.name}>
-                                      <span className="truncate font-mono text-[9px] text-slate-600 sm:text-[9.5px]">{column.name}</span>
+                                      <span className="truncate font-mono text-[9px] text-ink-soft sm:text-[9.5px]">{column.name}</span>
                                       <span className="flex shrink-0 items-center gap-1">
                                         {dataType && (
-                                          <span className="text-[8px] font-medium uppercase tracking-wide text-slate-400">{dataType}</span>
+                                          <span className="text-[8px] font-medium uppercase tracking-wide text-ink-faint">{dataType}</span>
                                         )}
                                         {badge && (
                                           <span className={`rounded px-1 text-[7px] font-bold uppercase leading-[12px] ${badge.className}`}>
@@ -415,7 +415,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
                                   );
                                 })}
                                 {table.columns.length > 4 && (
-                                  <li className="pt-0.5 text-center text-[9px] font-semibold text-brand-600 sm:text-[9.5px]">
+                                  <li className="pt-0.5 text-center text-[9px] font-semibold text-brand-400 sm:text-[9.5px]">
                                     +{table.columns.length - 4} more
                                   </li>
                                 )}
@@ -433,7 +433,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
               {/* screen-space vignette over the scene */}
               <div
                 className="pointer-events-none absolute inset-0 rounded-xl"
-                style={{ background: "radial-gradient(circle at 50% 48%, transparent 55%, rgba(22,50,79,0.06) 100%)" }}
+                style={{ background: "radial-gradient(circle at 50% 48%, transparent 55%, rgba(0,0,0,0.35) 100%)" }}
               />
             </>
           )}
@@ -442,11 +442,11 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
 
         {tables.length > 0 && (
           <>
-            <span className="absolute bottom-3 left-3 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+            <span className="absolute bottom-3 left-3 rounded-full border border-brand-500/40 bg-brand-500/10 px-2.5 py-1 text-[11px] font-medium text-brand-300">
               {edges.length} relationship{edges.length === 1 ? "" : "s"}
               {hiddenCount > 0 ? ` · +${hiddenCount} table${hiddenCount === 1 ? "" : "s"} hidden` : ""}
             </span>
-            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-500">
+            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-soft">
               <MousePointer2 size={11} /> Hover a table · scroll to zoom · double-click to reset
             </span>
           </>

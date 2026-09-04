@@ -67,7 +67,7 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
   return (
     <div className="min-h-screen bg-canvas">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-navy/10 bg-cream p-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-canvas p-5 lg:flex">
         <SidebarContent
           active={active}
           nav={nav}
@@ -82,11 +82,11 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
       {/* Mobile drawer */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu" ref={drawerRef}>
-          <div className="absolute inset-0 bg-navy/60 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-navy/10 bg-cream p-5 shadow-lift">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-line bg-canvas p-5 shadow-lift">
             <div className="mb-4 flex items-center justify-between">
               <Brand />
-              <button aria-label="Close menu" className="rounded-lg p-2 text-navy-soft transition hover:bg-navy/5 hover:text-navy" onClick={() => setDrawerOpen(false)} type="button">
+              <button aria-label="Close menu" className="rounded-lg p-2 text-ink-soft transition hover:bg-white/5 hover:text-ink" onClick={() => setDrawerOpen(false)} type="button">
                 <X size={20} />
               </button>
             </div>
@@ -107,25 +107,25 @@ export function Shell({ active, onActive, onLogout, orgName, connections, isAdmi
       )}
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-20 border-b border-navy/10 bg-cream/85 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur lg:hidden">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-          <button aria-label="Open menu" className="btn-ghost -ml-2 text-navy" onClick={() => setDrawerOpen(true)} type="button">
+          <button aria-label="Open menu" className="btn-ghost -ml-2 text-ink" onClick={() => setDrawerOpen(true)} type="button">
             <svg fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeWidth="2" viewBox="0 0 24 24" width="20">
               <line x1="4" x2="20" y1="6" y2="6" />
               <line x1="4" x2="20" y1="12" y2="12" />
               <line x1="4" x2="20" y1="18" y2="18" />
             </svg>
           </button>
-          <strong className="text-sm font-bold text-navy">{current?.label ?? (active === "chat" ? "AI Chat" : "QueryMind")}</strong>
+          <strong className="text-sm font-bold text-ink">{current?.label ?? (active === "chat" ? "AI Chat" : "QueryMind")}</strong>
           <div className="w-8" />
         </div>
       </header>
 
       <main className="lg:pl-64">
-        <div className="sticky top-0 z-10 hidden h-14 items-center border-b border-navy/10 bg-cream/75 backdrop-blur lg:flex">
+        <div className="sticky top-0 z-10 hidden h-14 items-center border-b border-line bg-canvas/75 backdrop-blur lg:flex">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-8">
-            <p className="text-sm font-medium text-navy-soft">{current?.label ?? (active === "chat" ? "AI Chat" : "QueryMind")}</p>
-            {orgName && <p className="text-xs font-medium text-navy-soft/70">Workspace · {orgName}</p>}
+            <p className="text-sm font-medium text-ink-soft">{current?.label ?? (active === "chat" ? "AI Chat" : "QueryMind")}</p>
+            {orgName && <p className="text-xs font-medium text-ink-soft">Workspace · {orgName}</p>}
           </div>
         </div>
         {active === "chat" ? (
@@ -262,7 +262,7 @@ function SidebarContent({
 
       {/* New chat — top of the sidebar */}
       <button
-        className={`focus-ring flex w-full items-center gap-2.5 rounded-lg border border-brand-200 bg-teal-soft px-3 py-2 text-left text-[13px] font-semibold text-teal-dark transition hover:border-brand-300 hover:bg-brand-100 ${orgName ? "mt-4" : "mt-6"}`}
+        className={`focus-ring flex w-full items-center gap-2.5 rounded-lg border border-brand-500/40 bg-brand-500/15 px-3 py-2 text-left text-[13px] font-semibold text-brand-300 transition hover:border-brand-500/60 hover:bg-brand-500/20 ${orgName ? "mt-4" : "mt-6"}`}
         onClick={startNewChat}
         type="button"
       >
@@ -286,15 +286,15 @@ function SidebarContent({
       </nav>
 
       {/* Chat history — bottom section */}
-      <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-navy/10 pt-4">
-        <p className="eyebrow px-2 pb-2 text-navy-soft/60">Chats</p>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-line pt-4">
+        <p className="eyebrow px-2 pb-2 text-ink-faint">Chats</p>
         <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1 pb-2" onScroll={() => setMenu(null)}>
           {isLoading ? (
-            <div className="flex justify-center py-8 text-slate-400">
+            <div className="flex justify-center py-8 text-ink-faint">
               <Loader2 className="animate-spin" size={18} />
             </div>
           ) : sessions.length === 0 ? (
-            <p className="px-2 py-6 text-center text-xs leading-5 text-slate-500">
+            <p className="px-2 py-6 text-center text-xs leading-5 text-ink-soft">
               No chats yet. Start a conversation and it will appear here.
             </p>
           ) : (
@@ -312,7 +312,7 @@ function SidebarContent({
                   <div className="px-1 py-0.5" key={session.id}>
                     <input
                       autoFocus
-                      className="h-9 w-full rounded-lg border border-navy/15 bg-white px-3 text-[13px] text-navy outline-none placeholder:text-slate-400 focus:border-teal"
+                      className="h-9 w-full rounded-lg border border-line-strong bg-surface px-3 text-[13px] text-ink outline-none placeholder:text-ink-faint focus:border-brand-500"
                       onBlur={() => saveRename(session)}
                       onChange={(event) => setRenameDraft(event.target.value)}
                       onKeyDown={(event) => {
@@ -328,8 +328,8 @@ function SidebarContent({
               return (
                 <div
                   className={`group relative flex items-center rounded-lg transition ${
-                    isActive ? "bg-white font-medium text-navy shadow-sm" : "text-navy-soft hover:text-navy"
-                  } ${isDeleting ? "!bg-rose-500/10 !text-rose-600" : ""}`}
+                    isActive ? "bg-surface font-medium text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+                  } ${isDeleting ? "!bg-rose-500/10 !text-rose-300" : ""}`}
                   key={session.id}
                 >
                   <button
@@ -340,14 +340,14 @@ function SidebarContent({
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       {isWhatsApp && (
-                        <span className="inline-flex shrink-0 items-center justify-center rounded bg-emerald-500/15 p-0.5 text-emerald-600 ring-1 ring-emerald-500/25" title="WhatsApp conversation">
+                        <span className="inline-flex shrink-0 items-center justify-center rounded bg-emerald-500/15 p-0.5 text-emerald-300 ring-1 ring-emerald-500/40" title="WhatsApp conversation">
                           <WhatsAppIcon className="h-3 w-3" />
                         </span>
                       )}
                       <span className="truncate">{displayTitle}</span>
                     </span>
                     {session.connection_name && (
-                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-brand-700/80">
+                      <span className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-medium text-brand-300/80">
                         <Database size={10} className="shrink-0" /> {session.connection_name}
                       </span>
                     )}
@@ -356,7 +356,7 @@ function SidebarContent({
                     <span className="flex items-center gap-1 pr-2">
                       <button
                         aria-label="Confirm delete"
-                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-700"
+                        className="grid h-8 w-8 place-items-center rounded-md bg-rose-600 text-white transition hover:bg-rose-500"
                         disabled={busySessionId !== null}
                         onClick={() => removeSession(session)}
                         type="button"
@@ -365,7 +365,7 @@ function SidebarContent({
                       </button>
                       <button
                         aria-label="Keep chat"
-                        className="grid h-8 w-8 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy"
+                        className="grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
                         disabled={busySessionId !== null}
                         onClick={() => setDeletingId(null)}
                         type="button"
@@ -379,8 +379,8 @@ function SidebarContent({
                         aria-expanded={menu?.id === session.id}
                         aria-haspopup="menu"
                         aria-label={`Options for ${session.title}`}
-                        className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 transition hover:bg-navy/10 hover:text-navy ${
-                          menu?.id === session.id ? "bg-navy/10 text-navy opacity-100" : "opacity-50 group-hover:opacity-100"
+                        className={`mr-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink ${
+                          menu?.id === session.id ? "bg-white/10 text-ink opacity-100" : "opacity-50 group-hover:opacity-100"
                         }`}
                         data-chat-menu=""
                         onClick={(event) => toggleMenu(session.id, event.currentTarget)}
@@ -390,14 +390,14 @@ function SidebarContent({
                       </button>
                       {menu?.id === session.id && (
                         <div
-                          className={`absolute right-1.5 z-20 w-36 overflow-hidden rounded-lg border border-navy/10 bg-white py-1 shadow-lift ${
+                          className={`absolute right-1.5 z-20 w-36 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-lift ${
                             menu.up ? "bottom-8" : "top-8"
                           }`}
                           data-chat-menu=""
                           role="menu"
                         >
                           <button
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-navy-soft transition hover:bg-navy/5 hover:text-navy"
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-ink-soft transition hover:bg-white/5 hover:text-ink"
                             onClick={() => startRename(session)}
                             role="menuitem"
                             type="button"
@@ -405,7 +405,7 @@ function SidebarContent({
                             <Pencil size={13} /> Rename
                           </button>
                           <button
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-rose-600 transition hover:bg-rose-500/10"
+                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-rose-300 transition hover:bg-rose-500/10"
                             onClick={() => startDelete(session)}
                             role="menuitem"
                             type="button"
@@ -423,11 +423,11 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="mt-4 border-t border-navy/10 pt-3">
+      <div className="mt-4 border-t border-line pt-3">
         {confirmingLogout ? (
           <div className="flex items-center gap-2">
             <button
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-500"
               onClick={onLogout}
               type="button"
             >
@@ -435,7 +435,7 @@ function SidebarContent({
             </button>
             <button
               aria-label="Cancel sign out"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-navy/10 hover:text-navy"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink"
               onClick={() => setConfirmingLogout(false)}
               type="button"
             >
@@ -455,12 +455,12 @@ function SidebarContent({
 function Brand() {
   return (
     <div className="flex items-center gap-3">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-navy shadow-card">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 ring-1 ring-line">
         <LogoMark className="h-7 w-7" />
       </span>
       <div>
-        <strong className="block text-sm font-bold tracking-tight text-navy">QueryMind</strong>
-        <p className="text-[11px] text-navy-soft">Production console</p>
+        <strong className="block text-sm font-bold tracking-tight text-ink">QueryMind</strong>
+        <p className="text-[11px] text-ink-soft">Production console</p>
       </div>
     </div>
   );
@@ -468,9 +468,9 @@ function Brand() {
 
 function OrgChip({ name }: { name: string }) {
   return (
-    <div className="mt-6 truncate rounded-xl border border-navy/10 bg-white/60 px-3.5 py-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-navy-soft/70">Workspace</p>
-      <p className="truncate text-[13px] font-semibold text-navy">{name}</p>
+    <div className="mt-6 truncate rounded-xl border border-line bg-surface/60 px-3.5 py-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-ink-soft">Workspace</p>
+      <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
     </div>
   );
 }

@@ -8,11 +8,26 @@ export default {
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
       },
       colors: {
+        /* Dark surfaces — warm charcoal inspired by Claude/ChatGPT dark UIs,
+           tinted to keep QueryMind's teal identity. */
+        canvas: "#15171c",
+        raise: "#1d2026",
+        surface: "#242830",
+        sand: {
+          DEFAULT: "#2b3038",
+          dark: "#3c434d"
+        },
+        /* Text + hairlines */
+        ink: "#e8ebee",
+        "ink-soft": "#9ba4b0",
+        "ink-faint": "#6b7480",
+        line: "rgba(255,255,255,0.08)",
+        "line-strong": "rgba(255,255,255,0.16)",
         brand: {
-          50: "#e9f5f4",
-          100: "#d3ebe9",
-          200: "#a9d8d4",
-          300: "#7cc2bc",
+          50: "#12312e",
+          100: "#17403c",
+          200: "#1e514c",
+          300: "#6fcac1",
           400: "#52aaa2",
           500: "#38a29a",
           600: "#2f9e97",
@@ -20,26 +35,21 @@ export default {
           800: "#1f6b65",
           900: "#17544f"
         },
-        canvas: "#f7f4ec",
-        cream: "#f7f4ec",
-        sand: {
-          DEFAULT: "#ede8df",
-          dark: "#ded8cb"
-        },
         navy: {
-          DEFAULT: "#16324f",
-          soft: "#41586e"
+          DEFAULT: "#10141a",
+          soft: "#9ba4b0"
         },
+        cream: "#1d2026",
         teal: {
           DEFAULT: "#2f9e97",
-          dark: "#27877f",
-          soft: "#e3f2f0"
+          dark: "#6fcac1",
+          soft: "#17403c"
         }
       },
       boxShadow: {
-        card: "0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.08)",
-        lift: "0 10px 30px -12px rgba(15,23,42,0.18)",
-        sidebar: "inset -1px 0 0 rgba(148,163,184,0.12)"
+        card: "0 1px 2px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.35)",
+        lift: "0 10px 30px -12px rgba(0,0,0,0.65)",
+        sidebar: "inset -1px 0 0 rgba(255,255,255,0.06)"
       },
       keyframes: {
         "fade-up": {

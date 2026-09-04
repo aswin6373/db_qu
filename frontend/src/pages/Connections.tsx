@@ -160,16 +160,16 @@ export function Connections({ token, connections, insights, schemas, onRefresh, 
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-navy-soft">
+            <p className="text-sm font-medium text-ink-soft">
               {connections.length} database{connections.length === 1 ? "" : "s"} connected
-              <span className="ml-2 text-xs text-navy-soft/60">Click a card to view its schema below</span>
+              <span className="ml-2 text-xs text-ink-faint">Click a card to view its schema below</span>
             </p>
             {isAdmin ? (
               <button className="btn-accent !h-10 shrink-0 !px-4 !font-medium" onClick={startAdd} type="button">
                 <Plus size={15} /> Add database
               </button>
             ) : (
-              <span className="shrink-0 text-xs text-navy-soft/60">Only the admin can manage databases</span>
+              <span className="shrink-0 text-xs text-ink-faint">Only the admin can manage databases</span>
             )}
           </div>
           <div className="space-y-3">
@@ -236,18 +236,18 @@ function ConnectionCard({
   return (
     <article
       className={`card animate-fade-up cursor-pointer overflow-hidden transition ${
-        isSelected ? "!border-brand-300 ring-1 ring-brand-200" : "hover:!border-slate-300"
+        isSelected ? "!border-brand-500/60 ring-1 ring-brand-500/25" : "hover:!border-line-strong"
       } ${isDeleting ? "opacity-60" : ""}`}
       onClick={onSelect}
     >
-      <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
             <Database size={18} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <strong className="text-base font-bold text-slate-900">{connection.name}</strong>
+              <strong className="text-base font-bold text-ink">{connection.name}</strong>
               {isSelected && (
                 <span className="status-pill pill-success">
                   <CheckCircle2 size={13} /> viewing schema
@@ -259,7 +259,7 @@ function ConnectionCard({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 truncate font-mono text-xs text-slate-500">
+            <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">
               {URI_SCHEMES[(connection.db_type as DbType) ?? "mysql"] ?? "mysql"}://{connection.username}@{connection.host}:{connection.port}/{connection.database_name}
             </p>
           </div>
@@ -267,9 +267,9 @@ function ConnectionCard({
         <div className="flex shrink-0 flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
           {confirmingDelete ? (
             <>
-              <span className="text-xs font-medium text-rose-600">Delete this database?</span>
+              <span className="text-xs font-medium text-rose-300">Delete this database?</span>
               <button
-                className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-700 disabled:opacity-60"
+                className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-500 disabled:opacity-60"
                 disabled={isDeleting}
                 onClick={remove}
                 title="Confirm delete"
@@ -279,7 +279,7 @@ function ConnectionCard({
               </button>
               <button
                 aria-label="Keep connection"
-                className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                 onClick={() => setConfirmingDelete(false)}
                 type="button"
               >
@@ -295,7 +295,7 @@ function ConnectionCard({
               {isAdmin && (
                 <button
                   aria-label={`Delete ${connection.name}`}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-faint transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
                   onClick={() => setConfirmingDelete(true)}
                   title="Delete connection"
                   type="button"
@@ -324,8 +324,8 @@ function EmptyState({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void })
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
         <PlugZap size={24} />
       </span>
-      <h2 className="mt-5 text-lg font-bold tracking-tight text-navy">No databases connected yet</h2>
-      <p className="mt-1.5 max-w-md text-sm leading-6 text-navy-soft">
+      <h2 className="mt-5 text-lg font-bold tracking-tight text-ink">No databases connected yet</h2>
+      <p className="mt-1.5 max-w-md text-sm leading-6 text-ink-soft">
         {isAdmin
           ? "Connect as many MySQL or PostgreSQL databases as your workspace needs — AI chat lets you pick one per conversation."
           : "Ask your workspace admin to connect a database. Once it's added, you can start asking questions right away."}
@@ -370,19 +370,19 @@ function ConnectionForm({
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 via-white to-cream p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-navy text-teal-soft">
+      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-6">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
           <Database size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-slate-900">Connect a new database</h2>
-          <p className="text-xs text-slate-500">Credentials are encrypted before they touch the platform database.</p>
+          <h2 className="text-lg font-bold tracking-tight text-ink">Connect a new database</h2>
+          <p className="text-xs text-ink-soft">Credentials are encrypted before they touch the platform database.</p>
         </div>
       </div>
 
       <div className="space-y-6 p-6 sm:p-7">
         <section>
-          <h3 className="eyebrow mb-3 text-slate-400">Connection details</h3>
+          <h3 className="eyebrow mb-3 text-ink-faint">Connection details</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
             <label className="block md:col-span-2">
               <span className="label">Display name</span>
@@ -419,7 +419,7 @@ function ConnectionForm({
                 onChange={(event) => onFieldChange("host", event.target.value)}
               />
               {showSshTunnel && (
-                <span className="mt-1.5 block text-xs text-slate-400">
+                <span className="mt-1.5 block text-xs text-ink-faint">
                   Database address as seen from the SSH server — use 127.0.0.1 if the database runs on the bastion itself.
                 </span>
               )}
@@ -438,8 +438,8 @@ function ConnectionForm({
           </div>
         </section>
 
-        <section className="border-t border-slate-100 pt-5">
-          <h3 className="eyebrow mb-3 text-slate-400">Credentials</h3>
+        <section className="border-t border-line pt-5">
+          <h3 className="eyebrow mb-3 text-ink-faint">Credentials</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
             <label className="block">
               <span className="label">Username</span>
@@ -465,7 +465,7 @@ function ConnectionForm({
                 />
                 <button
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                   onClick={() => setShowPassword((visible) => !visible)}
                   type="button"
                 >
@@ -476,8 +476,8 @@ function ConnectionForm({
           </div>
         </section>
 
-        <section className="border-t border-slate-100 pt-5">
-          <h3 className="eyebrow mb-3 text-slate-400">Database &amp; security</h3>
+        <section className="border-t border-line pt-5">
+          <h3 className="eyebrow mb-3 text-ink-faint">Database &amp; security</h3>
           <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
             <label className="block">
               <span className="label">Database name</span>
@@ -501,16 +501,16 @@ function ConnectionForm({
                   <option value="REQUIRED">Required — cloud providers</option>
                   <option value="DISABLED">Disabled — local only</option>
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-faint" size={16} />
               </span>
-              <span className="mt-1.5 block text-xs text-slate-400">
+              <span className="mt-1.5 block text-xs text-ink-faint">
                 Aiven, PlanetScale, Supabase, Neon, RDS, and TiDB usually require SSL.
               </span>
             </label>
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-200 bg-slate-50/70">
+        <section className="rounded-xl border border-line bg-white/[0.03]">
           <label
             htmlFor="ssh-tunnel-toggle"
             className="flex cursor-pointer items-start gap-3 px-4 py-3.5 text-sm"
@@ -523,17 +523,17 @@ function ConnectionForm({
               id="ssh-tunnel-toggle"
             />
             <span>
-              <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+              <span className="flex items-center gap-1.5 font-semibold text-ink">
                 <ShieldCheck size={15} /> SSH Tunnel
               </span>
-              <span className="mt-0.5 block text-xs text-slate-500">
+              <span className="mt-0.5 block text-xs text-ink-soft">
                 Connect through a bastion/jump host when your database is not publicly reachable.
               </span>
             </span>
           </label>
 
           {showSshTunnel && (
-            <div className="grid gap-x-5 gap-y-4 border-t border-slate-200 px-4 pb-4 pt-4 md:grid-cols-2">
+            <div className="grid gap-x-5 gap-y-4 border-t border-line px-4 pb-4 pt-4 md:grid-cols-2">
               <label className="block">
                 <span className="label">SSH Host</span>
                 <input
@@ -589,14 +589,14 @@ function ConnectionForm({
                   )}
                   <button
                     aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
-                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                     onClick={() => setShowSshPassword((visible) => !visible)}
                       type="button"
                   >
                     {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </span>
-                <span className="mt-1.5 block text-xs text-slate-400">
+                <span className="mt-1.5 block text-xs text-ink-faint">
                   Password stays hidden; a private key (-----BEGIN…) opens a larger box and is detected automatically. Encrypted at rest like your database password.
                 </span>
               </label>
@@ -604,7 +604,7 @@ function ConnectionForm({
           )}
         </section>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 text-sm transition hover:border-slate-300">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white/[0.03] px-4 py-3.5 text-sm transition hover:border-line-strong">
           <input
             checked={Boolean(form.test_live)}
             className="mt-0.5 h-4 w-4 accent-brand-600"
@@ -612,17 +612,17 @@ function ConnectionForm({
             type="checkbox"
           />
           <span>
-            <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+            <span className="flex items-center gap-1.5 font-semibold text-ink">
               <ShieldCheck size={15} /> Test live connection before saving
             </span>
-            <span className="mt-0.5 block text-xs text-slate-500">
+            <span className="mt-0.5 block text-xs text-ink-soft">
               Recommended — verifies credentials and loads schema metadata immediately.
             </span>
           </span>
         </label>
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-line bg-white/[0.03] px-6 py-4 sm:flex-row sm:justify-end">
         <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
           Cancel
         </button>
@@ -638,17 +638,17 @@ function ConnectionForm({
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div className="inset-tile px-3.5 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className="mt-0.5 truncate font-mono text-[13px] text-slate-800">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="mt-0.5 truncate font-mono text-[13px] text-ink">{value}</p>
     </div>
   );
 }
 
 function Banner({ feedback, onDismiss }: { feedback: Feedback; onDismiss: () => void }) {
   const styles = {
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    error: "border-rose-200 bg-rose-50 text-rose-700",
-    info: "border-brand-200 bg-brand-50 text-brand-700"
+    success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    error: "border-rose-500/25 bg-rose-500/10 text-rose-300",
+    info: "border-brand-500/40 bg-brand-500/10 text-brand-300"
   };
   const icons = {
     success: <CheckCircle2 size={16} />,

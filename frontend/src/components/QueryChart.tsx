@@ -10,7 +10,7 @@ export type ChartSpec = {
 };
 
 /* Theme palette matching the app: brand teal first, then accents. */
-const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#0ea5e9", "#ec4899", "#175d55", "#64748b"];
+const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#0ea5e9", "#ec4899", "#52aaa2", "#f59e0b"];
 const NUMERIC_RE = /^-?[\d,]+(\.\d+)?%?$/;
 const DATE_NAME_RE = /(date|month|year|day|week|quarter|time|period)/i;
 /* columns that identify rows or mark time — never meaningful bar heights:
@@ -194,7 +194,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
     const center = pad.left + groupW * groupIndex + groupW / 2;
     return (
       <text
-        fill="#64748b"
+        fill="#9ba4b0"
         fontSize={10}
         textAnchor={rotateLabels ? "end" : "middle"}
         transform={rotateLabels ? `rotate(-32 ${center + 4} ${zeroY + 16})` : undefined}
@@ -207,7 +207,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/50 p-4">
+    <div className="rounded-xl border border-line bg-gradient-to-b from-white/[0.04] to-transparent p-4">
       <svg className="h-auto w-full" role="img" viewBox={`0 0 ${width} ${height}`}>
         <defs>
           {spec.series.map((entry, index) => (
@@ -222,7 +222,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
         {ticks.map((tick) => (
           <g key={tick}>
             <line
-              stroke={tick === 0 ? "#cbd5e1" : "#e2e8f0"}
+              stroke={tick === 0 ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)"}
               strokeDasharray={tick === 0 ? undefined : "3 4"}
               strokeWidth={1}
               x1={pad.left}
@@ -230,7 +230,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
               y1={yScale(tick)}
               y2={yScale(tick)}
             />
-            <text fill="#94a3b8" fontSize={10} textAnchor="end" x={pad.left - 8} y={yScale(tick) + 3.5}>
+            <text fill="#6b7480" fontSize={10} textAnchor="end" x={pad.left - 8} y={yScale(tick) + 3.5}>
               {compactFormat.format(tick)}
             </text>
           </g>
@@ -262,7 +262,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
                         </path>
                         {showValues && barH > 2 && (
                           <text
-                            fill="#64748b"
+                            fill="#9ba4b0"
                             fontSize={9.5}
                             fontWeight={600}
                             textAnchor="middle"
@@ -297,11 +297,11 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
                   <path d={smoothPath(points)} fill="none" stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} />
                   {points.map((point, pointIndex) => (
                     <g key={pointIndex}>
-                      <circle cx={point.x} cy={point.y} fill="#ffffff" r={3.4} stroke={color} strokeWidth={2}>
+                      <circle cx={point.x} cy={point.y} fill="#242830" r={3.4} stroke={color} strokeWidth={2}>
                         <title>{`${spec.labels[pointIndex]} · ${entry.name}: ${fullFormat.format(point.value)}`}</title>
                       </circle>
                       {showValues && (
-                        <text fill="#64748b" fontSize={9.5} fontWeight={600} textAnchor="middle" x={point.x} y={point.y - 9}>
+                        <text fill="#9ba4b0" fontSize={9.5} fontWeight={600} textAnchor="middle" x={point.x} y={point.y - 9}>
                           {compactFormat.format(point.value)}
                         </text>
                       )}
@@ -323,7 +323,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
             return (
               <button
                 className={`flex items-center gap-1.5 rounded-md px-1.5 py-0.5 transition ${
-                  active ? "text-slate-600" : "text-slate-400 opacity-50 hover:opacity-90"
+                  active ? "text-ink-soft" : "text-ink-faint opacity-50 hover:opacity-90"
                 }`}
                 key={entry.name}
                 onClick={() => toggleSeries(index)}
@@ -341,7 +341,7 @@ export function QueryChart({ spec, totalRows }: { spec: ChartSpec; totalRows: nu
         </div>
       )}
       {totalRows > spec.labels.length && (
-        <p className="px-1 pt-2 text-[10.5px] text-slate-400">
+        <p className="px-1 pt-2 text-[10.5px] text-ink-faint">
           Showing first {spec.labels.length} of {totalRows} rows
         </p>
       )}

@@ -22,51 +22,51 @@ function timeAgo(iso?: string | null): string {
 }
 
 const TYPE_STYLES: Record<string, string> = {
-  insert: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  update: "bg-amber-50 text-amber-700 border-amber-200",
-  delete: "bg-rose-50 text-rose-700 border-rose-200",
+  insert: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25",
+  update: "bg-amber-500/10 text-amber-300 border-amber-500/25",
+  delete: "bg-rose-500/10 text-rose-300 border-rose-500/25",
 };
 
 const STATUS_STYLES: Record<string, { classes: string; label: string; icon: ReactElement }> = {
   executed: {
-    classes: "bg-emerald-50 text-emerald-700",
+    classes: "bg-emerald-500/10 text-emerald-300",
     label: "Executed",
     icon: <CheckCircle2 size={12} />,
   },
   pending_confirmation: {
-    classes: "bg-amber-50 text-amber-700",
+    classes: "bg-amber-500/10 text-amber-300",
     label: "Awaiting confirmation",
     icon: <Clock size={12} />,
   },
   expired: {
-    classes: "bg-slate-100 text-slate-500 border border-slate-200",
+    classes: "bg-white/10 text-ink-soft border border-line",
     label: "Expired (auto-cancelled)",
     icon: <Clock size={12} />,
   },
   confirmation_expired: {
-    classes: "bg-slate-100 text-slate-500 border border-slate-200",
+    classes: "bg-white/10 text-ink-soft border border-line",
     label: "Expired (auto-cancelled)",
     icon: <Clock size={12} />,
   },
   cancelled: {
-    classes: "bg-slate-100 text-slate-600",
+    classes: "bg-white/10 text-ink-soft",
     label: "Cancelled",
     icon: <XCircle size={12} />,
   },
   executing: {
-    classes: "bg-slate-100 text-slate-600",
+    classes: "bg-white/10 text-ink-soft",
     label: "Running",
     icon: <Loader2 size={12} className="animate-spin" />,
   },
   failed: {
-    classes: "bg-rose-50 text-rose-700",
+    classes: "bg-rose-500/10 text-rose-300",
     label: "Failed",
     icon: <XCircle size={12} />,
   },
 };
 
 function statusStyle(status: string) {
-  return STATUS_STYLES[status] ?? { classes: "bg-slate-100 text-slate-600", label: status, icon: null };
+  return STATUS_STYLES[status] ?? { classes: "bg-white/10 text-ink-soft", label: status, icon: null };
 }
 
 export function Changes({ token }: Props) {
@@ -113,7 +113,7 @@ export function Changes({ token }: Props) {
 
       {error && (
         <div
-          className="animate-fade-up flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700"
+          className="animate-fade-up flex items-start gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-300"
           role="alert"
         >
           <span className="mt-0.5 shrink-0">{<XCircle size={16} />}</span>
@@ -122,16 +122,16 @@ export function Changes({ token }: Props) {
       )}
 
       {isLoading ? (
-        <div className="card flex items-center gap-3 p-6 text-sm text-slate-500">
-          <Loader2 className="animate-spin text-slate-400" size={18} /> Loading change history…
+        <div className="card flex items-center gap-3 p-6 text-sm text-ink-soft">
+          <Loader2 className="animate-spin text-ink-faint" size={18} /> Loading change history…
         </div>
       ) : entries.length === 0 && !error ? (
         <div className="card animate-fade-up p-8 text-center">
-          <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-slate-100 text-slate-400">
+          <span className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-white/10 text-ink-faint">
             <FilePenLine size={20} />
           </span>
-          <p className="text-sm font-semibold text-slate-900">No data changes yet</p>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">
+          <p className="text-sm font-semibold text-ink">No data changes yet</p>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-ink-soft">
             When you or your members ask QueryMind to insert, update, or delete data — from the web
             app or WhatsApp — every change is recorded here with who made it and when.
           </p>
@@ -145,20 +145,20 @@ export function Changes({ token }: Props) {
             return (
               <article key={entry.id} className="card animate-fade-up p-5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy text-xs font-bold text-teal-soft">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500/15 text-xs font-bold text-brand-300">
                     {initials}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-900">
+                    <p className="truncate text-sm font-semibold text-ink">
                       {entry.user_name}
-                      <span className="ml-2 text-xs font-normal text-slate-400">{timeAgo(entry.created_at)}</span>
+                      <span className="ml-2 text-xs font-normal text-ink-faint">{timeAgo(entry.created_at)}</span>
                     </p>
-                    <p className="truncate text-xs text-slate-500">"{entry.question}"</p>
+                    <p className="truncate text-xs text-ink-soft">"{entry.question}"</p>
                   </div>
                   <div className="ml-auto flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-                        TYPE_STYLES[type] ?? "border-slate-200 bg-slate-50 text-slate-600"
+                        TYPE_STYLES[type] ?? "border-line bg-raise text-ink-soft"
                       }`}
                     >
                       {type}
@@ -174,19 +174,19 @@ export function Changes({ token }: Props) {
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   {entry.tables.map((table) => (
                     <span
-                      className="flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-600"
+                      className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 font-mono text-[11px] text-ink-soft"
                       key={table}
                     >
                       <Database size={10} /> {table}
                     </span>
                   ))}
                   {entry.connection_name && (
-                    <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+                    <span className="rounded-md bg-brand-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-300">
                       {entry.connection_name}
                     </span>
                   )}
                   {entry.confirmed_by && (
-                    <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                    <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
                       confirmed by {entry.confirmed_by}
                       {entry.confirmed_at ? ` · ${timeAgo(entry.confirmed_at)}` : ""}
                     </span>
@@ -197,14 +197,14 @@ export function Changes({ token }: Props) {
                   <pre className="code-block max-h-32 overflow-auto pr-10 text-[11px] leading-5">{entry.sql}</pre>
                   <button
                     aria-label="Copy SQL"
-                    className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
                     onClick={() => copySql(entry)}
                     type="button"
                   >
                     <Copy size={13} />
                   </button>
                   {copiedId === entry.id && (
-                    <span className="absolute right-2 top-9 rounded bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-white">
+                    <span className="absolute right-2 top-9 rounded-md bg-surface/10 px-2 py-0.5 text-[10px] font-medium text-ink ring-1 ring-line">
                       Copied
                     </span>
                   )}

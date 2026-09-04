@@ -23,10 +23,10 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="grid min-h-screen place-items-center bg-cream px-4">
-        <div className="w-full max-w-md rounded-2xl border border-navy/10 bg-white p-8 text-center shadow-lift">
-          <h1 className="text-lg font-bold tracking-tight text-navy">Something went wrong</h1>
-          <p className="mt-2 text-sm leading-6 text-navy-soft">
+      <div className="grid min-h-screen place-items-center bg-canvas px-4">
+        <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-8 text-center shadow-lift">
+          <h1 className="text-lg font-bold tracking-tight text-ink">Something went wrong</h1>
+          <p className="mt-2 text-sm leading-6 text-ink-soft">
             The interface hit an unexpected error. Your data is safe — reloading usually fixes it.
           </p>
           <div className="mt-6 flex justify-center gap-3">

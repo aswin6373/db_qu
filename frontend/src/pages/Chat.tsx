@@ -217,66 +217,50 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     }
   }
 
+  const scrollareaClass = "min-h-0 flex-1 overflow-y-auto";
+
   return (
     <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-canvas/75 backdrop-blur px-4 sm:px-6">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            {activeSession?.title?.toLowerCase().startsWith("whatsapp") && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-bold text-emerald-300 ring-1 ring-emerald-500/40">
-                WhatsApp
-              </span>
-            )}
-            <p className="truncate text-sm font-bold text-ink">
-              {activeSession?.title?.toLowerCase().startsWith("whatsapp")
-                ? activeSession.title.replace(/^whatsapp\s*[·:-]\s*/i, "").trim() || "WhatsApp Chat"
-                : (activeSession?.title ?? "New chat")}
-            </p>
-          </div>
-          {activeSession && (
-            <p className="text-[11px] font-medium text-ink-soft">
-              {activeSession.message_count} message{activeSession.message_count === 1 ? "" : "s"}
-            </p>
-          )}
-        </div>
+      {/* Minimal sticky context strip — database chip only, no heavy header */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end px-4 pt-3 sm:px-6">
         {activeSession && hasConnection && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-line bg-surface/80 px-2.5 py-1.5 shadow-sm"
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-canvas/90 px-3 py-1.5 text-[11px] font-medium text-ink-soft shadow-card backdrop-blur"
             title="This chat is linked to this database"
           >
-            <Database size={13} className="shrink-0 text-brand-400" />
-            <span className="max-w-36 truncate text-xs font-semibold text-ink">
-              {selectedConnectionName || "No database"}
-            </span>
+            <Database size={12} className="shrink-0 text-brand-400" />
+            <span className="max-w-40 truncate text-ink">{selectedConnectionName || "No database"}</span>
           </span>
         )}
-      </header>
+      </div>
 
       {/* Messages */}
-      <div className="min-h-0 flex-1 overflow-y-auto dot-grid">
-        <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 sm:px-6">
+      <div className={scrollareaClass}>
+        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
           {messagesLoading ? (
             <div className="flex items-center justify-center py-16 text-ink-faint">
               <Loader2 className="animate-spin" size={22} />
             </div>
           ) : (
             <>
-              {messages.map((message) => (
-                <MessageRow key={message.id} message={message}>
-                  {message.result && !message.result.needs_clarification && (message.result.sql || message.result.rows.length > 0 || (message.result.steps && message.result.steps.length > 0) ? (
-                    <ResultBlock
-                      confirmingQueryId={confirmingQueryId}
-                      connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
-                      dismissedQueryIds={dismissedWrites}
-                      decisionNonce={decisionNonce}
-                      isConfirmed={confirmedWrites.has(message.result.query_id) || message.result.is_confirmed === true || !message.result.requires_confirmation}
-                      onCancel={cancelWrite}
-                      onConfirm={confirmWrite}
-                      result={message.result}
-                    />
-                  ) : null)}
-                </MessageRow>
-              ))}
+              <div className="divide-y divide-transparent">
+                {messages.map((message) => (
+                  <MessageRow key={message.id} message={message}>
+                    {message.result && !message.result.needs_clarification && (message.result.sql || message.result.rows.length > 0 || (message.result.steps && message.result.steps.length > 0) ? (
+                      <ResultBlock
+                        confirmingQueryId={confirmingQueryId}
+                        connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
+                        dismissedQueryIds={dismissedWrites}
+                        decisionNonce={decisionNonce}
+                        isConfirmed={confirmedWrites.has(message.result.query_id) || message.result.is_confirmed === true || !message.result.requires_confirmation}
+                        onCancel={cancelWrite}
+                        onConfirm={confirmWrite}
+                        result={message.result}
+                      />
+                    ) : null)}
+                  </MessageRow>
+                ))}
+              </div>
 
               {isSending && (
                 <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
@@ -311,27 +295,27 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               )}
             </>
           )}
-          <div ref={bottomRef} />
+          <div ref={bottomRef} className="h-6" />
         </div>
       </div>
 
-      {/* Composer */}
-      <form className="shrink-0 px-4 pb-4 sm:px-6" onSubmit={submit}>
+      {/* Composer — floating pill */}
+      <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pb-4 pt-1 sm:px-6">
         <div className="mx-auto w-full max-w-3xl">
           {!hasConnection && (
-            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20" onClick={onOpenConnections} type="button">
+            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20" onClick={onOpenConnections} type="button">
               <PlugZap size={15} /> Connect a database to start asking questions
             </button>
           )}
           {hasConnection && !activeSession && (
-            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-500/40 bg-brand-500/10 px-4 py-2.5 text-sm font-medium text-brand-300 transition hover:bg-brand-500/20" onClick={() => setPickerOpen(true)} type="button">
+            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-full border border-brand-500/40 bg-brand-500/10 px-4 py-2.5 text-sm font-medium text-brand-300 transition hover:bg-brand-500/20" onClick={() => setPickerOpen(true)} type="button">
               <Database size={15} /> Choose a database to start this chat
             </button>
           )}
-          <div className="rounded-2xl border border-line-strong bg-surface shadow-card transition focus-within:border-brand-400 focus-within:shadow-lift">
+          <div className="rounded-[26px] border border-line-strong bg-raise shadow-composer transition focus-within:border-white/25">
             <textarea
               aria-label="Ask your database a question"
-              className="max-h-[190px] w-full resize-none bg-transparent px-4 pt-3.5 text-sm leading-6 text-ink outline-none placeholder:text-ink-faint"
+              className="max-h-[190px] w-full resize-none bg-transparent px-5 pb-1 pt-4 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-faint"
               disabled={isSending || !hasConnection || !activeSession}
               onChange={(event) => {
                 setQuestion(event.target.value);
@@ -343,30 +327,30 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                   ? "Connect a database first"
                   : !activeSession
                     ? "Choose a database above to start this chat"
-                    : "Ask your database anything…"
+                    : "Ask anything about your data…"
               }
               ref={textareaRef}
               rows={1}
               value={question}
             />
-            <div className="flex items-center gap-2 border-t border-line px-3 py-2 bg-canvas/70 rounded-b-2xl">
-              <span className="ml-1 flex min-w-0 items-center gap-1.5 text-[11px] text-ink-soft font-medium">
+            <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
+              <span className="ml-2 flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
                 <Database size={12} className="shrink-0 text-brand-400" />
                 <span className="truncate">{selectedConnectionName || "No database selected"}</span>
-                <span className="hidden sm:inline text-ink-faint">· Enter to send · Shift+Enter for a new line</span>
+                <span className="hidden sm:inline">· Shift+Enter for a new line</span>
               </span>
               <button
-                className="btn-accent ml-auto h-8 w-8 sm:h-9 sm:w-9 !px-0 rounded-lg"
+                aria-label="Send"
+                className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white transition enabled:hover:bg-brand-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-ink-faint"
                 disabled={isSending || !question.trim() || !selectedConnectionId}
-                title="Send"
                 type="submit"
               >
-                {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={14} />}
+                {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
               </button>
             </div>
           </div>
         </div>
-      </form>
+      </div>
     </section>
   );
 }
@@ -374,8 +358,8 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 function MessageRow({ message, children }: { message: UiMessage; children?: ReactNode }) {
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md border border-sand-dark bg-sand px-5 py-3 text-[14px] font-medium leading-6 text-ink shadow-sm sm:max-w-[75%]">
+      <div className="flex justify-end py-2.5">
+        <div className="max-w-[85%] rounded-[20px] bg-sand px-4 py-2.5 text-[15px] leading-6 text-ink sm:max-w-[75%]">
           <p className="whitespace-pre-line">{message.content}</p>
         </div>
       </div>
@@ -386,14 +370,14 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
   const isClarifying = Boolean(message.result?.needs_clarification);
 
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start py-2.5">
       <div
-        className={`relative w-full rounded-2xl rounded-tl-md border px-5 py-4 text-[14px] leading-6 shadow-card ${
+        className={`w-full text-[15px] leading-7 ${
           isError
-            ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
+            ? "rounded-xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-rose-200"
             : isClarifying
-              ? "border-sky-500/25 bg-sky-500/10 text-sky-200"
-              : "border-line bg-surface text-ink"
+              ? "rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sky-200"
+              : "text-ink"
         } ${message.content || children ? "" : "hidden"}`}
       >
         {isClarifying && (
@@ -401,7 +385,7 @@ function MessageRow({ message, children }: { message: UiMessage; children?: Reac
             <CircleHelp size={13} /> Quick question
           </p>
         )}
-        {message.content && <p className={`whitespace-pre-line ${children ? "pr-12" : ""}`}>{message.content}</p>}
+        {message.content && <p className={`whitespace-pre-line ${children ? "mb-2" : ""}`}>{message.content}</p>}
         {children}
       </div>
     </div>
@@ -424,27 +408,27 @@ function EmptyConversation({
   onPickDatabase: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center py-14 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-2xl bg-brand-500/15 text-brand-300">
-        <LogoMark className="h-11 w-11" />
+    <div className="flex flex-col items-center pb-6 pt-24 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-500/15">
+        <LogoMark className="h-9 w-9" />
       </span>
-      <h2 className="mt-5 text-xl font-bold tracking-tight text-ink">
-        {hasConnection ? (needsDatabase ? "Pick a database for this chat" : "What do you want to know?") : "Connect a database to begin"}
-      </h2>
+      <h1 className="mt-5 font-display text-[26px] font-semibold tracking-tight text-ink">
+        {hasConnection ? (needsDatabase ? "Pick a database for this chat" : "What should we look at?") : "Connect a database to begin"}
+      </h1>
       <p className="mt-2 max-w-md text-sm leading-6 text-ink-soft">
         {hasConnection
           ? needsDatabase
             ? "Every chat is linked to one database. Choose which one this conversation should use — it stays fixed afterwards."
-            : "Ask in plain English. QueryMind generates SQL, validates it against your schema, and pauses before any write."
+            : "Ask in plain English. QueryMind writes the SQL, checks it against your schema, and pauses before touching any data."
           : "AI chat unlocks after QueryMind discovers your database structure."}
       </p>
       {!hasConnection && (
-        <button className="btn-accent mt-5" onClick={onOpenConnections} type="button">
+        <button className="btn-accent mt-6" onClick={onOpenConnections} type="button">
           <PlugZap size={16} /> Connect database
         </button>
       )}
       {hasConnection && needsDatabase && (
-        <button className="btn-accent mt-5" onClick={onPickDatabase} type="button">
+        <button className="btn-accent mt-6" onClick={onPickDatabase} type="button">
           <Database size={16} /> Choose a database
         </button>
       )}
@@ -539,33 +523,50 @@ function ResultBlock({
     }
   }
 
-  const downloadButton = (
-    <button
-      aria-label="Download PDF report"
-      className="grid h-8 w-8 place-items-center rounded-md border border-line bg-surface text-ink-soft shadow-sm transition hover:border-brand-500/60 hover:text-brand-300 disabled:cursor-not-allowed disabled:opacity-50"
-      disabled={isExporting}
-      onClick={exportPdf}
-      title="Download PDF report"
-      type="button"
-    >
-      {isExporting ? <Loader2 className="animate-spin" size={13} /> : <FileDown size={13} />}
-    </button>
-  );
-
   return (
-    <div className="mt-3 space-y-3">
-      <div className="absolute right-3 top-2">{downloadButton}</div>
+    <div className="mt-2 space-y-3 pb-1">
+      {/* SQL + actions live in one quiet rail under the answer */}
+      <div className="overflow-hidden rounded-xl border border-line bg-[#101114]">
+        <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+            SQL
+            {result.query_type && <span className="rounded bg-white/5 px-1.5 py-0.5 normal-case tracking-normal text-ink-faint">{result.query_type}</span>}
+          </span>
+          <span className="flex items-center gap-0.5">
+            <button
+              aria-label="Download PDF report"
+              className="grid h-7 w-7 place-items-center rounded-md text-ink-faint transition hover:bg-white/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isExporting}
+              onClick={exportPdf}
+              title="Download PDF report"
+              type="button"
+            >
+              {isExporting ? <Loader2 className="animate-spin" size={13} /> : <FileDown size={13} />}
+            </button>
+            <button
+              aria-label={copied ? "Copied" : "Copy SQL"}
+              className="grid h-7 w-7 place-items-center rounded-md text-ink-faint transition hover:bg-white/5 hover:text-ink"
+              onClick={copySql}
+              title="Copy SQL"
+              type="button"
+            >
+              {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+            </button>
+          </span>
+        </div>
+        <code className="block overflow-x-auto px-4 py-3 font-mono text-[13px] leading-6 text-[#a7ded7]">{result.sql}</code>
+      </div>
 
       {result.steps && result.steps.length > 0 && (
-        <div className="space-y-1.5 rounded-xl border border-line bg-white/[0.03] p-3">
-          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+        <div className="rounded-xl border border-line bg-white/[0.03] p-3">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
             <Search size={12} /> How I got this answer
           </p>
           {result.steps.map((step, index) => (
-            <div className="flex items-start gap-2" key={index}>
+            <div className="flex items-start gap-2 py-0.5" key={index}>
               <span className="mt-0.5 shrink-0">
                 {step.error ? (
-                  <XCircle className="text-rose-500" size={13} />
+                  <XCircle className="text-rose-400" size={13} />
                 ) : step.tool === "run_sql" ? (
                   <SquareSlash className="text-brand-400" size={13} />
                 ) : (
@@ -575,9 +576,9 @@ function ResultBlock({
               <div className="min-w-0 flex-1">
                 <p className={`truncate text-xs font-medium ${step.error ? "text-rose-300" : "text-ink-soft"}`}>{step.label}</p>
                 {step.sql ? (
-                  <code className="block truncate font-mono text-[10px] text-ink-soft">{step.sql}</code>
+                  <code className="block truncate font-mono text-[10px] text-ink-faint">{step.sql}</code>
                 ) : step.detail ? (
-                  <p className="truncate text-[10px] text-ink-soft">{step.detail}</p>
+                  <p className="truncate text-[10px] text-ink-faint">{step.detail}</p>
                 ) : null}
               </div>
             </div>
@@ -586,37 +587,24 @@ function ResultBlock({
       )}
 
       {result.conflict_warning?.has_conflict && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 p-3 text-xs text-rose-800">
+        <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 p-3 text-xs">
           <AlertTriangle className="mt-0.5 shrink-0 text-rose-300" size={16} />
           <div>
-            <p className="font-semibold text-rose-900">Duplicate Key Conflict Detected</p>
+            <p className="font-semibold text-rose-200">Duplicate key conflict detected</p>
             <p className="mt-0.5 text-rose-300">{result.conflict_warning.message}</p>
           </div>
         </div>
       )}
-
-      <div className="group/sql relative">
-        <code className="code-block pr-12">{result.sql}</code>
-        <button
-          aria-label={copied ? "Copied" : "Copy SQL"}
-          className="absolute right-2.5 top-2 grid h-8 w-8 place-items-center rounded-md bg-white/10 text-brand-300 opacity-100 transition hover:bg-white/20 sm:opacity-0 sm:group-focus-within/sql:opacity-100 sm:group-hover/sql:opacity-100"
-          onClick={copySql}
-          title="Copy SQL"
-          type="button"
-        >
-          {copied ? <Check size={13} /> : <Copy size={13} />}
-        </button>
-      </div>
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && !isTimedOut && (
         <div className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
           result.conflict_warning?.has_conflict ? "border-rose-500/25 bg-rose-500/10" : "border-amber-500/25 bg-amber-500/10"
         }`}>
           <p className={`min-w-0 flex-1 text-xs font-medium leading-5 ${
-            result.conflict_warning?.has_conflict ? "text-rose-800" : "text-amber-200"
+            result.conflict_warning?.has_conflict ? "text-rose-200" : "text-amber-200"
           }`}>
             {result.conflict_warning?.has_conflict
-              ? "Cannot run: A duplicate key conflict was found. Modify the value or table data first."
+              ? "Cannot run: a duplicate key conflict was found. Modify the value or table data first."
               : "This query modifies data. Run it only if the SQL above looks right."}
           </p>
           <span className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
@@ -637,7 +625,7 @@ function ResultBlock({
       )}
 
       {result.requires_confirmation && !isConfirmed && !isCancelled && isTimedOut && (
-        <div className="flex items-center gap-2 rounded-xl border border-line bg-white/10 p-3 text-xs font-medium text-ink-soft">
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-white/5 p-3 text-xs font-medium text-ink-soft">
           <Clock className="text-ink-faint" size={15} />
           <span>Confirmation request expired after 15 minutes and was automatically cancelled.</span>
         </div>
@@ -657,67 +645,69 @@ function ResultBlock({
         <span className="status-pill pill-success"><Check size={13} /> Confirmed</span>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-          {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
-        </span>
-        <div className="flex items-center gap-1">
+      {result.rows.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <div className="flex items-center justify-between border-b border-line bg-white/[0.03] px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+              {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
+            </span>
+            {chartSpec && (
+              <div className="flex gap-0.5 rounded-lg border border-line bg-canvas p-0.5">
+                {(["table", "chart"] as const).map((option) => (
+                  <button
+                    className={`flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-medium transition ${
+                      view === option ? "bg-raise text-ink" : "text-ink-soft hover:text-ink"
+                    }`}
+                    key={option}
+                    onClick={() => setView(option)}
+                    type="button"
+                  >
+                    {option === "chart" ? <BarChart3 size={12} /> : <Table2 size={12} />}
+                    {option === "chart" ? "Chart" : "Table"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {chartSpec && (
-            <div className="flex gap-0.5 rounded-lg border border-line bg-raise p-0.5">
-              {(["table", "chart"] as const).map((option) => (
-                <button
-                  className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                    view === option ? "bg-surface text-brand-300 shadow-sm" : "text-ink-soft hover:text-ink"
-                  }`}
-                  key={option}
-                  onClick={() => setView(option)}
-                  type="button"
-                >
-                  {option === "chart" ? <BarChart3 size={12} /> : <Table2 size={12} />}
-                  {option === "chart" ? "Chart" : "Table"}
-                </button>
-              ))}
+            <div className={view === "chart" ? "p-2" : "hidden"} ref={chartRef}>
+              <QueryChart spec={chartSpec} totalRows={result.rows.length} />
             </div>
           )}
-        </div>
-      </div>
 
-      {chartSpec && (
-        <div className={view === "chart" ? "" : "hidden"} ref={chartRef}>
-          <QueryChart spec={chartSpec} totalRows={result.rows.length} />
-        </div>
-      )}
-
-      {result.rows.length > 0 && (view === "table" || !chartSpec) && (
-        <div className="overflow-x-auto rounded-xl border border-line">
-            <table className="w-full min-w-[520px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-line bg-raise text-[11px] uppercase tracking-wider text-ink-soft">
-                  {result.columns.map((column, columnIndex) => (
-                    <th className="px-3.5 py-2.5 font-semibold" key={`${column}-${columnIndex}`}>{column}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {result.rows.map((row, index) => (
-                  <tr className="transition-colors hover:bg-brand-500/10" key={index}>
-                    {result.columns.map((column, columnIndex) => {
-                      const val = row[column];
-                      const isNull = val === null || val === undefined || val === "";
-                      return (
-                        <td className="px-3.5 py-2.5 text-ink" key={`${column}-${columnIndex}`}>
-                          {isNull ? (
-                            <span className="select-none font-mono text-xs italic text-ink-faint">—</span>
-                          ) : (
-                            String(val)
-                          )}
-                        </td>
-                      );
-                    })}
+          {(view === "table" || !chartSpec) && (
+            <div className="overflow-x-auto bg-canvas/60">
+              <table className="w-full min-w-[520px] text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-line text-[11px] uppercase tracking-wider text-ink-faint">
+                    {result.columns.map((column, columnIndex) => (
+                      <th className="px-3.5 py-2 font-medium" key={`${column}-${columnIndex}`}>{column}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {result.rows.map((row, index) => (
+                    <tr className="transition-colors hover:bg-white/[0.03]" key={index}>
+                      {result.columns.map((column, columnIndex) => {
+                        const val = row[column];
+                        const isNull = val === null || val === undefined || val === "";
+                        return (
+                          <td className="px-3.5 py-2 text-ink" key={`${column}-${columnIndex}`}>
+                            {isNull ? (
+                              <span className="select-none font-mono text-xs italic text-ink-faint">—</span>
+                            ) : (
+                              String(val)
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

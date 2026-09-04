@@ -104,7 +104,8 @@ export function Changes({ token }: Props) {
   }
 
   return (
-    <section className="space-y-7">
+    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <section className="space-y-7">
       <PageHeader
         eyebrow="Audit"
         title="Changes"
@@ -215,5 +216,6 @@ export function Changes({ token }: Props) {
         </div>
       )}
     </section>
+    </div>
   );
 }

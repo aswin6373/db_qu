@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatSessionsProvider } from "./components/ChatSessionsContext";
+import { LogoMark } from "./components/LogoMark";
 import { Onboarding } from "./components/Onboarding";
 import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
@@ -245,12 +246,8 @@ function BootSplash() {
   return (
     <div className="grid min-h-screen place-items-center bg-canvas">
       <div className="flex flex-col items-center gap-5">
-        <span className="grid h-14 w-14 animate-pulse-soft place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-xl shadow-brand-600/30">
-          <svg fill="none" height="26" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="26">
-            <ellipse cx="12" cy="5" rx="9" ry="3" />
-            <path d="M3 5V19A9 3 0 0 0 21 19V5" />
-            <path d="M3 12A9 3 0 0 0 21 12" />
-          </svg>
+        <span className="grid h-14 w-14 animate-pulse-soft place-items-center rounded-2xl bg-brand-500/15">
+          <LogoMark className="h-8 w-8" />
         </span>
         <p className="text-sm font-medium text-ink-faint">Preparing your workspace…</p>
       </div>

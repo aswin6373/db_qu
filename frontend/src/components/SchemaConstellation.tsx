@@ -163,7 +163,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">
             <DatabaseZap size={16} />
           </span>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-ink">{title}</h2>
+          <h2 className="text-sm font-semibold text-ink">{title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {headerAction}
@@ -190,7 +190,7 @@ export function SchemaConstellation({ schema, insights, title = "Primary schema 
         onMouseMove={handleMove}
       >
         {/* clipping wrapper only — never put overflow on the 3D chain itself */}
-        <div className="absolute inset-0 overflow-hidden rounded-xl border border-line bg-gradient-to-br from-raise via-surface to-canvas">
+        <div className="absolute inset-0 overflow-hidden rounded-xl border border-line bg-canvas">
           <div
             className="pointer-events-none absolute inset-0"
             style={{

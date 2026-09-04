@@ -91,7 +91,8 @@ export function Members({ token, currentUserId }: Props) {
   }
 
   return (
-    <section className="space-y-7">
+    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <section className="space-y-7">
       <PageHeader
         eyebrow="Team"
         title="Members"
@@ -108,7 +109,8 @@ export function Members({ token, currentUserId }: Props) {
         onRemove={removeMember}
         onRemoveRequest={setRemovingId}
       />
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -153,12 +155,12 @@ function AddMemberCard({
 }) {
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-6">
+      <div className="flex items-center gap-3 border-b border-line p-6">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
           <UserPlus size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-ink">Add a workspace user</h2>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Add a workspace user</h2>
           <p className="text-xs text-ink-soft">Choose their role and password — share their login details securely.</p>
         </div>
       </div>
@@ -247,7 +249,7 @@ function MemberList({
   return (
     <div className="card animate-fade-up overflow-hidden">
       <div className="border-b border-line px-6 py-5">
-        <h2 className="text-lg font-bold tracking-tight text-ink">Workspace users</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Workspace users</h2>
         <p className="text-xs text-ink-soft">
           {members.length} user{members.length === 1 ? "" : "s"} · Admins manage databases, integrations, and users; members can chat and explore data.
         </p>

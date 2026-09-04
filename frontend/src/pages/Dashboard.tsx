@@ -54,172 +54,174 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
   };
 
   return (
-    <section className="space-y-7">
-      <PageHeader
-        eyebrow={dashboard?.organization.name ?? "Workspace"}
-        title="Operational Dashboard"
-        description="Track activity from this production console — live schema relationships, AI query traffic, and guarded operations."
-        action={
-          connections.length > 0 ? (
-            <button className="btn-secondary" onClick={onOpenConnections} type="button">
-              <Database size={15} /> Manage connections
-            </button>
-          ) : null
-        }
-      />
+    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <section className="space-y-7">
+        <PageHeader
+          eyebrow={dashboard?.organization.name ?? "Workspace"}
+          title="Dashboard"
+          description="Live schema relationships, AI query traffic, and guarded operations across this workspace."
+          action={
+            connections.length > 0 ? (
+              <button className="btn-secondary" onClick={onOpenConnections} type="button">
+                <Database size={15} /> Manage connections
+              </button>
+            ) : null
+          }
+        />
 
-      {connections.length === 0 && (
-        <section className="card animate-fade-up border-brand-500/40 bg-gradient-to-br from-brand-500/10 via-transparent to-transparent p-6 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-md">
-              <h2 className="text-lg font-bold text-ink">Connect your first database</h2>
-              <p className="mt-1 text-sm leading-6 text-ink-soft">
-                QueryMind needs a live MySQL or PostgreSQL connection before the console comes alive.
-              </p>
+        {connections.length === 0 && (
+          <section className="card animate-fade-up p-6 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-md">
+                <h2 className="font-display text-lg font-semibold text-ink">Connect your first database</h2>
+                <p className="mt-1 text-sm leading-6 text-ink-soft">
+                  QueryMind needs a live MySQL or PostgreSQL connection before the console comes alive.
+                </p>
+              </div>
+              <ol className="flex flex-1 flex-wrap gap-3">
+                {[
+                  { step: "01", label: "Connect", detail: "Add database credentials" },
+                  { step: "02", label: "Discover", detail: "Schema auto-mapped" },
+                  { step: "03", label: "Ask", detail: "Chat in plain English" }
+                ].map((item) => (
+                  <li className="inset-tile flex min-w-[150px] flex-1 items-center gap-3 px-3.5 py-3" key={item.step}>
+                    <span className="font-mono text-xs font-medium text-brand-400">{item.step}</span>
+                    <span>
+                      <strong className="block text-[13px] font-medium text-ink">{item.label}</strong>
+                      <span className="block text-[11px] text-ink-faint">{item.detail}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <button className="btn-primary shrink-0" onClick={onOpenConnections} type="button">
+                <ArrowUpRight size={17} /> Connect database
+              </button>
             </div>
-            <ol className="flex flex-1 flex-wrap gap-3">
-              {[
-                { step: "01", label: "Connect", detail: "Add database credentials" },
-                { step: "02", label: "Discover", detail: "Schema auto-mapped" },
-                { step: "03", label: "Ask", detail: "Chat in plain English" }
-              ].map((item) => (
-                <li className="inset-tile flex min-w-[150px] flex-1 items-center gap-3 px-3.5 py-3" key={item.step}>
-                  <span className="font-mono text-xs font-bold text-brand-400">{item.step}</span>
-                  <span>
-                    <strong className="block text-[13px] font-semibold text-ink">{item.label}</strong>
-                    <span className="block text-[11px] text-ink-soft">{item.detail}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <button className="btn-accent shrink-0" onClick={onOpenConnections} type="button">
-              <ArrowUpRight size={17} /> Connect database
-            </button>
+          </section>
+        )}
+
+        {/* KPI row */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <KpiCard
+            caption={activity.length > 0 ? `${totalRows.toLocaleString()} rows returned` : "No queries yet"}
+            footer={rowsSeries.length > 1 ? <Sparkline height={30} values={rowsSeries} /> : undefined}
+            icon={<MessageSquare size={16} />}
+            label="AI queries"
+            value={dashboard?.query_count ?? 0}
+          />
+          <KpiCard
+            caption={activeConnection ? `${activeConnection.name} · ${columnCount.toLocaleString()} cols` : `${columnCount.toLocaleString()} columns indexed`}
+            icon={<Table2 size={16} />}
+            label="Discovered tables"
+            value={tableCount}
+          />
+          <KpiCard
+            caption={readinessLabel(score)}
+            footer={<ReadinessRing score={score} />}
+            icon={<Sparkles size={16} />}
+            label="AI readiness"
+            suffix="/100"
+            value={score}
+          />
+        </div>
+
+        {/* Schema relationships */}
+        <SchemaConstellation
+          headerAction={
+            connections.length > 1 ? (
+              <div className="flex items-center gap-1.5">
+                <label className="sr-only" htmlFor="db-schema-select">
+                  Select database
+                </label>
+                <select
+                  id="db-schema-select"
+                  className="cursor-pointer rounded-full border border-line bg-raise px-3 py-1 text-[11px] font-medium text-ink transition hover:border-line-strong focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                  onChange={(e) => setSelectedConnectionId(Number(e.target.value))}
+                  value={activeConnection?.id ?? ""}
+                >
+                  {connections.map((conn) => (
+                    <option key={conn.id} value={conn.id}>
+                      {conn.name} ({conn.db_type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : undefined
+          }
+          insights={activeInsights}
+          schema={activeSchema}
+          title={`${activeConnection?.name ?? "Database"} · schema relationships`}
+        />
+
+        {/* Activity logs */}
+        <section className="card p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <SectionTitle icon={<Activity size={15} />} subtitle="The five most recent AI-generated queries in this organization." title="Recent activity" />
+            {statuses.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {["all", ...statuses].map((status) => (
+                  <button
+                    className={`rounded-full border px-3 py-1 text-[11px] font-medium capitalize transition ${
+                      statusFilter === status
+                        ? "border-line-strong bg-white/10 text-ink"
+                        : "border-line text-ink-soft hover:border-line-strong hover:text-ink"
+                    }`}
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    type="button"
+                  >
+                    {status.replace(/_/g, " ")}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-3 divide-y divide-line">
+            {visibleActivity.map((item) => (
+              <div className="group flex flex-col gap-2 py-3 transition first:pt-1 last:pb-0 hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between" key={item.id}>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-ink">{item.question}</p>
+                    {item.created_at && (
+                      <span className="shrink-0 font-mono text-[11px] text-ink-faint">{timeAgo(item.created_at)}</span>
+                    )}
+                  </div>
+                  <code className="mt-1 block max-w-xl truncate rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
+                    {item.sql}
+                  </code>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {item.rows_returned != null && (
+                    <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-ink-faint">
+                      {item.rows_returned} rows
+                    </span>
+                  )}
+                  <StatusPill status={item.status} />
+                  <button
+                    aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
+                    className={`reveal-touch grid h-8 w-8 place-items-center rounded-md transition ${
+                      copiedId === item.id
+                        ? "text-emerald-400"
+                        : "text-ink-faint hover:bg-white/5 hover:text-ink group-hover:opacity-100"
+                    }`}
+                    onClick={() => copySql(item.id, item.sql)}
+                    title="Copy SQL"
+                    type="button"
+                  >
+                    {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {visibleActivity.length === 0 && (
+              <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-faint">
+                No query activity yet. Start a conversation in AI Chat.
+              </p>
+            )}
           </div>
         </section>
-      )}
-
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <KpiCard
-          caption={activity.length > 0 ? `${totalRows.toLocaleString()} rows returned` : "No queries yet"}
-          footer={rowsSeries.length > 1 ? <Sparkline height={30} values={rowsSeries} /> : undefined}
-          icon={<MessageSquare size={17} />}
-          label="AI queries"
-          value={dashboard?.query_count ?? 0}
-        />
-        <KpiCard
-          caption={activeConnection ? `${activeConnection.name} · ${columnCount.toLocaleString()} cols` : `${columnCount.toLocaleString()} columns indexed`}
-          icon={<Table2 size={17} />}
-          label="Discovered tables"
-          value={tableCount}
-        />
-        <KpiCard
-          caption={readinessLabel(score)}
-          footer={<ReadinessRing score={score} />}
-          icon={<Sparkles size={17} />}
-          label="AI readiness"
-          suffix="/100"
-          value={score}
-        />
-      </div>
-
-      {/* Schema relationships */}
-      <SchemaConstellation
-        headerAction={
-          connections.length > 1 ? (
-            <div className="flex items-center gap-1.5">
-              <label className="sr-only" htmlFor="db-schema-select">
-                Select database
-              </label>
-              <select
-                id="db-schema-select"
-                className="cursor-pointer rounded-full border border-line-strong bg-surface px-3 py-1 text-[11px] font-semibold text-ink shadow-sm transition hover:border-line-strong focus:outline-none focus:ring-1 focus:ring-brand-400"
-                onChange={(e) => setSelectedConnectionId(Number(e.target.value))}
-                value={activeConnection?.id ?? ""}
-              >
-                {connections.map((conn) => (
-                  <option key={conn.id} value={conn.id}>
-                    {conn.name} ({conn.db_type})
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : undefined
-        }
-        insights={activeInsights}
-        schema={activeSchema}
-        title={`${activeConnection?.name ?? "Database"} · schema relationships`}
-      />
-
-      {/* Activity logs */}
-      <section className="card p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <SectionTitle icon={<Activity size={15} />} subtitle="The five most recent AI-generated queries in this organization." title="Recent activity logs" />
-          {statuses.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {["all", ...statuses].map((status) => (
-                <button
-                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold capitalize transition ${
-                    statusFilter === status
-                      ? "border-brand-500/40 bg-brand-500/10 text-brand-300"
-                      : "border-line bg-surface text-ink-soft hover:border-line-strong hover:text-ink"
-                  }`}
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  type="button"
-                >
-                  {status.replace(/_/g, " ")}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="mt-4 divide-y divide-line">
-          {visibleActivity.map((item) => (
-            <div className="group flex flex-col gap-2 py-3.5 transition first:pt-0 last:pb-0 hover:bg-raise sm:flex-row sm:items-center sm:justify-between" key={item.id}>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium text-ink">{item.question}</p>
-                  {item.created_at && (
-                    <span className="shrink-0 font-mono text-[11px] text-ink-soft">{timeAgo(item.created_at)}</span>
-                  )}
-                </div>
-                <code className="mt-1 block max-w-xl truncate rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                  {item.sql}
-                </code>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {item.rows_returned != null && (
-                  <span className="rounded-md border border-line bg-raise px-2 py-0.5 font-mono text-[11px] font-medium text-ink-soft">
-                    {item.rows_returned} rows
-                  </span>
-                )}
-                <StatusPill status={item.status} />
-                <button
-                  aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
-                  className={`reveal-touch grid h-8 w-8 place-items-center rounded-md border transition ${
-                    copiedId === item.id
-                      ? "border-brand-500/40 bg-brand-500/10 text-brand-300"
-                      : "border-transparent text-ink-soft hover:border-line hover:text-ink-soft group-hover:opacity-100"
-                  }`}
-                  onClick={() => copySql(item.id, item.sql)}
-                  title="Copy SQL"
-                  type="button"
-                >
-                  {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
-                </button>
-              </div>
-            </div>
-          ))}
-          {visibleActivity.length === 0 && (
-            <p className="rounded-xl border border-dashed border-line bg-white/[0.03] px-4 py-8 text-center text-sm text-ink-soft">
-              No query activity yet. Start a conversation in AI Chat.
-            </p>
-          )}
-        </div>
       </section>
-    </section>
+    </div>
   );
 }
 
@@ -270,16 +272,15 @@ function KpiCard({
   const shown = useCountUp(isNumber ? (value as number) : 0);
   return (
     <div className="card card-hover group relative animate-fade-up overflow-hidden p-5">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-400/70 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-2">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
-        <span className="pt-1 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{label}</span>
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
+        <span className="pt-1 text-right text-[10px] font-medium uppercase tracking-wider text-ink-faint">{label}</span>
       </div>
-      <strong className="mt-3 block font-mono text-[26px] font-bold leading-none tracking-tight text-ink tabular-nums">
+      <strong className="mt-3 block font-mono text-[26px] font-semibold leading-none tracking-tight text-ink tabular-nums">
         {isNumber ? shown.toLocaleString() : value}
-        {suffix && <span className="ml-0.5 text-sm font-semibold text-ink-faint">{suffix}</span>}
+        {suffix && <span className="ml-0.5 text-sm font-medium text-ink-faint">{suffix}</span>}
       </strong>
-      {caption && <p className="mt-1.5 truncate text-[11px] font-medium text-ink-soft">{caption}</p>}
+      {caption && <p className="mt-1.5 truncate text-[11px] text-ink-faint">{caption}</p>}
       {footer && <div className="mt-2">{footer}</div>}
     </div>
   );
@@ -298,7 +299,7 @@ function ReadinessRing({ score }: { score: number }) {
   const stroke = clamped >= 70 ? "#34d399" : clamped >= 40 ? "#fbbf24" : "#fb7185";
   return (
     <svg height="44" viewBox="0 0 40 40" width="44">
-      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(255,255,255,0.14)" strokeWidth="3.6" />
+      <circle cx="20" cy="20" fill="none" r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth="3.6" />
       <circle
         cx="20"
         cy="20"
@@ -311,7 +312,7 @@ function ReadinessRing({ score }: { score: number }) {
         strokeWidth="3.6"
         style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%", transition: "stroke-dashoffset 1s cubic-bezier(0.22,1,0.36,1), stroke 300ms" }}
       />
-      <text dominantBaseline="central" fill="#e8ebee" fontSize="11" fontWeight="700" textAnchor="middle" x="20" y="21">
+      <text dominantBaseline="central" fill="#ececee" fontSize="11" fontWeight="600" textAnchor="middle" x="20" y="21">
         {clamped}
       </text>
     </svg>
@@ -323,9 +324,9 @@ function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: strin
     <div>
       <div className="flex items-center gap-2.5">
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
-        <h2 className="text-sm font-bold uppercase tracking-wider text-ink">{title}</h2>
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
       </div>
-      {subtitle && <p className="mt-1.5 pl-[42px] text-[13px] leading-5 text-ink-soft">{subtitle}</p>}
+      {subtitle && <p className="mt-1 pl-[42px] text-[13px] leading-5 text-ink-faint">{subtitle}</p>}
     </div>
   );
 }

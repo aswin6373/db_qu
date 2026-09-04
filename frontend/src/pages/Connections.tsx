@@ -133,70 +133,72 @@ export function Connections({ token, connections, insights, schemas, onRefresh, 
   }
 
   return (
-    <section className="space-y-7">
-      <PageHeader
-        eyebrow="Data sources"
-        title="Database connections"
-        description={`Connect every MySQL or PostgreSQL database your workspace uses — production, analytics, staging — and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
-      />
-
-      {feedback && (
-        <Banner
-          feedback={feedback}
-          onDismiss={() => setFeedback(null)}
+    <div className="dot-grid mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+      <section className="space-y-7">
+        <PageHeader
+          eyebrow="Data sources"
+          title="Connections"
+          description={`Connect every MySQL or PostgreSQL database your workspace uses, and QueryMind caches each schema for safer AI-generated SQL.${connections.length > 0 ? ` Currently ${connections.length} connected.` : ""}`}
         />
-      )}
 
-      {isEditing ? (
-        <ConnectionForm
-          form={form}
-          isSaving={isSaving}
-          onCancel={cancelEdit}
-          onFieldChange={updateField}
-          onSubmit={submit}
-        />
-      ) : connections.length === 0 ? (
-        <EmptyState isAdmin={isAdmin} onAdd={startAdd} />
-      ) : (
-        <>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-ink-soft">
-              {connections.length} database{connections.length === 1 ? "" : "s"} connected
-              <span className="ml-2 text-xs text-ink-faint">Click a card to view its schema below</span>
-            </p>
-            {isAdmin ? (
-              <button className="btn-accent !h-10 shrink-0 !px-4 !font-medium" onClick={startAdd} type="button">
-                <Plus size={15} /> Add database
-              </button>
-            ) : (
-              <span className="shrink-0 text-xs text-ink-faint">Only the admin can manage databases</span>
-            )}
-          </div>
-          <div className="space-y-3">
-            {connections.map((connection) => (
-              <ConnectionCard
-                connection={connection}
-                isAdmin={isAdmin}
-                isSelected={selectedConnection?.id === connection.id}
-                key={connection.id}
-                isRefreshing={refreshingId === connection.id}
-                onDelete={deleteConnection}
-                onSelect={() => setSelectedId(connection.id)}
-                onRefreshSchema={() => refreshConnection(connection.id)}
+        {feedback && (
+          <Banner
+            feedback={feedback}
+            onDismiss={() => setFeedback(null)}
+          />
+        )}
+
+        {isEditing ? (
+          <ConnectionForm
+            form={form}
+            isSaving={isSaving}
+            onCancel={cancelEdit}
+            onFieldChange={updateField}
+            onSubmit={submit}
+          />
+        ) : connections.length === 0 ? (
+          <EmptyState isAdmin={isAdmin} onAdd={startAdd} />
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-ink-soft">
+                {connections.length} database{connections.length === 1 ? "" : "s"} connected
+                <span className="ml-2 text-xs text-ink-faint">Click a card to view its schema below</span>
+              </p>
+              {isAdmin ? (
+                <button className="btn-primary !h-9 shrink-0 !px-3.5" onClick={startAdd} type="button">
+                  <Plus size={15} /> Add database
+                </button>
+              ) : (
+                <span className="shrink-0 text-xs text-ink-faint">Only the admin can manage databases</span>
+              )}
+            </div>
+            <div className="space-y-3">
+              {connections.map((connection) => (
+                <ConnectionCard
+                  connection={connection}
+                  isAdmin={isAdmin}
+                  isSelected={selectedConnection?.id === connection.id}
+                  key={connection.id}
+                  isRefreshing={refreshingId === connection.id}
+                  onDelete={deleteConnection}
+                  onSelect={() => setSelectedId(connection.id)}
+                  onRefreshSchema={() => refreshConnection(connection.id)}
+                />
+              ))}
+            </div>
+
+            {selectedConnection && (
+              <SchemaGraph
+                insights={insights[selectedConnection.id]}
+                key={selectedConnection.id}
+                schema={schemas[selectedConnection.id]}
               />
-            ))}
-          </div>
-
-          {selectedConnection && (
-            <SchemaGraph
-              insights={insights[selectedConnection.id]}
-              key={selectedConnection.id}
-              schema={schemas[selectedConnection.id]}
-            />
-          )}
-        </>
-      )}
-    </section>
+            )}
+          </>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -235,19 +237,19 @@ function ConnectionCard({
 
   return (
     <article
-      className={`card animate-fade-up cursor-pointer overflow-hidden transition ${
-        isSelected ? "!border-brand-500/60 ring-1 ring-brand-500/25" : "hover:!border-line-strong"
+      className={`card animate-fade-up cursor-pointer transition ${
+        isSelected ? "!border-brand-500/50 ring-1 ring-brand-500/25" : "hover:!border-line-strong"
       } ${isDeleting ? "opacity-60" : ""}`}
       onClick={onSelect}
     >
-      <div className="flex flex-col gap-4 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-400">
             <Database size={18} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <strong className="text-base font-bold text-ink">{connection.name}</strong>
+              <strong className="text-[15px] font-semibold text-ink">{connection.name}</strong>
               {isSelected && (
                 <span className="status-pill pill-success">
                   <CheckCircle2 size={13} /> viewing schema
@@ -259,7 +261,7 @@ function ConnectionCard({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 truncate font-mono text-xs text-ink-soft">
+            <p className="mt-0.5 truncate font-mono text-xs text-ink-faint">
               {URI_SCHEMES[(connection.db_type as DbType) ?? "mysql"] ?? "mysql"}://{connection.username}@{connection.host}:{connection.port}/{connection.database_name}
             </p>
           </div>
@@ -269,7 +271,7 @@ function ConnectionCard({
             <>
               <span className="text-xs font-medium text-rose-300">Delete this database?</span>
               <button
-                className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-500 disabled:opacity-60"
+                className="grid h-9 w-9 place-items-center rounded-lg bg-rose-500 text-white transition hover:bg-rose-400 disabled:opacity-60"
                 disabled={isDeleting}
                 onClick={remove}
                 title="Confirm delete"
@@ -279,7 +281,7 @@ function ConnectionCard({
               </button>
               <button
                 aria-label="Keep connection"
-                className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
+                className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink"
                 onClick={() => setConfirmingDelete(false)}
                 type="button"
               >
@@ -295,7 +297,7 @@ function ConnectionCard({
               {isAdmin && (
                 <button
                   aria-label={`Delete ${connection.name}`}
-                  className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-faint transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-faint transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-300"
                   onClick={() => setConfirmingDelete(true)}
                   title="Delete connection"
                   type="button"
@@ -308,7 +310,7 @@ function ConnectionCard({
         </div>
       </div>
 
-      <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <DetailField label="Host" value={connection.host} />
         <DetailField label="Port" value={String(connection.port)} />
         <DetailField label="Database" value={connection.database_name} />
@@ -321,17 +323,17 @@ function ConnectionCard({
 function EmptyState({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void }) {
   return (
     <div className="card animate-fade-up flex flex-col items-center px-6 py-14 text-center">
-      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-lg shadow-brand-600/25">
-        <PlugZap size={24} />
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-500/10 text-brand-400">
+        <Database size={24} />
       </span>
-      <h2 className="mt-5 text-lg font-bold tracking-tight text-ink">No databases connected yet</h2>
+      <h2 className="mt-5 font-display text-lg font-semibold tracking-tight text-ink">No databases connected yet</h2>
       <p className="mt-1.5 max-w-md text-sm leading-6 text-ink-soft">
         {isAdmin
           ? "Connect as many MySQL or PostgreSQL databases as your workspace needs — AI chat lets you pick one per conversation."
           : "Ask your workspace admin to connect a database. Once it's added, you can start asking questions right away."}
       </p>
       {isAdmin && (
-        <button className="btn-accent mt-6" onClick={onAdd} type="button">
+        <button className="btn-primary mt-6" onClick={onAdd} type="button">
           <Plus size={16} /> Add your first database
         </button>
       )}
@@ -370,13 +372,13 @@ function ConnectionForm({
 
   return (
     <form className="card animate-fade-up overflow-hidden" onSubmit={onSubmit}>
-      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-brand-500/10 via-transparent to-transparent p-6">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
+      <div className="flex items-center gap-3 border-b border-line p-6">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-400">
           <Database size={20} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold tracking-tight text-ink">Connect a new database</h2>
-          <p className="text-xs text-ink-soft">Credentials are encrypted before they touch the platform database.</p>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Connect a new database</h2>
+          <p className="text-xs text-ink-faint">Credentials are encrypted before they touch the platform database.</p>
         </div>
       </div>
 
@@ -465,7 +467,7 @@ function ConnectionForm({
                 />
                 <button
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
+                  className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
                   onClick={() => setShowPassword((visible) => !visible)}
                   type="button"
                 >
@@ -510,7 +512,7 @@ function ConnectionForm({
           </div>
         </section>
 
-        <section className="rounded-xl border border-line bg-white/[0.03]">
+        <section className="rounded-xl border border-line bg-white/[0.02]">
           <label
             htmlFor="ssh-tunnel-toggle"
             className="flex cursor-pointer items-start gap-3 px-4 py-3.5 text-sm"
@@ -519,14 +521,14 @@ function ConnectionForm({
               checked={showSshTunnel}
               onChange={(event) => toggleSshTunnel(event.target.checked)}
               type="checkbox"
-              className="mt-0.5 h-4 w-4 accent-brand-600"
+              className="mt-0.5 h-4 w-4 accent-brand-500"
               id="ssh-tunnel-toggle"
             />
             <span>
-              <span className="flex items-center gap-1.5 font-semibold text-ink">
+              <span className="flex items-center gap-1.5 font-medium text-ink">
                 <ShieldCheck size={15} /> SSH Tunnel
               </span>
-              <span className="mt-0.5 block text-xs text-ink-soft">
+              <span className="mt-0.5 block text-xs text-ink-faint">
                 Connect through a bastion/jump host when your database is not publicly reachable.
               </span>
             </span>
@@ -589,7 +591,7 @@ function ConnectionForm({
                   )}
                   <button
                     aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
-                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
+                    className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
                     onClick={() => setShowSshPassword((visible) => !visible)}
                       type="button"
                   >
@@ -604,29 +606,29 @@ function ConnectionForm({
           )}
         </section>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white/[0.03] px-4 py-3.5 text-sm transition hover:border-line-strong">
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white/[0.02] px-4 py-3.5 text-sm transition hover:border-line-strong">
           <input
             checked={Boolean(form.test_live)}
-            className="mt-0.5 h-4 w-4 accent-brand-600"
+            className="mt-0.5 h-4 w-4 accent-brand-500"
             onChange={(event) => onFieldChange("test_live", event.target.checked)}
             type="checkbox"
           />
           <span>
-            <span className="flex items-center gap-1.5 font-semibold text-ink">
+            <span className="flex items-center gap-1.5 font-medium text-ink">
               <ShieldCheck size={15} /> Test live connection before saving
             </span>
-            <span className="mt-0.5 block text-xs text-ink-soft">
+            <span className="mt-0.5 block text-xs text-ink-faint">
               Recommended — verifies credentials and loads schema metadata immediately.
             </span>
           </span>
         </label>
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-line bg-white/[0.03] px-6 py-4 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-line px-6 py-4 sm:flex-row sm:justify-end">
         <button className="btn-secondary" disabled={isSaving} onClick={onCancel} type="button">
           Cancel
         </button>
-        <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
+        <button className="btn-primary w-full sm:w-auto" disabled={isSaving} type="submit">
           {isSaving ? <Loader2 className="animate-spin" size={15} /> : <PlugZap size={15} />}
           {isSaving ? "Testing & discovering…" : "Save connection"}
         </button>
@@ -638,7 +640,7 @@ function ConnectionForm({
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div className="inset-tile px-3.5 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wider text-ink-faint">{label}</p>
       <p className="mt-0.5 truncate font-mono text-[13px] text-ink">{value}</p>
     </div>
   );
@@ -648,7 +650,7 @@ function Banner({ feedback, onDismiss }: { feedback: Feedback; onDismiss: () => 
   const styles = {
     success: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
     error: "border-rose-500/25 bg-rose-500/10 text-rose-300",
-    info: "border-brand-500/40 bg-brand-500/10 text-brand-300"
+    info: "border-brand-500/25 bg-brand-500/10 text-brand-300"
   };
   const icons = {
     success: <CheckCircle2 size={16} />,

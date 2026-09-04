@@ -45,7 +45,7 @@ export function SchemaGraph({ schema, insights }: Props) {
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">
             <Link2 size={16} />
           </span>
-          <h2 className="text-base font-bold tracking-tight text-ink">Entity relationships</h2>
+          <h2 className="font-display text-base font-semibold tracking-tight text-ink">Entity relationships</h2>
         </div>
         <span className="text-[11px] font-medium text-ink-faint">
           {edges.length} link{edges.length === 1 ? "" : "s"} · hover or click a table to trace its relationships

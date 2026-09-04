@@ -217,33 +217,42 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
     }
   }
 
-  const scrollareaClass = "min-h-0 flex-1 overflow-y-auto";
+  const showComposer = hasConnection && Boolean(activeSession);
 
   return (
     <section className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-transparent">
-      {/* Minimal sticky context strip — database chip only, no heavy header */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end px-4 pt-3 sm:px-6">
+      {/* Slim static header — the linked database sits here instead of floating over messages */}
+      <header className="flex h-12 shrink-0 items-center justify-end border-b border-line px-4 sm:px-6">
         {activeSession && hasConnection && (
           <span
-            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-line bg-canvas/90 px-3 py-1.5 text-[11px] font-medium text-ink-soft shadow-card backdrop-blur"
+            className="flex items-center gap-1.5 rounded-full border border-line bg-raise px-3 py-1 text-[11px] font-medium text-ink-soft"
             title="This chat is linked to this database"
           >
             <Database size={12} className="shrink-0 text-brand-400" />
             <span className="max-w-40 truncate text-ink">{selectedConnectionName || "No database"}</span>
           </span>
         )}
-      </div>
+      </header>
 
       {/* Messages */}
-      <div className={scrollareaClass}>
-        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
-          {messagesLoading ? (
-            <div className="flex items-center justify-center py-16 text-ink-faint">
-              <Loader2 className="animate-spin" size={22} />
-            </div>
-          ) : (
-            <>
-              <div className="divide-y divide-transparent">
+      {messages.length === 0 && !isSending && !messagesLoading ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 text-center">
+          <EmptyConversation
+            hasConnection={hasConnection}
+            needsDatabase={!activeSession}
+            onOpenConnections={onOpenConnections}
+            onPickDatabase={() => setPickerOpen(true)}
+          />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
+            {messagesLoading ? (
+              <div className="flex items-center justify-center py-16 text-ink-faint">
+                <Loader2 className="animate-spin" size={22} />
+              </div>
+            ) : (
+              <>
                 {messages.map((message) => (
                   <MessageRow key={message.id} message={message}>
                     {message.result && !message.result.needs_clarification && (message.result.sql || message.result.rows.length > 0 || (message.result.steps && message.result.steps.length > 0) ? (
@@ -260,97 +269,74 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
                     ) : null)}
                   </MessageRow>
                 ))}
-              </div>
 
-              {isSending && (
-                <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
-                  {isAgentWorking ? (
-                    <div className="space-y-1">
+                {isSending && (
+                  <MessageRow message={{ id: TYPING_ID, role: "assistant", content: "" }}>
+                    {isAgentWorking ? (
+                      <div className="space-y-1">
+                        <p className="flex items-center gap-2 text-sm font-medium text-ink-soft">
+                          Agent is analyzing your database
+                          <span className="flex gap-1">
+                            <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
+                          </span>
+                        </p>
+                        <p className="text-xs text-ink-faint">Running queries step by step to build your answer…</p>
+                      </div>
+                    ) : (
                       <p className="flex items-center gap-2 text-sm font-medium text-ink-soft">
-                        Agent is analyzing your database
+                        Working through your question
                         <span className="flex gap-1">
                           <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
                         </span>
                       </p>
-                      <p className="text-xs text-ink-faint">Running queries step by step to build your answer…</p>
-                    </div>
-                  ) : (
-                    <p className="flex items-center gap-2 text-sm font-medium text-ink-soft">
-                      Working through your question
-                      <span className="flex gap-1">
-                        <Dot delay="0ms" /><Dot delay="150ms" /><Dot delay="300ms" />
-                      </span>
-                    </p>
-                  )}
-                </MessageRow>
-              )}
-
-              {messages.length === 0 && !isSending && (
-                <EmptyConversation
-                  hasConnection={hasConnection}
-                  needsDatabase={!activeSession}
-                  onOpenConnections={onOpenConnections}
-                  onPickDatabase={() => setPickerOpen(true)}
-                />
-              )}
-            </>
-          )}
-          <div ref={bottomRef} className="h-6" />
-        </div>
-      </div>
-
-      {/* Composer — floating pill */}
-      <div className="shrink-0 bg-gradient-to-t from-canvas via-canvas/95 to-transparent px-4 pb-4 pt-1 sm:px-6">
-        <div className="mx-auto w-full max-w-3xl">
-          {!hasConnection && (
-            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-4 py-2.5 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20" onClick={onOpenConnections} type="button">
-              <PlugZap size={15} /> Connect a database to start asking questions
-            </button>
-          )}
-          {hasConnection && !activeSession && (
-            <button className="mb-2 flex w-full items-center justify-center gap-2 rounded-full border border-brand-500/40 bg-brand-500/10 px-4 py-2.5 text-sm font-medium text-brand-300 transition hover:bg-brand-500/20" onClick={() => setPickerOpen(true)} type="button">
-              <Database size={15} /> Choose a database to start this chat
-            </button>
-          )}
-          <div className="rounded-[26px] border border-line-strong bg-raise shadow-composer transition focus-within:border-white/25">
-            <textarea
-              aria-label="Ask your database a question"
-              className="max-h-[190px] w-full resize-none bg-transparent px-5 pb-1 pt-4 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-faint"
-              disabled={isSending || !hasConnection || !activeSession}
-              onChange={(event) => {
-                setQuestion(event.target.value);
-                autoResize(event.target);
-              }}
-              onKeyDown={onKeyDown}
-              placeholder={
-                !hasConnection
-                  ? "Connect a database first"
-                  : !activeSession
-                    ? "Choose a database above to start this chat"
-                    : "Ask anything about your data…"
-              }
-              ref={textareaRef}
-              rows={1}
-              value={question}
-            />
-            <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-              <span className="ml-2 flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
-                <Database size={12} className="shrink-0 text-brand-400" />
-                <span className="truncate">{selectedConnectionName || "No database selected"}</span>
-                <span className="hidden sm:inline">· Shift+Enter for a new line</span>
-              </span>
-              <button
-                aria-label="Send"
-                className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white transition enabled:hover:bg-brand-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-ink-faint"
-                disabled={isSending || !question.trim() || !selectedConnectionId}
-                type="submit"
-              >
-                {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
-              </button>
-            </div>
+                    )}
+                  </MessageRow>
+                )}
+              </>
+            )}
+            <div ref={bottomRef} className="h-6" />
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Composer — only when a chat with a database is actually open */}
+      {showComposer && (
+        <form className="shrink-0 px-4 pb-3 pt-1 sm:px-6" onSubmit={submit}>
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="rounded-[26px] border border-line-strong bg-raise shadow-composer transition focus-within:border-white/25">
+              <textarea
+                aria-label="Ask your database a question"
+                className="max-h-[190px] w-full resize-none bg-transparent px-5 pb-1 pt-4 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-faint"
+                disabled={isSending}
+                onChange={(event) => {
+                  setQuestion(event.target.value);
+                  autoResize(event.target);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder="Ask anything about your data…"
+                ref={textareaRef}
+                rows={1}
+                value={question}
+              />
+              <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
+                <span className="ml-2 flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
+                  <Database size={12} className="shrink-0 text-brand-400" />
+                  <span className="truncate">{selectedConnectionName || "No database selected"}</span>
+                  <span className="hidden sm:inline">· Shift+Enter for a new line</span>
+                </span>
+                <button
+                  aria-label="Send"
+                  className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white transition enabled:hover:bg-brand-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-ink-faint"
+                  disabled={isSending || !question.trim() || !selectedConnectionId}
+                  type="submit"
+                >
+                  {isSending ? <Loader2 className="animate-spin" size={15} /> : <Send size={15} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
     </section>
   );
 }
@@ -408,7 +394,7 @@ function EmptyConversation({
   onPickDatabase: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center pb-6 pt-24 text-center">
+    <div className="flex flex-col items-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-500/15">
         <LogoMark className="h-9 w-9" />
       </span>
@@ -423,12 +409,12 @@ function EmptyConversation({
           : "AI chat unlocks after QueryMind discovers your database structure."}
       </p>
       {!hasConnection && (
-        <button className="btn-accent mt-6" onClick={onOpenConnections} type="button">
+        <button className="btn-primary mt-6" onClick={onOpenConnections} type="button">
           <PlugZap size={16} /> Connect database
         </button>
       )}
       {hasConnection && needsDatabase && (
-        <button className="btn-accent mt-6" onClick={onPickDatabase} type="button">
+        <button className="btn-primary mt-6" onClick={onPickDatabase} type="button">
           <Database size={16} /> Choose a database
         </button>
       )}
@@ -526,7 +512,7 @@ function ResultBlock({
   return (
     <div className="mt-2 space-y-3 pb-1">
       {/* SQL + actions live in one quiet rail under the answer */}
-      <div className="overflow-hidden rounded-xl border border-line bg-[#101114]">
+      <div className="overflow-hidden rounded-xl border border-line bg-[#0b0c0e]">
         <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-ink-faint">
             SQL

@@ -11,13 +11,14 @@ export default {
       colors: {
         /* Flat dark surfaces — sidebar darker than canvas, cards barely
            lighter than canvas, borders barely visible. */
-        side: "#17181b",
-        canvas: "#212225",
-        raise: "#282a2f",
-        surface: "#303239",
+        /* Pitch black base with just enough warmth to separate surfaces. */
+        side: "#0a0a0c",
+        canvas: "#0f0f11",
+        raise: "#161619",
+        surface: "#1c1c20",
         sand: {
-          DEFAULT: "#2f3136",
-          dark: "#3e4148"
+          DEFAULT: "#1e1e22",
+          dark: "#2b2b31"
         },
         ink: "#ececee",
         "ink-soft": "#a8abb3",
@@ -61,6 +62,10 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.45" }
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0) rotate(var(--tw-rotate))" },
+          "50%": { transform: "translateY(-14px) rotate(var(--tw-rotate))" }
+        },
         caret: {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0" }
@@ -69,6 +74,8 @@ export default {
       animation: {
         "fade-up": "fade-up 0.3s ease-out both",
         "pulse-soft": "pulse-soft 1.8s ease-in-out infinite",
+        float: "float 7s ease-in-out infinite",
+        "float-slow": "float 10s ease-in-out infinite",
         caret: "caret 1.1s step-end infinite"
       }
     }

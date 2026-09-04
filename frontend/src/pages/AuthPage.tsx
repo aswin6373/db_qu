@@ -114,48 +114,39 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
             <p className="mt-1.5 pl-[52px] text-[13px] text-ink-faint">AI-powered database intelligence</p>
           </div>
 
-        {/* Product illustration — sits beside the hero on wide screens */}
-        <div className="flex flex-1 items-center gap-10">
-          <div className="flex min-w-0 flex-1 flex-col gap-6 xl:gap-7">
-            {/* Hero */}
-            <div className="max-w-xl">
-              <h1 className="text-[40px] font-bold leading-[1.12] tracking-tight text-ink xl:text-[52px]">
-                Talk to your data
-                <br />
-                like a <span className="text-brand-400">colleague.</span>
-              </h1>
-              <p className="mt-3 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
-                Ask questions in plain English. QueryMind understands your schema, generates validated
-                SQL, and gives you answers in seconds.
-              </p>
-            </div>
-
-            {/* Feature rows */}
-            <ul className="space-y-3.5">
-              {[
-                { icon: <Database size={16} />, title: "Schema-aware SQL", text: "Understands your schema and relationships" },
-                { icon: <ShieldCheck size={16} />, title: "Safe & validated queries", text: "Every query is validated before execution" },
-                { icon: <BarChart3 size={16} />, title: "Charts & reports built in", text: "Visualize and export in one click" }
-              ].map((feature) => (
-                <li className="flex items-center gap-3.5" key={feature.title}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white/[0.04] text-brand-400">
-                    {feature.icon}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-semibold text-ink">{feature.title}</p>
-                    <p className="text-[13px] text-ink-faint">{feature.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+        {/* Hero + features — centered in the pane's remaining height */}
+        <div className="flex flex-1 flex-col justify-center py-6">
+          {/* Hero */}
+          <div className="max-w-xl">
+            <h1 className="text-[40px] font-bold leading-[1.12] tracking-tight text-ink xl:text-[52px]">
+              Talk to your data
+              <br />
+              like a <span className="text-brand-400">colleague.</span>
+            </h1>
+            <p className="mt-3 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
+              Ask questions in plain English. QueryMind understands your schema, generates validated
+              SQL, and gives you answers in seconds.
+            </p>
           </div>
 
-          <img
-            alt="Illustration of a friendly robot talking to a glowing database"
-            className="hidden w-[220px] shrink-0 self-center rounded-xl border border-line xl:block 2xl:w-[260px]"
-            loading="lazy"
-            src="/talk-to-your-data.png"
-          />
+          {/* Feature rows */}
+          <ul className="mt-8 max-w-xl space-y-3.5">
+            {[
+              { icon: <Database size={16} />, title: "Schema-aware SQL", text: "Understands your schema and relationships" },
+              { icon: <ShieldCheck size={16} />, title: "Safe & validated queries", text: "Every query is validated before execution" },
+              { icon: <BarChart3 size={16} />, title: "Charts & reports built in", text: "Visualize and export in one click" }
+            ].map((feature) => (
+              <li className="flex items-center gap-3.5" key={feature.title}>
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white/[0.04] text-brand-400">
+                  {feature.icon}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-ink">{feature.title}</p>
+                  <p className="text-[13px] text-ink-faint">{feature.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
 
           {/* Workflow demo panel */}

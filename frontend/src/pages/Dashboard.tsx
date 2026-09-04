@@ -176,49 +176,49 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
               </div>
             )}
           </div>
-          <div className="mt-3 divide-y divide-line">
-            {visibleActivity.map((item) => (
-              <div className="group flex flex-col gap-2 py-3 transition first:pt-1 last:pb-0 hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between" key={item.id}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-ink">{item.question}</p>
-                    {item.created_at && (
-                      <span className="shrink-0 font-mono text-[11px] text-ink-faint">{timeAgo(item.created_at)}</span>
-                    )}
-                  </div>
-                  <code className="mt-1 block max-w-xl truncate rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                    {item.sql}
-                  </code>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {item.rows_returned != null && (
-                    <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-ink-faint">
-                      {item.rows_returned} rows
-                    </span>
+        <div className="mt-3 divide-y divide-line">
+          {visibleActivity.map((item) => (
+            <div className="flex flex-col gap-2.5 py-3.5 first:pt-1 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4" key={item.id}>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{item.question}</p>
+                  {item.created_at && (
+                    <span className="shrink-0 font-mono text-[11px] text-ink-faint">{timeAgo(item.created_at)}</span>
                   )}
-                  <StatusPill status={item.status} />
-                  <button
-                    aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
-                    className={`reveal-touch grid h-8 w-8 place-items-center rounded-md transition ${
-                      copiedId === item.id
-                        ? "text-emerald-400"
-                        : "text-ink-faint hover:bg-white/5 hover:text-ink"
-                    }`}
-                    onClick={() => copySql(item.id, item.sql)}
-                    title="Copy SQL"
-                    type="button"
-                  >
-                    {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
-                  </button>
                 </div>
+                <code className="mt-1.5 block truncate rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
+                  {item.sql}
+                </code>
               </div>
-            ))}
-            {visibleActivity.length === 0 && (
-              <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-faint">
-                No query activity yet. Start a conversation in AI Chat.
-              </p>
-            )}
-          </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {item.rows_returned != null && (
+                  <span className="hidden rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-ink-faint sm:inline">
+                    {item.rows_returned} rows
+                  </span>
+                )}
+                <StatusPill status={item.status} />
+                <button
+                  aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
+                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-md border transition ${
+                    copiedId === item.id
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                      : "border-line text-ink-soft hover:border-line-strong hover:text-ink"
+                  }`}
+                  onClick={() => copySql(item.id, item.sql)}
+                  title="Copy SQL"
+                  type="button"
+                >
+                  {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
+                </button>
+              </div>
+            </div>
+          ))}
+          {visibleActivity.length === 0 && (
+            <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-faint">
+              No query activity yet. Start a conversation in AI Chat.
+            </p>
+          )}
+        </div>
         </section>
       </section>
     </div>

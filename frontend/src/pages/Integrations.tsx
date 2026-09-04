@@ -349,262 +349,257 @@ export function Integrations({ token, isAdmin = false }: Props) {
         </div>
       )}
 
-      {/* Current AI Provider status - Admins only */}
+      {/* AI provider — one merged card: status header + connect form (admins) */}
       {isAdmin && (
-        <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
-          <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-            <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
-              <Cpu size={20} />
-            </span>
-            <div className="min-w-0 flex-1">
-              {isLoading ? (
-                <Loader2 className="animate-spin text-ink-faint" size={18} />
-              ) : current?.provider ? (
-                <>
-                  <p className="text-sm font-semibold text-ink">
-                    Using your own {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
-                    {current.key_hint ? <span className="ml-2 font-mono text-xs text-ink-faint">{current.key_hint}</span> : null}
-                  </p>
-                  <p className="text-xs text-ink-soft">
-                    All chats in this workspace run on your key.{current.model ? ` Model: ${current.model}.` : ""}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-semibold text-ink">Using the platform default AI</p>
-                  <p className="text-xs text-ink-faint">Connect your own key below.</p>
-                </>
-              )}
-            </div>
-          </div>
-          {current?.provider && (
-            <div className="flex shrink-0 items-center gap-2 sm:pl-0">
-              {confirmingRemove ? (
-                <>
-                  <span className="text-xs font-medium text-rose-300">Disconnect?</span>
-                  <button
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-rose-600 text-white transition hover:bg-rose-500 disabled:opacity-60"
-                    disabled={isRemoving}
-                    onClick={remove}
-                    title="Confirm disconnect"
-                    type="button"
-                  >
-                    {isRemoving ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                  </button>
-                  <button
-                    aria-label="Cancel"
-                    className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
-                    onClick={() => setConfirmingRemove(false)}
-                    type="button"
-                  >
-                    <X size={15} />
-                  </button>
-                </>
-              ) : (
-                <button
-                  className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
-                  onClick={() => setConfirmingRemove(true)}
-                  type="button"
-                >
-                  <Trash2 size={13} /> Disconnect
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* WhatsApp AI chat - Available to all members */}
-      <div className="card animate-fade-up flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
-        <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-          <span className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl bg-emerald-500/90 text-white">
-            <MessageCircle size={20} />
-          </span>
-          <div className="min-w-0 flex-1">
-            {whatsapp === null ? (
-              <Loader2 className="animate-spin text-ink-faint" size={18} />
-            ) : !botReady ? (
-              <>
-                <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
-                <p className="text-xs text-ink-faint">
-                  {isAdmin ? "Not configured on the server yet." : "Not enabled for this workspace — ask an admin."}
-                </p>
-              </>
-            ) : personallyPaired ? (
-              <>
-                <p className="text-sm font-semibold text-ink">
-                  WhatsApp AI chat
-                  <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                    connected{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""}
-                  </span>
-                  {whatsapp.charts ? (
-                    <span className="ml-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                      charts on
-                    </span>
-                  ) : null}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
-                <p className="text-xs text-ink-faint">
-                  Not linked yet — open WhatsApp and send{" "}
-                  <span className="font-mono">hi</span> to the bot to connect your account.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-        {whatsapp !== null && botReady && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pl-0">
-            {whatsapp.number && (
-              <a
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-600/90 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
-                href={`https://wa.me/${whatsapp.number.replace(/\D/g, "")}?text=hi`}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <MessageCircle size={13} /> Open WhatsApp
-              </a>
-            )}
-            {pairing !== null && (
-              <span
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                  personallyPaired ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"
-                }`}
-              >
-                <span
-                  className={`h-2 w-2 rounded-full ${personallyPaired ? "bg-emerald-500" : "bg-amber-400"}`}
-                />
-                {personallyPaired
-                  ? `Connected${pairing?.number_tail ? ` ···${pairing.number_tail}` : ""}`
-                  : "Not linked"}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Connect AI form - Admins only */}
-      {isAdmin && (
-        <form className="card animate-fade-up overflow-hidden" onSubmit={save}>
-          <div className="space-y-6 p-6">
-            {/* Selection Box for AI Provider */}
-            <div className="space-y-3">
-              <label className="block">
-                <span className="label">AI provider</span>
-                <select
-                  className="field cursor-pointer font-medium text-ink"
-                  value={form.provider}
-                  onChange={(e) => {
-                    const nextProvider = e.target.value as Provider;
-                    setForm({
-                      provider: nextProvider,
-                      api_key: "",
-                      model: "",
-                      base_url: nextProvider === "ollama" ? "http://127.0.0.1:11434" : ""
-                    });
-                    setShowKey(false);
-                  }}
-                >
-                  {Array.from(new Set(PROVIDERS.map((p) => p.category))).map((category) => (
-                    <optgroup key={category} label={`── ${category} ──`}>
-                      {PROVIDERS.filter((p) => p.category === category).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} {p.badge ? `(${p.badge})` : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
-
-              {/* Selected Provider Overview Banner */}
-              <div className="rounded-xl border border-line bg-white/[0.03] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <strong className="text-sm font-semibold text-ink">{activeProvider.name}</strong>
-                    {activeProvider.badge && (
-                      <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-300">
-                        {activeProvider.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-xs text-ink-soft">{activeProvider.blurb}</p>
+        <section className="animate-fade-up space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">AI provider</p>
+          <form className="card overflow-hidden" onSubmit={save}>
+            {/* Status header */}
+            <div className="flex flex-col gap-3 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div className="flex min-w-0 items-center gap-3.5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300">
+                  <Cpu size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  {isLoading ? (
+                    <Loader2 className="animate-spin text-ink-faint" size={18} />
+                  ) : current?.provider ? (
+                    <>
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {current.provider.charAt(0).toUpperCase() + current.provider.slice(1)} key
+                        {current.key_hint ? <span className="ml-2 font-mono text-xs font-normal text-ink-faint">{current.key_hint}</span> : null}
+                      </p>
+                      <p className="truncate text-xs text-ink-faint">
+                        Powers all chats in this workspace{current.model ? ` · ${current.model}` : ""}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-ink">Platform default AI</p>
+                      <p className="text-xs text-ink-faint">Connect your own key below.</p>
+                    </>
+                  )}
                 </div>
-                {activeProvider.keyUrl && (
-                  <a
-                    className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-400 hover:underline"
-                    href={activeProvider.keyUrl}
-                    rel="noreferrer"
-                    target="_blank"
+              </div>
+              {current?.provider && (
+                <div className="flex shrink-0 items-center gap-2">
+                  {confirmingRemove ? (
+                    <>
+                      <span className="text-xs font-medium text-rose-300">Disconnect?</span>
+                      <button
+                        className="grid h-9 w-9 place-items-center rounded-lg bg-rose-500 text-white transition hover:bg-rose-400 disabled:opacity-60"
+                        disabled={isRemoving}
+                        onClick={remove}
+                        title="Confirm disconnect"
+                        type="button"
+                      >
+                        {isRemoving ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
+                      </button>
+                      <button
+                        aria-label="Cancel"
+                        className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition hover:bg-white/10 hover:text-ink"
+                        onClick={() => setConfirmingRemove(false)}
+                        type="button"
+                      >
+                        <X size={15} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-rose-500/25 hover:bg-rose-500/10 hover:text-rose-300"
+                      onClick={() => setConfirmingRemove(true)}
+                      type="button"
+                    >
+                      <Trash2 size={13} /> Disconnect
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Connect form */}
+            <div className="space-y-6 p-4 sm:p-6">
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="label">Provider</span>
+                  <select
+                    className="field cursor-pointer font-medium text-ink"
+                    value={form.provider}
+                    onChange={(e) => {
+                      const nextProvider = e.target.value as Provider;
+                      setForm({
+                        provider: nextProvider,
+                        api_key: "",
+                        model: "",
+                        base_url: nextProvider === "ollama" ? "http://127.0.0.1:11434" : ""
+                      });
+                      setShowKey(false);
+                    }}
                   >
-                    Get API Key <ExternalLink size={12} />
-                  </a>
+                    {Array.from(new Set(PROVIDERS.map((p) => p.category))).map((category) => (
+                      <optgroup key={category} label={`── ${category} ──`}>
+                        {PROVIDERS.filter((p) => p.category === category).map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.badge ? `(${p.badge})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="flex flex-col gap-3 rounded-xl border border-line bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm font-semibold text-ink">{activeProvider.name}</strong>
+                      {activeProvider.badge && (
+                        <span className="rounded-full bg-brand-500/15 px-2 py-0.5 text-[10px] font-semibold text-brand-300">
+                          {activeProvider.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-ink-soft">{activeProvider.blurb}</p>
+                  </div>
+                  {activeProvider.keyUrl && (
+                    <a
+                      className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-400 hover:underline"
+                      href={activeProvider.keyUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Get API Key <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="label">{activeProvider.keyLabel}</span>
+                  <span className="relative block">
+                    <input
+                      autoComplete="off"
+                      className="field pr-11 font-mono text-xs"
+                      placeholder={activeProvider.keyPlaceholder}
+                      required={activeProvider.needsKey}
+                      type={showKey ? "text" : "password"}
+                      value={form.api_key}
+                      onChange={(event) => setForm({ ...form, api_key: event.target.value })}
+                    />
+                    <button
+                      aria-label={showKey ? "Hide key" : "Show key"}
+                      className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
+                      onClick={() => setShowKey((visible) => !visible)}
+                      type="button"
+                    >
+                      {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </span>
+                  {!activeProvider.needsKey && (
+                    <span className="mt-1.5 block text-xs text-ink-faint">Leave empty for {activeProvider.name}.</span>
+                  )}
+                </label>
+
+                <label className="block">
+                  <span className="label">Model (optional)</span>
+                  <input
+                    className="field font-mono"
+                    placeholder={activeProvider.modelPlaceholder}
+                    value={form.model}
+                    onChange={(event) => setForm({ ...form, model: event.target.value })}
+                  />
+                </label>
+
+                {activeProvider.needsBaseUrl && (
+                  <label className="block md:col-span-2">
+                    <span className="label">{activeProvider.baseUrlLabel || "Server Base URL"}</span>
+                    <input
+                      className="field font-mono"
+                      placeholder={activeProvider.baseUrlPlaceholder || "http://your-server:11434"}
+                      required
+                      value={form.base_url}
+                      onChange={(event) => setForm({ ...form, base_url: event.target.value })}
+                    />
+                  </label>
                 )}
               </div>
             </div>
 
-            <div className="grid gap-x-5 gap-y-4 md:grid-cols-2">
-              <label className="block">
-                <span className="label">{activeProvider.keyLabel}</span>
-                <span className="relative block">
-                  <input
-                    autoComplete="off"
-                    className="field pr-11 font-mono text-xs"
-                    placeholder={activeProvider.keyPlaceholder}
-                    required={activeProvider.needsKey}
-                    type={showKey ? "text" : "password"}
-                    value={form.api_key}
-                    onChange={(event) => setForm({ ...form, api_key: event.target.value })}
-                  />
-                  <button
-                    aria-label={showKey ? "Hide key" : "Show key"}
-                    className="absolute right-1 top-1 grid h-9 w-9 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
-                    onClick={() => setShowKey((visible) => !visible)}
-                    type="button"
-                  >
-                    {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </span>
-                {!activeProvider.needsKey && (
-                  <span className="mt-1.5 block text-xs text-ink-faint">Leave empty for {activeProvider.name}.</span>
-                )}
-              </label>
+            <div className="flex justify-end border-t border-line p-4 sm:px-6">
+              <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
+                {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
+                {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
-              <label className="block">
-                <span className="label">Model (optional)</span>
-                <input
-                  className="field font-mono"
-                  placeholder={activeProvider.modelPlaceholder}
-                  value={form.model}
-                  onChange={(event) => setForm({ ...form, model: event.target.value })}
-                />
-              </label>
-
-              {activeProvider.needsBaseUrl && (
-                <label className="block md:col-span-2">
-                  <span className="label">{activeProvider.baseUrlLabel || "Server Base URL"}</span>
-                  <input
-                    className="field font-mono"
-                    placeholder={activeProvider.baseUrlPlaceholder || "http://your-server:11434"}
-                    required
-                    value={form.base_url}
-                    onChange={(event) => setForm({ ...form, base_url: event.target.value })}
-                  />
-                </label>
+      {/* Channels — WhatsApp, available to all members */}
+      <section className="animate-fade-up space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">Channels</p>
+        <div className="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex min-w-0 items-center gap-3.5 sm:items-center">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-500/90 text-white">
+              <MessageCircle size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              {whatsapp === null ? (
+                <Loader2 className="animate-spin text-ink-faint" size={18} />
+              ) : !botReady ? (
+                <>
+                  <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
+                  <p className="text-xs text-ink-faint">
+                    {isAdmin ? "Not configured on the server yet." : "Not enabled for this workspace — ask an admin."}
+                  </p>
+                </>
+              ) : personallyPaired ? (
+                <>
+                  <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                      connected{pairing?.number_tail ? ` ···${pairing.number_tail}` : ""}
+                    </span>
+                    {whatsapp.charts && (
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
+                        charts on
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-ink">WhatsApp AI chat</p>
+                  <p className="text-xs text-ink-faint">
+                    Not linked yet — open WhatsApp and send{" "}
+                    <span className="font-mono">hi</span> to the bot to connect your account.
+                  </p>
+                </>
               )}
             </div>
           </div>
-
-          <div className="flex justify-end border-t border-line px-4 py-4 sm:px-6">
-            <button className="btn-accent !h-10 w-full sm:w-auto" disabled={isSaving} type="submit">
-              {isSaving ? <Loader2 className="animate-spin" size={15} /> : <Plug size={15} />}
-              {isSaving ? "Connecting…" : current?.provider ? "Update integration" : "Connect provider"}
-            </button>
-          </div>
-        </form>
-      )}
+          {whatsapp !== null && botReady && (
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {whatsapp.number && (
+                <a
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-600/90 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
+                  href={`https://wa.me/${whatsapp.number.replace(/\D/g, "")}?text=hi`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <MessageCircle size={13} /> Open WhatsApp
+                </a>
+              )}
+              {pairing !== null && !personallyPaired && (
+                <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" />
+                  Not linked
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
     </section>
     </div>
   );

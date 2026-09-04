@@ -50,7 +50,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
     <div className="grid min-h-screen bg-canvas text-ink lg:grid-cols-[56fr_44fr] lg:overflow-hidden lg:h-screen">
       {/* ============ LEFT — brand + product story ============ */}
       <aside
-        className="relative hidden flex-col overflow-y-auto border-r border-line bg-side lg:flex"
+        className="relative hidden flex-col overflow-y-auto no-scrollbar border-r border-line bg-side lg:flex"
         style={{ background: "radial-gradient(900px circle at 55% 42%, rgba(47,158,151,0.07), transparent 60%)" }}
       >
         {/* faint network dots + lines */}
@@ -73,7 +73,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </g>
         </svg>
 
-        <div className="relative flex min-h-full flex-col gap-8 p-10 xl:p-12">
+        <div className="relative flex min-h-full flex-col gap-6 p-8 xl:gap-7 xl:p-10">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3">
@@ -94,14 +94,14 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               <br />
               like a <span className="text-brand-400">colleague.</span>
             </h1>
-            <p className="mt-4 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
+            <p className="mt-3 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
               Ask questions in plain English. QueryMind understands your schema, generates validated
               SQL, and gives you answers in seconds.
             </p>
           </div>
 
           {/* Feature rows */}
-          <ul className="max-w-xl space-y-4">
+          <ul className="max-w-xl space-y-3.5">
             {[
               { icon: <Database size={16} />, title: "Schema-aware SQL", text: "Understands your schema and relationships" },
               { icon: <ShieldCheck size={16} />, title: "Safe & validated queries", text: "Every query is validated before execution" },
@@ -120,7 +120,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </ul>
 
           {/* Workflow demo panel */}
-          <div className="hidden max-w-2xl rounded-2xl border border-line bg-white/[0.02] p-4 shadow-[0_0_40px_rgba(47,158,151,0.05)] xl:block">
+          <div className="hidden max-w-2xl rounded-2xl border border-line bg-white/[0.02] p-3.5 shadow-[0_0_40px_rgba(47,158,151,0.05)] xl:block">
             <div className="flex items-stretch gap-3">
               <WorkflowColumn icon={<MessageSquare size={12} />} label="You ask in plain English">
                 <div className="rounded-lg border border-line bg-white/[0.04] p-2.5 text-[12px] leading-5 text-ink">
@@ -182,7 +182,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
               { icon: <Clock size={13} />, value: "24/7", label: "AI assistance" },
               { icon: <ShieldCheck size={13} />, value: "Enterprise", label: "Security & audit" }
             ].map((metric) => (
-              <div className="flex flex-col items-center gap-1 px-2 py-4 text-center" key={metric.label}>
+              <div className="flex flex-col items-center gap-1 px-2 py-3 text-center" key={metric.label}>
                 <span className="grid h-7 w-7 place-items-center rounded-full border border-line bg-white/[0.04] text-brand-400">
                   {metric.icon}
                 </span>
@@ -192,12 +192,12 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
             ))}
           </div>
 
-          <p className="mt-auto text-xs text-ink-faint">© {new Date().getFullYear()} QueryMind. All rights reserved.</p>
+          <p className="pt-2 mt-auto text-xs text-ink-faint">© {new Date().getFullYear()} QueryMind. All rights reserved.</p>
         </div>
       </aside>
 
       {/* ============ RIGHT — auth card ============ */}
-      <main className="relative flex flex-col overflow-y-auto px-5 py-6 sm:px-10">
+      <main className="relative flex flex-col overflow-y-auto no-scrollbar px-5 py-6 sm:px-10">
         <div className="relative z-10 flex items-center justify-between">
           <span className="flex items-center gap-2.5 lg:hidden">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">

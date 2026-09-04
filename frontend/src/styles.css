@@ -167,6 +167,16 @@ textarea {
   }
 }
 
+/* Scrollbars that scroll but never show a track/thumb — for fixed panes
+   where the layout must read as a single static screen. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Respect users who opt out of motion. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -6,7 +6,7 @@ import { Shell } from "./components/Shell";
 import { apiRequest } from "./lib/api";
 import { AuthPage } from "./pages/AuthPage";
 import { LandingPage } from "./pages/LandingPage";
-import { Chat } from "./pages/Chat";
+import { Chat, resetChatDecisions } from "./pages/Chat";
 import { Changes } from "./pages/Changes";
 import { Connections } from "./pages/Connections";
 import { Dashboard } from "./pages/Dashboard";
@@ -96,6 +96,7 @@ export function App() {
   useEffect(() => {
     function resetState() {
       localStorage.removeItem("querymind_token");
+      resetChatDecisions();
       setToken("");
       setUser(null);
       setDashboard(null);
@@ -174,6 +175,7 @@ export function App() {
 
   function logout() {
     authGenerationRef.current += 1;
+    resetChatDecisions();
     localStorage.removeItem("querymind_token");
     setUnauthView("landing");
     setToken("");
@@ -181,6 +183,7 @@ export function App() {
 
   function handleAuth(newToken: string, options?: { onboard?: boolean; organizationName?: string }) {
     authGenerationRef.current += 1;
+    resetChatDecisions();
     setBooted(false);
     setOnboarding(Boolean(options?.onboard));
     setOnboardingOrg(options?.organizationName);

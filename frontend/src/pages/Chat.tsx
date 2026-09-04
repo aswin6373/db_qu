@@ -23,9 +23,16 @@ const TYPING_ID = -999_999;
 
 // Confirm/cancel decisions survive Chat remounts (navigating away mid-review
 // must not resurrect a cancelled write prompt). Module scope = SPA lifetime;
-// mutations bump a nonce so React re-renders.
+// mutations bump a nonce so React re-renders. Cleared on identity change so a
+// new account never inherits the previous account's decisions.
 const confirmedWrites = new Set<number>();
 const dismissedWrites = new Set<number>();
+
+/** Called from App when the auth identity changes. */
+export function resetChatDecisions() {
+  confirmedWrites.clear();
+  dismissedWrites.clear();
+}
 
 // Mirrors the backend's agent routing (_AGENT_HINT_RE / _WRITE_INTENT_RE in
 // query.py). Purely cosmetic: questions the backend hands to the multi-step
@@ -188,10 +195,19 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
   async function confirmWrite(queryId: number) {
     if (confirmedWrites.has(queryId) || confirmingQueryId === queryId) return;
     setConfirmingQueryId(queryId);
+    const sessionAtStart = activeIdRef.current;
     try {
       const result = await apiRequest<QueryResponse>(`/query/${queryId}/confirm`, { method: "POST" }, token);
       confirmedWrites.add(queryId);
       setDecisionNonce((nonce) => nonce + 1);
+      // The user may have switched sessions while the confirmation was in
+      // flight — only paint the result into the transcript it belongs to.
+      // (The backend has already run it; a reload picks it up there.)
+      if (activeIdRef.current !== sessionAtStart) {
+        refresh();
+        onActivity();
+        return;
+      }
       setMessages((items) => items.map((item) => (
         item.result?.query_id === queryId ? { ...item, result: { ...item.result!, requires_confirmation: false } } : item
       )));
@@ -236,13 +252,15 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
 
       {/* Messages */}
       {messages.length === 0 && !isSending && !messagesLoading ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 text-center">
-          <EmptyConversation
-            hasConnection={hasConnection}
-            needsDatabase={!activeSession}
-            onOpenConnections={onOpenConnections}
-            onPickDatabase={() => setPickerOpen(true)}
-          />
+        <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 text-center">
+          <div className="m-auto">
+            <EmptyConversation
+              hasConnection={hasConnection}
+              needsDatabase={!activeSession}
+              onOpenConnections={onOpenConnections}
+              onPickDatabase={() => setPickerOpen(true)}
+            />
+          </div>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -255,7 +273,7 @@ export function Chat({ token, connections, onActivity, onOpenConnections }: Prop
               <>
                 {messages.map((message) => (
                   <MessageRow key={message.id} message={message}>
-                    {message.result && !message.result.needs_clarification && (message.result.sql || message.result.rows.length > 0 || (message.result.steps && message.result.steps.length > 0) ? (
+                    {message.result && !message.result.needs_clarification && (message.result.sql || (message.result.rows?.length ?? 0) > 0 || (message.result.steps && message.result.steps.length > 0) ? (
                       <ResultBlock
                         confirmingQueryId={confirmingQueryId}
                         connectionName={connections.find((connection) => connection.id === Number(selectedConnectionId))?.name}
@@ -448,7 +466,10 @@ function ResultBlock({
   void decisionNonce; // decision sets are mutated in place — nonce drives the re-render
   const isConfirming = confirmingQueryId === result.query_id;
   const isCancelled = dismissedQueryIds.has(result.query_id) || result.is_cancelled === true;
-  const chartSpec = useMemo(() => buildChartSpec(result.columns, result.rows), [result.columns, result.rows]);
+  // Stored messages may predate these fields — never assume rows/columns exist.
+  const rows = result.rows ?? [];
+  const columns = result.columns ?? [];
+  const chartSpec = useMemo(() => buildChartSpec(columns, rows), [columns, rows]);
   // The AI decides whether a result opens as a chart or a table ("text" and
   // unparseable shapes fall back to the table). The user can still toggle.
   const [view, setView] = useState<"chart" | "table">(
@@ -500,9 +521,9 @@ function ResultBlock({
       const { downloadQueryReport } = await import("../lib/reportPdf");
       await downloadQueryReport({
         chartSvg: chartRef.current?.querySelector("svg") ?? null,
-        columns: result.columns,
+        columns: columns,
         connectionName,
-        rows: result.rows,
+        rows: rows,
         sql: result.sql,
         summary: result.summary
       });
@@ -635,11 +656,11 @@ function ResultBlock({
         <span className="status-pill pill-success"><Check size={13} /> Confirmed</span>
       )}
 
-      {result.rows.length > 0 && (
+      {rows.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line">
           <div className="flex items-center justify-between border-b border-line bg-white/[0.03] px-3 py-1.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
-              {result.rows.length} row{result.rows.length === 1 ? "" : "s"}
+              {rows.length} row{rows.length === 1 ? "" : "s"}
             </span>
             {chartSpec && (
               <div className="flex gap-0.5 rounded-lg border border-line bg-canvas p-0.5">
@@ -662,7 +683,7 @@ function ResultBlock({
 
           {chartSpec && (
             <div className={view === "chart" ? "p-2" : "hidden"} ref={chartRef}>
-              <QueryChart spec={chartSpec} totalRows={result.rows.length} />
+              <QueryChart spec={chartSpec} totalRows={rows.length} />
             </div>
           )}
 
@@ -671,13 +692,13 @@ function ResultBlock({
               <table className="w-full min-w-[520px] text-left text-[13px]">
                 <thead>
                   <tr className="border-b border-line text-[11px] uppercase tracking-wider text-ink-faint">
-                    {result.columns.map((column, columnIndex) => (
+                    {columns.map((column, columnIndex) => (
                       <th className="px-3.5 py-2 font-medium" key={`${column}-${columnIndex}`}>{column}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {result.rows.map((row, index) => (
+                  {rows.map((row, index) => (
                     <tr className="transition-colors hover:bg-white/[0.03]" key={index}>
                       {result.columns.map((column, columnIndex) => {
                         const val = row[column];

@@ -35,7 +35,6 @@ type Feedback = { kind: "success" | "error" | "info"; text: string };
 type Mode = "view" | "add";
 
 const DEFAULT_PORTS: Record<DbType, number> = { mysql: 3306, postgres: 5432 };
-const DB_LABELS: Record<DbType, string> = { mysql: "MySQL", postgres: "PostgreSQL" };
 const URI_SCHEMES: Record<DbType, string> = { mysql: "mysql", postgres: "postgresql" };
 
 const EMPTY_FORM = {

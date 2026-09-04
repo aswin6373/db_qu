@@ -57,15 +57,27 @@ export function ChatSessionsProvider({ token, children }: { token: string; child
     setActiveId(id);
   }, []);
 
+  // In-flight guard so two rapid calls can never create two sessions when
+  // no chat is open yet (the activeId closure alone is stale-prone).
+  const creatingRef = useRef<Promise<number> | null>(null);
+
   const ensureSession = useCallback(async (connectionId?: number | null) => {
     if (activeId !== null) return activeId;
-    const created = await apiRequest<ChatSession>("/chat/sessions", {
+    if (creatingRef.current) return creatingRef.current;
+    const created = apiRequest<ChatSession>("/chat/sessions", {
       method: "POST",
       body: JSON.stringify(connectionId ? { connection_id: connectionId } : {})
-    }, token);
-    setSessions((items) => [created, ...items]);
-    setActiveId(created.id);
-    return created.id;
+    }, token)
+      .then((session) => {
+        setSessions((items) => [session, ...items]);
+        setActiveId(session.id);
+        return session.id;
+      })
+      .finally(() => {
+        creatingRef.current = null;
+      });
+    creatingRef.current = created;
+    return created;
   }, [activeId, token]);
 
   const renameSession = useCallback(async (session: ChatSession, title: string) => {

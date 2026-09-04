@@ -13,6 +13,13 @@ const FOCUSABLE = [
  *  the dialog (focus trap), focus returns to the trigger on close. */
 export function useDialog(onClose: () => void) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Kept in a ref so a new inline `onClose` identity on every parent render
+  // doesn't re-run the setup effect and steal focus mid-interaction.
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -29,7 +36,7 @@ export function useDialog(onClose: () => void) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -49,7 +56,7 @@ export function useDialog(onClose: () => void) {
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocused?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return containerRef;
 }

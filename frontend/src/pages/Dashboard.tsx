@@ -328,14 +328,11 @@ function ReadinessRing({ score }: { score: number }) {
   );
 }
 
-function SectionTitle({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle?: string }) {
+function SectionTitle({ icon, title }: { icon: ReactNode; title: string }) {
   return (
-    <div>
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
-        <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      </div>
-      {subtitle && <p className="mt-1 pl-[42px] text-[13px] leading-5 text-ink-faint">{subtitle}</p>}
+    <div className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/10 text-brand-400">{icon}</span>
+      <h2 className="text-sm font-semibold text-ink">{title}</h2>
     </div>
   );
 }

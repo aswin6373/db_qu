@@ -10,7 +10,7 @@ export type ChartSpec = {
 };
 
 /* Theme palette matching the app: brand teal first, then accents. */
-const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#0ea5e9", "#ec4899", "#52aaa2", "#f59e0b"];
+const PALETTE = ["#2f9e97", "#f59e0b", "#8b5cf6", "#0ea5e9", "#ec4899", "#52aaa2", "#e8c468"];
 const NUMERIC_RE = /^-?[\d,]+(\.\d+)?%?$/;
 const DATE_NAME_RE = /(date|month|year|day|week|quarter|time|period)/i;
 /* columns that identify rows or mark time — never meaningful bar heights:

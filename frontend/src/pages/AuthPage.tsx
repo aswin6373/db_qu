@@ -48,8 +48,8 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
   return (
     <div className="relative grid min-h-screen bg-canvas text-ink lg:grid-cols-[56fr_44fr] lg:h-screen lg:overflow-hidden">
-      {/* Mobile sticky brand bar — logo always on top */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-canvas/90 px-5 py-3 backdrop-blur lg:hidden">
+      {/* Mobile fixed brand bar — logo and back stay pinned while switching tabs */}
+      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-line bg-canvas/95 px-5 py-3 backdrop-blur lg:hidden">
         <span className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
             <LogoMark className="h-5 w-5" />
@@ -237,7 +237,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
       {/* ============ RIGHT — auth panel, full height, no outer gaps ============ */}
       <main className="relative flex flex-col overflow-y-auto no-scrollbar bg-raise/60 lg:border-l lg:border-line">
-        <div className="relative z-10 mx-auto flex w-full flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 xl:px-20">
+        <div className="relative z-10 mx-auto flex w-full flex-1 flex-col justify-center px-6 pb-10 pt-20 sm:px-12 lg:px-16 lg:pt-10 xl:px-20">
           <div className="relative z-10 mx-auto w-full max-w-[440px]">
             {/* Mode switch */}
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-line bg-black/40 p-1">

@@ -219,7 +219,7 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
                     )}
                   </button>
                 </div>
-                <pre className="max-h-24 overflow-auto px-3 py-2.5 font-mono text-[11px] leading-5 text-ink-soft">{item.sql}</pre>
+                <pre className="max-h-24 overflow-auto px-3 py-2.5 font-mono text-[11px] leading-5 text-[#a7ded7]">{item.sql}</pre>
               </div>
             </article>
           ))}

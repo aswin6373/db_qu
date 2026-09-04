@@ -154,9 +154,9 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
         />
 
         {/* Activity logs */}
-        <section className="card p-5 sm:p-6">
+        <section className="space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <SectionTitle icon={<Activity size={15} />} subtitle="The five most recent AI-generated queries in this organization." title="Recent activity" />
+            <SectionTitle icon={<Activity size={15} />} title="Recent activity" />
             {statuses.length > 1 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {["all", ...statuses].map((status) => (
@@ -176,49 +176,58 @@ export function Dashboard({ connections, dashboard, insights, schemas, onOpenCon
               </div>
             )}
           </div>
-        <div className="mt-3 divide-y divide-line">
+
           {visibleActivity.map((item) => (
-            <div className="flex flex-col gap-2.5 py-3.5 first:pt-1 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4" key={item.id}>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{item.question}</p>
-                  {item.created_at && (
-                    <span className="shrink-0 font-mono text-[11px] text-ink-faint">{timeAgo(item.created_at)}</span>
-                  )}
+            <article className="card animate-fade-up p-4 sm:p-5" key={item.id}>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500/10 text-brand-400">
+                  <MessageSquare size={14} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {item.question}
+                    <span className="ml-2 text-xs font-normal text-ink-faint">{item.created_at ? timeAgo(item.created_at) : ""}</span>
+                  </p>
                 </div>
-                <code className="mt-1.5 block truncate rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-ink-soft">
-                  {item.sql}
-                </code>
+                <div className="ml-auto flex flex-wrap items-center gap-2">
+                  {item.rows_returned != null && (
+                    <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-ink-faint">
+                      {item.rows_returned} rows
+                    </span>
+                  )}
+                  <StatusPill status={item.status} />
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {item.rows_returned != null && (
-                  <span className="hidden rounded-md border border-line px-2 py-0.5 font-mono text-[11px] text-ink-faint sm:inline">
-                    {item.rows_returned} rows
-                  </span>
-                )}
-                <StatusPill status={item.status} />
-                <button
-                  aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
-                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-md border transition ${
-                    copiedId === item.id
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                      : "border-line text-ink-soft hover:border-line-strong hover:text-ink"
-                  }`}
-                  onClick={() => copySql(item.id, item.sql)}
-                  title="Copy SQL"
-                  type="button"
-                >
-                  {copiedId === item.id ? <Check size={13} /> : <Copy size={13} />}
-                </button>
+
+              <div className="mt-3 overflow-hidden rounded-xl border border-line bg-[#0b0c0e]">
+                <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">SQL</span>
+                  <button
+                    aria-label={copiedId === item.id ? "Copied" : "Copy SQL"}
+                    className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-ink-faint transition hover:bg-white/5 hover:text-ink"
+                    onClick={() => copySql(item.id, item.sql)}
+                    type="button"
+                  >
+                    {copiedId === item.id ? (
+                      <>
+                        <Check size={12} className="text-emerald-400" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                <pre className="max-h-24 overflow-auto px-3 py-2.5 font-mono text-[11px] leading-5 text-ink-soft">{item.sql}</pre>
               </div>
-            </div>
+            </article>
           ))}
           {visibleActivity.length === 0 && (
             <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-faint">
               No query activity yet. Start a conversation in AI Chat.
             </p>
           )}
-        </div>
         </section>
       </section>
     </div>

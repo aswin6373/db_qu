@@ -81,16 +81,6 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </g>
         </svg>
 
-        {/* Product illustration — ambient, pinned to the right edge so it
-            never competes with the copy or affects the single-screen layout */}
-        <img
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-10 top-16 hidden w-[420px] opacity-45 [mask-image:linear-gradient(to_left,black_50%,transparent_95%)] xl:block"
-          loading="lazy"
-          src="/talk-to-your-data.png"
-        />
-
         <div className="relative flex min-h-full flex-col gap-6 p-8 xl:gap-7 xl:p-10">
           {/* Brand */}
           <div>
@@ -105,37 +95,49 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
             <p className="mt-1.5 pl-[52px] text-[13px] text-ink-faint">AI-powered database intelligence</p>
           </div>
 
-          {/* Hero */}
-          <div className="max-w-xl">
-            <h1 className="text-[40px] font-bold leading-[1.12] tracking-tight text-ink xl:text-[52px]">
-              Talk to your data
-              <br />
-              like a <span className="text-brand-400">colleague.</span>
-            </h1>
-            <p className="mt-3 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
-              Ask questions in plain English. QueryMind understands your schema, generates validated
-              SQL, and gives you answers in seconds.
-            </p>
+        {/* Product illustration — sits beside the hero on wide screens */}
+        <div className="flex flex-1 items-center gap-10">
+          <div className="flex min-w-0 flex-1 flex-col gap-6 xl:gap-7">
+            {/* Hero */}
+            <div className="max-w-xl">
+              <h1 className="text-[40px] font-bold leading-[1.12] tracking-tight text-ink xl:text-[52px]">
+                Talk to your data
+                <br />
+                like a <span className="text-brand-400">colleague.</span>
+              </h1>
+              <p className="mt-3 max-w-lg text-[16px] leading-7 text-ink-soft xl:text-[17px]">
+                Ask questions in plain English. QueryMind understands your schema, generates validated
+                SQL, and gives you answers in seconds.
+              </p>
+            </div>
+
+            {/* Feature rows */}
+            <ul className="space-y-3.5">
+              {[
+                { icon: <Database size={16} />, title: "Schema-aware SQL", text: "Understands your schema and relationships" },
+                { icon: <ShieldCheck size={16} />, title: "Safe & validated queries", text: "Every query is validated before execution" },
+                { icon: <BarChart3 size={16} />, title: "Charts & reports built in", text: "Visualize and export in one click" }
+              ].map((feature) => (
+                <li className="flex items-center gap-3.5" key={feature.title}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white/[0.04] text-brand-400">
+                    {feature.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-ink">{feature.title}</p>
+                    <p className="text-[13px] text-ink-faint">{feature.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Feature rows */}
-          <ul className="max-w-xl space-y-3.5">
-            {[
-              { icon: <Database size={16} />, title: "Schema-aware SQL", text: "Understands your schema and relationships" },
-              { icon: <ShieldCheck size={16} />, title: "Safe & validated queries", text: "Every query is validated before execution" },
-              { icon: <BarChart3 size={16} />, title: "Charts & reports built in", text: "Visualize and export in one click" }
-            ].map((feature) => (
-              <li className="flex items-center gap-3.5" key={feature.title}>
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-white/[0.04] text-brand-400">
-                  {feature.icon}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-ink">{feature.title}</p>
-                  <p className="text-[13px] text-ink-faint">{feature.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <img
+            alt="Illustration of a friendly robot talking to a glowing database"
+            className="hidden w-[220px] shrink-0 self-center rounded-xl border border-line xl:block 2xl:w-[260px]"
+            loading="lazy"
+            src="/talk-to-your-data.png"
+          />
+        </div>
 
           {/* Workflow demo panel */}
           <div className="hidden max-w-2xl rounded-2xl border border-line bg-white/[0.02] p-3.5 shadow-[0_0_40px_rgba(47,158,151,0.05)] [@media(min-width:1280px)and(min-height:860px)]:block">
@@ -214,21 +216,22 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
         </div>
       </aside>
 
-      {/* ============ RIGHT — auth card ============ */}
-      <main className="relative flex flex-col overflow-y-auto no-scrollbar px-5 py-6 sm:px-10">
-        <div className="relative z-10 flex items-center lg:hidden">
-          <span className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
-              <LogoMark className="h-5 w-5" />
+      {/* ============ RIGHT — auth panel, full height, no outer gaps ============ */}
+      <main className="relative flex flex-col overflow-y-auto no-scrollbar bg-raise/60 lg:border-l lg:border-line">
+        <div className="relative z-10 mx-auto flex w-full flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 xl:px-20">
+          {/* Mobile brand */}
+          <div className="relative z-10 mb-8 flex items-center lg:hidden">
+            <span className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500/15">
+                <LogoMark className="h-5 w-5" />
+              </span>
+              <span className="font-display text-[15px] font-semibold tracking-tight text-ink">
+                Query<span className="text-brand-400">Mind</span>
+              </span>
             </span>
-            <span className="font-display text-[15px] font-semibold tracking-tight text-ink">
-              Query<span className="text-brand-400">Mind</span>
-            </span>
-          </span>
-        </div>
+          </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-[470px] flex-1 flex-col justify-center py-8">
-          <div className="rounded-2xl border border-line bg-raise/80 p-6 shadow-[0_0_60px_rgba(47,158,151,0.06)] backdrop-blur sm:p-8">
+          <div className="relative z-10 mx-auto w-full max-w-[440px]">
             {/* Mode switch */}
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-line bg-black/40 p-1">
               <button

@@ -81,6 +81,16 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
           </g>
         </svg>
 
+        {/* Product illustration — ambient, pinned to the right edge so it
+            never competes with the copy or affects the single-screen layout */}
+        <img
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-14 top-24 hidden w-[360px] rounded-3xl opacity-30 [mask-image:linear-gradient(to_left,black_35%,transparent_92%)] xl:block"
+          loading="lazy"
+          src="/talk-to-your-data.png"
+        />
+
         <div className="relative flex min-h-full flex-col gap-6 p-8 xl:gap-7 xl:p-10">
           {/* Brand */}
           <div>

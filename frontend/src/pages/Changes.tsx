@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
-import { CheckCircle2, Clock, Copy, Database, FilePenLine, Loader2, XCircle } from "lucide-react";
+import { Check, CheckCircle2, Clock, Copy, Database, FilePenLine, Loader2, XCircle } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { apiRequest } from "../lib/api";
 import type { ChangeLogEntry } from "../types/api";
@@ -189,21 +189,27 @@ export function Changes({ token }: Props) {
                   )}
                 </div>
 
-                <div className="relative mt-3">
-                  <pre className="code-block max-h-32 overflow-auto pr-10 text-[11px] leading-5">{entry.sql}</pre>
-                  <button
-                    aria-label="Copy SQL"
-                    className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink-soft"
-                    onClick={() => copySql(entry)}
-                    type="button"
-                  >
-                    <Copy size={13} />
-                  </button>
-                  {copiedId === entry.id && (
-                    <span className="absolute right-2 top-9 rounded-md bg-surface/10 px-2 py-0.5 text-[10px] font-medium text-ink ring-1 ring-line">
-                      Copied
-                    </span>
-                  )}
+                <div className="mt-3 overflow-hidden rounded-xl border border-line bg-[#0b0c0e]">
+                  <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">SQL</span>
+                    <button
+                      aria-label={copiedId === entry.id ? "Copied" : "Copy SQL"}
+                      className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-ink-faint transition hover:bg-white/5 hover:text-ink"
+                      onClick={() => copySql(entry)}
+                      type="button"
+                    >
+                      {copiedId === entry.id ? (
+                        <>
+                          <Check size={12} className="text-emerald-400" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="code-block max-h-32 overflow-auto border-0 bg-transparent px-3 py-2.5 text-[11px] leading-5">{entry.sql}</pre>
                 </div>
               </article>
             );

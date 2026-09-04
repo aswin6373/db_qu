@@ -189,10 +189,10 @@ export function LandingPage({ onNavigateAuth }: Props) {
         {/* Talk to your data */}
         <section className="relative px-5 pb-20 sm:px-8">
           <div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="mx-auto w-full max-w-xs sm:max-w-sm">
+            <div className="mx-auto w-full">
               <img
                 alt="Illustration of a friendly robot asking a database for sales figures — Talk to your data with QueryMind"
-                className="h-auto w-full rounded-2xl border border-line"
+                className="h-auto w-full"
                 loading="lazy"
                 src="/talk-to-your-data.png"
               />

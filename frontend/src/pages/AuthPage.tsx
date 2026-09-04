@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowLeft, Loader2, LogIn, ShieldCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { LogoMark } from "../components/LogoMark";
 
@@ -16,6 +16,7 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
   const [organizationName, setOrganizationName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -42,6 +43,8 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
       setBusy(false);
     }
   }
+
+  const isRegister = mode === "register";
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink">
@@ -72,25 +75,35 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
       {/* Centered card */}
       <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
         <div className="w-full max-w-md animate-fade-up">
-          <div className="mb-7 text-center">
-            <h1 className="font-display text-[26px] font-semibold tracking-tight text-ink">
-              {mode === "register" ? "Create your workspace" : "Welcome back"}
-            </h1>
-            <p className="mt-1.5 text-sm leading-6 text-ink-soft">
-              {mode === "register"
-                ? "One workspace per team. Credentials stay encrypted."
-                : "Enter your workspace email and password."}
-            </p>
-          </div>
+          <h1 className="text-center font-display text-[26px] font-semibold tracking-tight text-ink">
+            {isRegister ? "Create your workspace" : "Welcome back"}
+          </h1>
 
-          <div className="card p-6 sm:p-7">
+          <div className="card mt-6 p-6 sm:p-7">
+            {/* Mode switch */}
             <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg border border-line bg-white/[0.03] p-1">
-              <TabButton active={mode === "register"} icon={<UserPlus size={14} />} label="Register" onClick={() => { setMode("register"); setError(""); }} />
-              <TabButton active={mode === "login"} icon={<LogIn size={14} />} label="Login" onClick={() => { setMode("login"); setError(""); }} />
+              <button
+                className={`rounded-md py-1.5 text-[13px] font-medium transition ${
+                  isRegister ? "bg-white/10 text-ink" : "text-ink-soft hover:text-ink"
+                }`}
+                onClick={() => { setMode("register"); setError(""); }}
+                type="button"
+              >
+                Register
+              </button>
+              <button
+                className={`rounded-md py-1.5 text-[13px] font-medium transition ${
+                  !isRegister ? "bg-white/10 text-ink" : "text-ink-soft hover:text-ink"
+                }`}
+                onClick={() => { setMode("login"); setError(""); }}
+                type="button"
+              >
+                Login
+              </button>
             </div>
 
             <form className="space-y-4" onSubmit={submit}>
-              {mode === "register" ? (
+              {isRegister && (
                 <label className="block">
                   <span className="label">Organization name</span>
                   <input
@@ -103,13 +116,13 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
                     onChange={(event) => setOrganizationName(event.target.value)}
                   />
                 </label>
-              ) : null}
+              )}
 
               <label className="block">
                 <span className="label">Email</span>
                 <input
                   autoComplete="email"
-                  autoFocus={mode === "login"}
+                  autoFocus={!isRegister}
                   className="field"
                   placeholder="you@company.com"
                   required
@@ -121,26 +134,29 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
 
               <label className="block">
                 <span className="label">Password</span>
-                <input
-                  aria-describedby={error ? "auth-error" : undefined}
-                  aria-invalid={Boolean(error) || undefined}
-                  autoComplete={mode === "register" ? "new-password" : "current-password"}
-                  className="field"
-                  minLength={mode === "register" ? 8 : undefined}
-                  placeholder={mode === "register" ? "Minimum 8 characters" : "Your password"}
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
+                <span className="relative block">
+                  <input
+                    aria-describedby={error ? "auth-error" : undefined}
+                    aria-invalid={Boolean(error) || undefined}
+                    autoComplete={isRegister ? "new-password" : "current-password"}
+                    className="field pr-11"
+                    minLength={isRegister ? 8 : undefined}
+                    placeholder={isRegister ? "Minimum 8 characters" : "Your password"}
+                    required
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    type="button"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </span>
               </label>
-
-              {mode === "login" && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-line bg-white/[0.03] p-3 text-xs leading-5 text-ink-soft">
-                  <ShieldCheck className="mt-0.5 shrink-0 text-brand-400" size={14} />
-                  <span>Team member? Use the email where you received your workspace invitation.</span>
-                </div>
-              )}
 
               {error && (
                 <p className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-300" id="auth-error" role="alert">
@@ -148,32 +164,18 @@ export function AuthPage({ initialMode = "register", onBack, onToken }: Props) {
                 </p>
               )}
 
-              <button className="btn-primary w-full !h-10 !mt-1" disabled={busy} type="submit">
-                {busy ? <Loader2 className="animate-spin" size={16} /> : mode === "register" ? <UserPlus size={16} /> : <LogIn size={16} />}
-                {mode === "register" ? "Create workspace" : "Enter workspace"}
+              <button className="btn-primary w-full" disabled={busy} type="submit">
+                {busy && <Loader2 className="animate-spin" size={16} />}
+                {isRegister ? "Create workspace" : "Enter workspace"}
               </button>
             </form>
           </div>
 
-          <p className="mt-5 text-center text-xs leading-5 text-ink-faint">
-            Free while in beta · No credit card required · Your data stays in your databases
+          <p className="mt-4 text-center text-[13px] text-ink-faint">
+            {isRegister ? "Free while in beta — your data stays in your databases." : "Team member? Use the email from your workspace invitation."}
           </p>
         </div>
       </main>
     </div>
-  );
-}
-
-function TabButton({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[13px] font-medium transition ${
-        active ? "bg-white/10 text-ink" : "text-ink-soft hover:text-ink"
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      {icon} {label}
-    </button>
   );
 }

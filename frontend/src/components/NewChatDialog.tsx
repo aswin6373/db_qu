@@ -35,24 +35,24 @@ export function NewChatDialog({ connections, onClose, onSuccess }: Props) {
     <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Choose a database for the new chat" ref={dialogRef}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="card animate-fade-up relative w-full max-w-md overflow-hidden p-0 shadow-lift">
-        <div className="flex items-start justify-between gap-3 border-b border-line px-6 py-5">
-          <div>
-            <h2 className="font-display text-lg font-semibold tracking-tight text-ink">New chat</h2>
-            <p className="mt-1 text-xs leading-5 text-ink-soft">
-              Pick which database this conversation should use — it stays linked permanently.
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="font-display text-base font-semibold tracking-tight text-ink">New chat</h2>
+            <p className="mt-0.5 text-xs text-ink-faint">
+              Pick a database — this chat stays linked to it.
             </p>
           </div>
-          <button aria-label="Close" className="rounded-lg p-1.5 text-ink-faint transition hover:bg-white/10 hover:text-ink" onClick={onClose} type="button">
+          <button aria-label="Close" className="shrink-0 rounded-lg p-1.5 text-ink-faint transition hover:bg-white/10 hover:text-ink" onClick={onClose} type="button">
             <X size={18} />
           </button>
         </div>
 
-        <div className="max-h-[320px] space-y-1 overflow-y-auto p-3">
+        <div className="max-h-[320px] space-y-1 overflow-y-auto p-2.5">
           {connections.map((connection) => {
             const isCreating = creatingId === connection.id;
             return (
               <button
-                className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition ${
+                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                   isCreating
                     ? "border-brand-500/60 bg-brand-500/10"
                     : "border-transparent hover:border-line hover:bg-white/5"
@@ -71,13 +71,14 @@ export function NewChatDialog({ connections, onClose, onSuccess }: Props) {
                     {connection.database_name} · {connection.host}
                   </span>
                 </span>
+                {isCreating && <span className="shrink-0 text-[11px] font-medium text-brand-300">Creating…</span>}
               </button>
             );
           })}
         </div>
 
         {error && (
-          <p className="mx-6 mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-300">{error}</p>
+          <p className="mx-4 mb-4 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-300">{error}</p>
         )}
       </div>
     </div>

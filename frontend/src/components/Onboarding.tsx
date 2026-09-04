@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, Loader2, PlugZap, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Database, Eye, EyeOff, Loader2, PlugZap, ShieldCheck, UserRound } from "lucide-react";
 import { NumberField } from "./NumberField";
 import { LogoMark } from "./LogoMark";
 import { apiRequest } from "../lib/api";
@@ -21,7 +21,6 @@ const STEPS = [
 export function Onboarding({ token, organizationName, onComplete }: Props) {
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState("");
   const [useCase, setUseCase] = useState("");
   const [workspace, setWorkspace] = useState(organizationName ?? "");
   const [form, setForm] = useState({
@@ -59,7 +58,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
     try {
       localStorage.setItem(
         "querymind_profile",
-        JSON.stringify({ fullName, role, useCase, organizationName: workspace })
+        JSON.stringify({ fullName, useCase, organizationName: workspace })
       );
     } catch {
       /* storage unavailable — onboarding continues regardless */
@@ -136,9 +135,8 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
 
         {/* Step 1: details */}
         {step === 1 && (
-          <form className="card animate-fade-up p-7 sm:p-8" onSubmit={saveDetails}>
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Tell us about your workspace</h1>
-            <p className="mt-1.5 text-sm text-ink-soft">This helps us tailor QueryMind to how your team works.</p>
+          <form className="card animate-fade-up p-5 sm:p-8" onSubmit={saveDetails}>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Set up your workspace</h1>
 
             <div className="mt-6 space-y-4">
               <label className="block">
@@ -148,18 +146,6 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
               <label className="block">
                 <span className="label">Your name</span>
                 <input className="field" placeholder="Aswin Kumar" value={fullName} onChange={(event) => setFullName(event.target.value)} />
-              </label>
-              <label className="block">
-                <span className="label">Your role</span>
-                <select className="field" value={role} onChange={(event) => setRole(event.target.value)}>
-                  <option value="">Select a role…</option>
-                  <option>Founder / Leadership</option>
-                  <option>Data Analyst</option>
-                  <option>Backend / Full-stack Engineer</option>
-                  <option>DBA / DevOps</option>
-                  <option>Product Manager</option>
-                  <option>Other</option>
-                </select>
               </label>
               <div>
                 <span className="label">What will you use QueryMind for?</span>
@@ -182,7 +168,7 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
               </div>
             </div>
 
-            <button className="btn-primary mt-7 w-full !h-10" type="submit">
+            <button className="btn-primary mt-7 w-full" type="submit">
               Continue <ArrowRight size={16} />
             </button>
           </form>
@@ -190,160 +176,160 @@ export function Onboarding({ token, organizationName, onComplete }: Props) {
 
         {/* Step 2: connect database */}
         {step === 2 && (
-          <form className="card animate-fade-up p-7 sm:p-8" onSubmit={connectDatabase}>
+          <form className="card animate-fade-up p-5 sm:p-8" onSubmit={connectDatabase}>
             <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">Connect your database</h1>
-            <p className="mt-1.5 text-sm leading-6 text-ink-soft">
-              QueryMind needs a live MySQL or PostgreSQL connection before the workspace unlocks. Your password is
-              encrypted before it is stored.
+            <p className="mt-1.5 text-sm text-ink-soft">
+              One live connection unlocks the workspace. Your password is encrypted before it is stored.
             </p>
 
-            <div className="mt-6 grid gap-x-5 gap-y-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="label">Display name</span>
-                <input className="field" placeholder="Production database" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-              </label>
-              <label className="block">
-                <span className="label">Database type</span>
-                <select
-                  className="field"
-                  value={form.db_type}
-                  onChange={(event) => {
-                    const db_type = event.target.value as "mysql" | "postgres";
-                    setForm({ ...form, db_type, port: db_type === "postgres" ? 5432 : 3306 });
-                  }}
-                >
-                  <option value="mysql">MySQL / MariaDB</option>
-                  <option value="postgres">PostgreSQL</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="label">Host</span>
-                <input
-                  className="field font-mono"
-                  placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : `${form.db_type === "postgres" ? "postgresql" : "mysql"}.example.com`}
-                  required
-                  value={form.host}
-                  onChange={(event) => setForm({ ...form, host: event.target.value })}
-                />
-                {showSshTunnel && (
-                  <span className="mt-1.5 block text-xs text-ink-faint">
-                    Database address as seen from the SSH server — use 127.0.0.1 if the database runs on the bastion itself.
-                  </span>
-                )}
-              </label>
-              <label className="block">
-                <span className="label">Port</span>
-                <NumberField className="field" fallback={defaultPort} max={65535} min={1} onCommit={(port) => setForm({ ...form, port })} value={form.port} />
-              </label>
-              <label className="block">
-                <span className="label">Username</span>
-                <input className="field font-mono" placeholder="querymind_user" required value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
-              </label>
-              <label className="block">
-                <span className="label">Password</span>
-                <input className="field" placeholder="••••••••" required type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-              </label>
-              <label className="block">
-                <span className="label">Database name</span>
-                <input className="field font-mono" placeholder="my_database" required value={form.database_name} onChange={(event) => setForm({ ...form, database_name: event.target.value })} />
-              </label>
-              <label className="block sm:col-span-2">
-                <span className="label">Encryption (SSL)</span>
-                <select className="field" value={form.ssl_mode} onChange={(event) => setForm({ ...form, ssl_mode: event.target.value })}>
-                  <option value="PREFERRED">Auto — use SSL if available</option>
-                  <option value="REQUIRED">Required — cloud providers</option>
-                  <option value="DISABLED">Disabled — local only</option>
-                </select>
-              </label>
+            <div className="mt-6 space-y-6">
+              <section>
+                <h3 className="eyebrow mb-3 text-ink-faint">Connection</h3>
+                <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="label">Display name</span>
+                    <input className="field" placeholder="Production database" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+                  </label>
+                  <label className="block">
+                    <span className="label">Database type</span>
+                    <select
+                      className="field"
+                      value={form.db_type}
+                      onChange={(event) => {
+                        const db_type = event.target.value as "mysql" | "postgres";
+                        setForm({ ...form, db_type, port: db_type === "postgres" ? 5432 : 3306 });
+                      }}
+                    >
+                      <option value="mysql">MySQL / MariaDB</option>
+                      <option value="postgres">PostgreSQL</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="label">Host</span>
+                    <input
+                      className="field font-mono"
+                      placeholder={showSshTunnel ? "127.0.0.1 or db.internal" : `${form.db_type === "postgres" ? "postgresql" : "mysql"}.example.com`}
+                      required
+                      value={form.host}
+                      onChange={(event) => setForm({ ...form, host: event.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="label">Port</span>
+                    <NumberField className="field" fallback={defaultPort} max={65535} min={1} onCommit={(port) => setForm({ ...form, port })} value={form.port} />
+                  </label>
+                </div>
+              </section>
 
-              <div className="rounded-xl border border-line bg-white/[0.02] sm:col-span-2">
-                <label className="flex cursor-pointer items-start gap-3 p-3.5 text-sm" htmlFor="onboarding-ssh-tunnel-toggle">
-                  <input checked={showSshTunnel} className="mt-0.5 h-4 w-4 accent-brand-500" id="onboarding-ssh-tunnel-toggle" onChange={(event) => toggleSshTunnel(event.target.checked)} type="checkbox" />
-                  <span>
+              <section className="border-t border-line pt-5">
+                <h3 className="eyebrow mb-3 text-ink-faint">Credentials</h3>
+                <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="label">Username</span>
+                    <input className="field font-mono" placeholder="querymind_user" required value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} />
+                  </label>
+                  <label className="block">
+                    <span className="label">Password</span>
+                    <input className="field" placeholder="••••••••" required type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+                  </label>
+                </div>
+              </section>
+
+              <section className="border-t border-line pt-5">
+                <h3 className="eyebrow mb-3 text-ink-faint">Security</h3>
+                <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="label">Database name</span>
+                    <input className="field font-mono" placeholder="my_database" required value={form.database_name} onChange={(event) => setForm({ ...form, database_name: event.target.value })} />
+                  </label>
+                  <label className="block">
+                    <span className="label">Encryption (SSL)</span>
+                    <select className="field" value={form.ssl_mode} onChange={(event) => setForm({ ...form, ssl_mode: event.target.value })}>
+                      <option value="PREFERRED">Auto — use SSL if available</option>
+                      <option value="REQUIRED">Required — cloud providers</option>
+                      <option value="DISABLED">Disabled — local only</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-line bg-white/[0.02]">
+                  <label className="flex cursor-pointer items-center gap-3 p-3.5 text-sm" htmlFor="onboarding-ssh-tunnel-toggle">
+                    <input checked={showSshTunnel} className="h-4 w-4 accent-brand-500" id="onboarding-ssh-tunnel-toggle" onChange={(event) => toggleSshTunnel(event.target.checked)} type="checkbox" />
                     <span className="flex items-center gap-1.5 font-medium text-ink">
                       <ShieldCheck size={15} /> Connect via SSH tunnel
                     </span>
-                    <span className="mt-0.5 block text-xs text-ink-faint">
-                      For private databases only reachable through a bastion/jump host.
-                    </span>
-                  </span>
-                </label>
+                  </label>
 
-                {showSshTunnel && (
-                  <div className="grid gap-x-5 gap-y-4 border-t border-line p-3.5 sm:grid-cols-2">
-                    <label className="block">
-                      <span className="label">SSH Host</span>
-                      <input className="field font-mono" placeholder="bastion.mycompany.com" required={showSshTunnel} value={form.ssh_host ?? ""} onChange={(event) => setForm({ ...form, ssh_host: event.target.value })} />
-                    </label>
-                    <label className="block">
-                      <span className="label">SSH Port</span>
-                      <NumberField className="field" fallback={22} max={65535} min={1} onCommit={(ssh_port) => setForm({ ...form, ssh_port })} value={form.ssh_port} />
-                    </label>
-                    <label className="block">
-                      <span className="label">SSH Username</span>
-                      <input className="field font-mono" placeholder="ec2-user" required={showSshTunnel} value={form.ssh_username ?? ""} onChange={(event) => setForm({ ...form, ssh_username: event.target.value })} />
-                    </label>
-                    <label className="block">
-                      <span className="label">SSH Password / Private Key</span>
-                      <span className="relative block">
-                        {(showSshPassword || (form.ssh_password ?? "").startsWith("-----")) ? (
-                          <textarea
-                            className="field h-auto min-h-[44px] resize-y py-3 pr-11 font-mono text-[13px] leading-5"
-                            placeholder="Paste SSH private key (-----BEGIN...) or password"
-                            required={showSshTunnel}
-                            rows={1}
-                            value={form.ssh_password ?? ""}
-                            onChange={(event) => setForm({ ...form, ssh_password: event.target.value })}
-                          />
-                        ) : (
-                          <input
-                            className="field pr-11"
-                            placeholder="Password, or paste a private key"
-                            required={showSshTunnel}
-                            type="password"
-                            value={form.ssh_password ?? ""}
-                            onChange={(event) => setForm({ ...form, ssh_password: event.target.value })}
-                          />
-                        )}
-                        <button
-                          aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
-                          className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
-                          onClick={() => setShowSshPassword((visible) => !visible)}
-                          type="button"
-                        >
-                          {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <Loader2 size={15} /> : <ShieldCheck size={15} />}
-                        </button>
-                      </span>
-                      <span className="mt-1.5 block text-xs text-ink-faint">
-                        Password stays hidden; a private key (-----BEGIN…) opens a larger box and is detected automatically. Encrypted at rest like your database password.
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
+                  {showSshTunnel && (
+                    <div className="grid gap-x-5 gap-y-4 border-t border-line p-3.5 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="label">SSH Host</span>
+                        <input className="field font-mono" placeholder="bastion.mycompany.com" required={showSshTunnel} value={form.ssh_host ?? ""} onChange={(event) => setForm({ ...form, ssh_host: event.target.value })} />
+                      </label>
+                      <label className="block">
+                        <span className="label">SSH Port</span>
+                        <NumberField className="field" fallback={22} max={65535} min={1} onCommit={(ssh_port) => setForm({ ...form, ssh_port })} value={form.ssh_port} />
+                      </label>
+                      <label className="block">
+                        <span className="label">SSH Username</span>
+                        <input className="field font-mono" placeholder="ec2-user" required={showSshTunnel} value={form.ssh_username ?? ""} onChange={(event) => setForm({ ...form, ssh_username: event.target.value })} />
+                      </label>
+                      <label className="block">
+                        <span className="label">SSH Password / Private Key</span>
+                        <span className="relative block">
+                          {(showSshPassword || (form.ssh_password ?? "").startsWith("-----")) ? (
+                            <textarea
+                              className="field h-auto min-h-[44px] resize-y py-3 pr-11 font-mono text-[13px] leading-5"
+                              placeholder="Paste SSH private key (-----BEGIN...) or password"
+                              required={showSshTunnel}
+                              rows={1}
+                              value={form.ssh_password ?? ""}
+                              onChange={(event) => setForm({ ...form, ssh_password: event.target.value })}
+                            />
+                          ) : (
+                            <input
+                              className="field pr-11"
+                              placeholder="Password, or paste a private key"
+                              required={showSshTunnel}
+                              type="password"
+                              value={form.ssh_password ?? ""}
+                              onChange={(event) => setForm({ ...form, ssh_password: event.target.value })}
+                            />
+                          )}
+                          <button
+                            aria-label={showSshPassword ? "Hide SSH secret" : "Show SSH secret"}
+                            className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-md text-ink-faint transition hover:bg-white/10 hover:text-ink"
+                            onClick={() => setShowSshPassword((visible) => !visible)}
+                            type="button"
+                          >
+                            {showSshPassword || (form.ssh_password ?? "").startsWith("-----") ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-              <label className="panel-soft flex items-start gap-3 p-3.5 text-sm sm:col-span-2">
-                <input checked={Boolean(form.test_live)} className="mt-0.5 h-4 w-4 accent-brand-500" onChange={(event) => setForm({ ...form, test_live: event.target.checked })} type="checkbox" />
-                <span>
+                <label className="mt-4 flex cursor-pointer items-center gap-3 text-sm">
+                  <input checked={Boolean(form.test_live)} className="h-4 w-4 accent-brand-500" onChange={(event) => setForm({ ...form, test_live: event.target.checked })} type="checkbox" />
                   <span className="flex items-center gap-1.5 font-medium text-ink">
                     <ShieldCheck size={15} /> Test live connection before saving
                   </span>
-                  <span className="mt-0.5 block text-xs text-ink-faint">Recommended — verifies credentials and loads your schema immediately.</span>
-                </span>
-              </label>
+                </label>
+              </section>
             </div>
 
             {feedback && (
               <p className="mt-5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-300">{feedback.text}</p>
             )}
 
-            <div className="mt-7 flex flex-col gap-2.5 sm:flex-row-reverse">
-              <button className="btn-primary flex-1" disabled={saving} type="submit">
-                {saving ? <Loader2 className="animate-spin" size={16} /> : <PlugZap size={16} />}
-                {saving ? "Testing & connecting…" : "Connect & finish"}
-              </button>
+            <div className="mt-7 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
               <button className="btn-secondary" onClick={() => setStep(1)} type="button">
                 <ArrowLeft size={15} /> Back
+              </button>
+              <button className="btn-primary sm:min-w-44" disabled={saving} type="submit">
+                {saving ? <Loader2 className="animate-spin" size={16} /> : <PlugZap size={16} />}
+                {saving ? "Testing & connecting…" : "Connect & finish"}
               </button>
             </div>
           </form>
